@@ -12,11 +12,11 @@ import numpy as np
 def parameters():
     jsp = "MT10_10"
     num_weights = 10  # 重みベクトル本数
-    bucket_size = 30  # CS バケットの最大容量のサイズ
-    ngen = 10
+    bucket_size = 30  # CS バケットの最大容量のサイズ.絶対偶数にすること
+    ngen = 300
     cx = "hirano"  # hirano or pmx
     mut = "inversion"  # hirano or inversion
-    sel = "Tournament"  # Tournament or Roulette ルーレットはスケーリングしないと解が改善しない
+    sel = "WeightedTournament"  # Tournament or Roulette ルーレットはスケーリングしないと解が改善しない
     cxpb = 0.85
     mutpb = 0.1
     return jsp, num_weights, bucket_size, ngen, cx, mut, sel, cxpb, mutpb # fmt: skip
@@ -33,7 +33,7 @@ def generate_weight_vectors(num_weights):
 # wを1-0.5の間で恣意的に生成。効率性×w+安定性×(1-w)
 def generate_weight_vectors_arbitrary():
     weights = []
-    for w0 in np.arange(1.0, 0.45, -0.05):  # 終点値を0.45に変更
+    for w0 in np.arange(1.0, 0.7, -0.05):
         w0 = np.round(w0, 2)  # np.roundを使用
         w1 = np.round(1.0 - w0, 2)  # np.roundを使用
         weights.append([w0, w1])
@@ -96,7 +96,7 @@ def main():
     """
     for ind, w in enumerate(weights):
         # 初期個体の生成と局所探索
-        population = toolbox.population(n=20)  # 1個体の初期集団。多めに生成して局所探索後に数を絞る
+        population = toolbox.population(n=30)  # 1個体の初期集団。多めに生成して局所探索後に数を絞る
         population[0] = toolbox.original_individual()  # original個体をpopulationの1つ目に格納
         
         # ローカル探索と評価値の登録
@@ -106,13 +106,10 @@ def main():
             )
             i[:] = best[:]  # 個体の遺伝子を更新
             i.fitness.values = toolbox.evaluate(i)  # fmt: skip
+            i.weighted_fitness = pareto_operation.calculate_weighted_fitness(
+                i.fitness.values, w, max_efficiency, min_efficiency, max_stability
+            )
             CS[ind].append(i)  # 個体と評価値をCSに登録
-            # 重みパラメータでソート
-            All_solution.append(i)  # 個体と評価値をPEに登録
-        
-        CS[ind].sort(key=lambda ind: pareto_operation.calculate_weighted_fitness(
-            ind.fitness.values, w, max_efficiency, min_efficiency, max_stability
-        ))
         CS[ind] = CS[ind][:bucket_size]  # バケットサイズを維持
         
         PF.update(CS[ind])  # PFに更新
@@ -124,38 +121,43 @@ def main():
         idx = random.randrange(num_weights)  # 重みベクトルのインデックスをランダムに選択
         w = weights[idx]  # 選択した重みベクトル
         bucket = CS[idx]  # 選択した重みベクトルに対応するCSバケット
-        parents = toolbox.select(bucket, 2, 4)
-        child1, child2 = map(toolbox.clone, parents) # copyして参照を切ってるらしい
-        # 交叉確率に基づいて交叉・突然変異を行う
-        if random.random() < cxpb:
-            toolbox.crossover(child1, child2)
-        if random.random() < mutpb:
-            toolbox.mutate(child1)
-        if random.random() < mutpb:
-            toolbox.mutate(child2)
-
-        # 5) 局所探索（Min–Max 正規化ヒルクライム）＆ 評価
-        for child in (child1, child2):
-            # in-place に局所探索
-            refined = toolbox.local_search(
-                child, w, max_efficiency, min_efficiency, max_stability
-            )
-            child[:] = refined  # 個体を更新
-            # DEAP 評価関数呼び出し
-            child.fitness.values = toolbox.evaluate(child)
-
-            # 6) CS 更新
-            CS[idx].append(child)
-        # 重みパラメータでソート
-        CS[idx].sort(key=lambda ind: pareto_operation.calculate_weighted_fitness(
-            ind.fitness.values, w, max_efficiency, min_efficiency, max_stability
-        ))
-        CS[idx] = CS[idx][:bucket_size]  # バケットサイズを維持
-        # 7) PE 更新
-        All_solution.append(child)
-        PF.update([child])  # PFに更新
-        print(f"Generation {gen+1}/{ngen} done.")
+        offspring = []  # 子孫
         
+        # お施し
+        for _ in range(int(bucket_size / 2)):
+            # 選択
+            parents = toolbox.select(bucket, 2, 4)
+            children = list(map(toolbox.clone, parents)) # copyして参照を切る
+            # 交叉
+            if random.random() < cxpb:
+                toolbox.crossover(children[0], children[1])
+            
+            for child in children:
+                # 突然変異
+                if random.random() < mutpb:
+                    toolbox.mutate(child)
+                # 局所探索
+                refined = toolbox.local_search(
+                    child, w, max_efficiency, min_efficiency, max_stability
+                    )
+                child[:] = refined
+                # 評価値の登録
+                del child.fitness.values
+                child.fitness.values = toolbox.evaluate(child)
+                child.weighted_fitness = pareto_operation.calculate_weighted_fitness(
+                    child.fitness.values, w, max_efficiency, min_efficiency, max_stability
+                )
+                offspring.append(child)
+
+        # 前世代の最良個体を保存
+        bucket.sort(key=lambda ind: ind.weighted_fitness)
+        elite = toolbox.clone(bucket[0])
+        offspring[0]= elite
+        # 7) PE 更新
+        CS[idx] = offspring[:]
+        PF.update(CS[idx])  # PFに更新
+        print(f"Generation {gen+1}/{ngen} done.")
+    
     analysis.plot_cs_pe(CS, PF, title="CS & PF Scatter")  # fmt: skip
 
 if __name__ == "__main__":

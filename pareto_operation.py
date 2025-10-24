@@ -19,7 +19,7 @@ from deap import base, creator, tools
 def initialize_pareto(jm_table, cx, mut, sel, original_individual, fixed_gantt, reschedule_time): # fmt: skip
     # 最小化は-1.0
     creator.create("FitnessMin", base.Fitness, weights=(-1.0, -1.0))
-    creator.create("Individual", list, typecode="b", fitness=creator.FitnessMin)
+    creator.create("Individual", list, typecode="b", fitness=creator.FitnessMin, weighted_fitness=float)
 
     toolbox = base.Toolbox()
     toolbox.register("individual", tools.initIterate, creator.Individual, lambda: create_individual_reactive(original_individual),)  # fmt: skip
@@ -42,8 +42,8 @@ def initialize_pareto(jm_table, cx, mut, sel, original_individual, fixed_gantt, 
     # 選択法の登録
     if sel == "Tournament":
         toolbox.register("select", tools.selTournament)
-    elif sel == "Roulette":
-        toolbox.register("select", tools.selRoulette)
+    elif sel == "WeightedTournament":
+        toolbox.register("select", selWeightedTournament)
 
     return toolbox
 
@@ -101,7 +101,7 @@ def calculate_weighted_fitness(fitness_values, w, max_efficiency, min_efficiency
 """
 # リスケ用の評価関数メイクスパンの取得。
 def makespan_reactive2(jm_table, fixed_gantt, reschedule_time, individual):
-    gantt = gantt_chart_operation.get_gantt_reactive_natural(
+    gantt = gantt_chart_operation.get_gantt_reactive(
         jm_table, individual, fixed_gantt, reschedule_time
     )
     # 最後の作業終了時刻からメイクスパンを取得する
@@ -114,7 +114,7 @@ def makespan_reactive2(jm_table, fixed_gantt, reschedule_time, individual):
 
 # 安定性関数ver3（順位偏差×順位的距離）
 def stability_function_v3(jm_table, fixed_gantt, reschedule_time, individual):
-    gantt = gantt_chart_operation.get_gantt_reactive_natural(
+    gantt = gantt_chart_operation.get_gantt_reactive(
         jm_table, individual, fixed_gantt, reschedule_time
     )
     delayed_gantt = jm_table.delayed_gantt()
@@ -161,6 +161,22 @@ def get_max_min(
         max_stability = max(stability[0], max_stability)
     statistics = [np.mean(eff), np.std(eff, ddof=0), np.mean(sta), np.std(sta, ddof=0), eff, sta]  # fmt: skip
     return (max_efficiency, min_efficiency, max_stability, statistics)
+"""
+=============================== 選択 ==============================================================
+"""
+# 反応型スケジューリング用の重み付きトーナメント選択
+def selWeightedTournament(individuals, k, tournsize):
+    chosen = []
+    for i in range(k):
+        # トーナメント出場者をランダムに選択
+        aspirants = tools.selRandom(individuals, tournsize)
+        
+        # トーナメント出場者の中で、重み付け評価値が最も良い個体を選ぶ
+        # calculate_weighted_fitnessは最小化問題なので、min() を使用
+        winner = min(aspirants, key=lambda ind: ind.weighted_fitness)
+        chosen.append(winner)
+    
+    return chosen
 
 
 """
