@@ -13,7 +13,7 @@ def parameters():
     jsp = "MT10_10"
     num_weights = 10  # 重みベクトル本数
     bucket_size = 30  # CS バケットの最大容量のサイズ.絶対偶数にすること
-    ngen = 300
+    ngen = 2000
     cx = "hirano"  # hirano or pmx
     mut = "inversion"  # hirano or inversion
     sel = "WeightedTournament"  # Tournament or Roulette ルーレットはスケーリングしないと解が改善しない
@@ -96,21 +96,38 @@ def main():
     """
     for ind, w in enumerate(weights):
         # 初期個体の生成と局所探索
-        population = toolbox.population(n=30)  # 1個体の初期集団。多めに生成して局所探索後に数を絞る
-        population[0] = toolbox.original_individual()  # original個体をpopulationの1つ目に格納
-        
-        # ローカル探索と評価値の登録
+        # population[0] はオリジナル個体を保持し、それ以外は
+        # オリジナル個体 + ランダム個体 を親にして交叉・突然変異で作られた子個体に置き換える
+        population = [None] * bucket_size
+        orig = toolbox.original_individual()
+        population[0] = orig  # original個体をpopulationの1つ目に格納
+
+        for j in range(1, len(population)):
+            # ランダム個体を1つ生成して親とする
+            rnd_parent = toolbox.population(n=1)[0]
+            # cloneして参照を切る
+            parents = list(map(toolbox.clone, (rnd_parent, orig)))
+            # 交叉（確率cxpbに従う）
+            if random.random() < cxpb:
+                toolbox.crossover(parents[0], parents[1])
+            # parents[0] を子として採用（交叉が適用されれば変化している）
+            child = parents[0]
+            # 突然変異（確率mutpbに従う）
+            if random.random() < mutpb:
+                toolbox.mutate(child)
+            population[j] = child
+
+        # ローカル探索と評価値の登録（全個体に対して実施）
         for i in population:
-            best = toolbox.local_search(
-                i, w, max_efficiency, min_efficiency, max_stability
-            )
-            i[:] = best[:]  # 個体の遺伝子を更新
+            # best = toolbox.local_search(
+            #     i, w, max_efficiency, min_efficiency, max_stability
+            # )
+            # i[:] = best[:]  # 個体の遺伝子を更新
             i.fitness.values = toolbox.evaluate(i)  # fmt: skip
             i.weighted_fitness = pareto_operation.calculate_weighted_fitness(
                 i.fitness.values, w, max_efficiency, min_efficiency, max_stability
             )
             CS[ind].append(i)  # 個体と評価値をCSに登録
-        CS[ind] = CS[ind][:bucket_size]  # バケットサイズを維持
         
         PF.update(CS[ind])  # PFに更新
 
@@ -137,10 +154,10 @@ def main():
                 if random.random() < mutpb:
                     toolbox.mutate(child)
                 # 局所探索
-                refined = toolbox.local_search(
-                    child, w, max_efficiency, min_efficiency, max_stability
-                    )
-                child[:] = refined
+                # refined = toolbox.local_search(
+                #     child, w, max_efficiency, min_efficiency, max_stability
+                #     )
+                # child[:] = refined
                 # 評価値の登録
                 del child.fitness.values
                 child.fitness.values = toolbox.evaluate(child)
