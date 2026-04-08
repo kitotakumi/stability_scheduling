@@ -199,8 +199,8 @@ def check_disturbance(init_gantt, delayed_gantt):
                 if c[2] == job:
                     judge = False
             if judge == True:
-                # stが379未満か確認
-                if st < 379:
+                # stがreschedule_time未満か確認
+                if st < reschedule_time:
                     # diffの条件に該当しないか確認 (stがdiffのstより大きく、かつmachineが同じでないこと)
                     if not (st > different_task[0] and machine == different_task[3]):
                         # 条件を満たした場合、bに追加

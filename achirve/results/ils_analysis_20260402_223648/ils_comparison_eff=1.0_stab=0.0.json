@@ -1,0 +1,574 @@
+{
+  "weights": [
+    1.0,
+    0.0
+  ],
+  "ILS_swap": [
+    {
+      "trial": 0,
+      "seed": 7,
+      "makespan": 1051,
+      "stability": 6.496240483905178,
+      "convergence": {
+        "cpu_time": 1.4534907341003418,
+        "evaluations": 1797,
+        "iteration": 131,
+        "total_cpu_time": 7.8839335441589355,
+        "total_evaluations": 8765,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 1,
+      "seed": 107,
+      "makespan": 1051,
+      "stability": 5.985072849584389,
+      "convergence": {
+        "cpu_time": 0.09325933456420898,
+        "evaluations": 112,
+        "iteration": 10,
+        "total_cpu_time": 8.455930233001709,
+        "total_evaluations": 8216,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 2,
+      "seed": 207,
+      "makespan": 1051,
+      "stability": 5.985072849584389,
+      "convergence": {
+        "cpu_time": 0.45360517501831055,
+        "evaluations": 529,
+        "iteration": 44,
+        "total_cpu_time": 7.651386976242065,
+        "total_evaluations": 8177,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 3,
+      "seed": 307,
+      "makespan": 1051,
+      "stability": 6.736479062274841,
+      "convergence": {
+        "cpu_time": 2.10410213470459,
+        "evaluations": 2300,
+        "iteration": 182,
+        "total_cpu_time": 7.960833311080933,
+        "total_evaluations": 8512,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 4,
+      "seed": 407,
+      "makespan": 1051,
+      "stability": 6.736479062274841,
+      "convergence": {
+        "cpu_time": 1.6642985343933105,
+        "evaluations": 1792,
+        "iteration": 141,
+        "total_cpu_time": 7.872684001922607,
+        "total_evaluations": 8372,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 5,
+      "seed": 507,
+      "makespan": 1051,
+      "stability": 5.985072849584389,
+      "convergence": {
+        "cpu_time": 4.182272911071777,
+        "evaluations": 5017,
+        "iteration": 407,
+        "total_cpu_time": 7.924771070480347,
+        "total_evaluations": 9156,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 6,
+      "seed": 607,
+      "makespan": 1051,
+      "stability": 6.496240483905178,
+      "convergence": {
+        "cpu_time": 4.038439512252808,
+        "evaluations": 4468,
+        "iteration": 341,
+        "total_cpu_time": 8.805408954620361,
+        "total_evaluations": 9346,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 7,
+      "seed": 707,
+      "makespan": 1051,
+      "stability": 6.496240483905178,
+      "convergence": {
+        "cpu_time": 2.679912805557251,
+        "evaluations": 2875,
+        "iteration": 232,
+        "total_cpu_time": 9.10754680633545,
+        "total_evaluations": 8872,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 8,
+      "seed": 807,
+      "makespan": 1051,
+      "stability": 5.985072849584389,
+      "convergence": {
+        "cpu_time": 2.0124757289886475,
+        "evaluations": 2185,
+        "iteration": 174,
+        "total_cpu_time": 8.800925254821777,
+        "total_evaluations": 8656,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 9,
+      "seed": 907,
+      "makespan": 1051,
+      "stability": 5.985072849584389,
+      "convergence": {
+        "cpu_time": 1.7229583263397217,
+        "evaluations": 1646,
+        "iteration": 127,
+        "total_cpu_time": 7.768381595611572,
+        "total_evaluations": 8494,
+        "total_iterations": 800
+      }
+    }
+  ],
+  "ILS_insert": [
+    {
+      "trial": 0,
+      "seed": 7,
+      "makespan": 1044,
+      "stability": 9.610561946816187,
+      "convergence": {
+        "cpu_time": 15.19163727760315,
+        "evaluations": 21814,
+        "iteration": 799,
+        "total_cpu_time": 15.197192192077637,
+        "total_evaluations": 21820,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 1,
+      "seed": 107,
+      "makespan": 1044,
+      "stability": 9.619951518509758,
+      "convergence": {
+        "cpu_time": 10.954029560089111,
+        "evaluations": 14336,
+        "iteration": 518,
+        "total_cpu_time": 16.763973474502563,
+        "total_evaluations": 22194,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 2,
+      "seed": 207,
+      "makespan": 1051,
+      "stability": 5.985072849584389,
+      "convergence": {
+        "cpu_time": 3.377452850341797,
+        "evaluations": 4965,
+        "iteration": 178,
+        "total_cpu_time": 14.973901510238647,
+        "total_evaluations": 21785,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 3,
+      "seed": 307,
+      "makespan": 1051,
+      "stability": 6.262124373590435,
+      "convergence": {
+        "cpu_time": 3.1664578914642334,
+        "evaluations": 3987,
+        "iteration": 150,
+        "total_cpu_time": 15.775571584701538,
+        "total_evaluations": 22177,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 4,
+      "seed": 407,
+      "makespan": 1044,
+      "stability": 10.250556433109079,
+      "convergence": {
+        "cpu_time": 2.357445001602173,
+        "evaluations": 3215,
+        "iteration": 125,
+        "total_cpu_time": 15.49891710281372,
+        "total_evaluations": 23053,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 5,
+      "seed": 507,
+      "makespan": 1051,
+      "stability": 6.225311427954052,
+      "convergence": {
+        "cpu_time": 1.716935396194458,
+        "evaluations": 2522,
+        "iteration": 104,
+        "total_cpu_time": 15.269975423812866,
+        "total_evaluations": 21852,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 6,
+      "seed": 607,
+      "makespan": 1051,
+      "stability": 6.496240483905178,
+      "convergence": {
+        "cpu_time": 0.5510292053222656,
+        "evaluations": 713,
+        "iteration": 28,
+        "total_cpu_time": 15.415616750717163,
+        "total_evaluations": 21705,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 7,
+      "seed": 707,
+      "makespan": 1051,
+      "stability": 6.225311427954052,
+      "convergence": {
+        "cpu_time": 1.7816376686096191,
+        "evaluations": 2595,
+        "iteration": 97,
+        "total_cpu_time": 14.053329229354858,
+        "total_evaluations": 21854,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 8,
+      "seed": 807,
+      "makespan": 1051,
+      "stability": 8.964424716890795,
+      "convergence": {
+        "cpu_time": 4.150773048400879,
+        "evaluations": 5895,
+        "iteration": 193,
+        "total_cpu_time": 14.710423469543457,
+        "total_evaluations": 23937,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 9,
+      "seed": 907,
+      "makespan": 1044,
+      "stability": 10.93720628308472,
+      "convergence": {
+        "cpu_time": 11.179467678070068,
+        "evaluations": 20124,
+        "iteration": 719,
+        "total_cpu_time": 12.225585460662842,
+        "total_evaluations": 22342,
+        "total_iterations": 800
+      }
+    }
+  ],
+  "ILS_swap_relink": [
+    {
+      "trial": 0,
+      "seed": 7,
+      "makespan": 1051,
+      "stability": 6.496240483905178,
+      "convergence": {
+        "cpu_time": 1.6069295406341553,
+        "evaluations": 1797,
+        "iteration": 131,
+        "total_cpu_time": 8.200023889541626,
+        "total_evaluations": 8814,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 1,
+      "seed": 107,
+      "makespan": 1051,
+      "stability": 5.985072849584389,
+      "convergence": {
+        "cpu_time": 0.09213757514953613,
+        "evaluations": 112,
+        "iteration": 10,
+        "total_cpu_time": 7.310840129852295,
+        "total_evaluations": 8113,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 2,
+      "seed": 207,
+      "makespan": 1051,
+      "stability": 5.985072849584389,
+      "convergence": {
+        "cpu_time": 0.44294071197509766,
+        "evaluations": 529,
+        "iteration": 44,
+        "total_cpu_time": 8.001276969909668,
+        "total_evaluations": 8174,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 3,
+      "seed": 307,
+      "makespan": 1051,
+      "stability": 6.736479062274841,
+      "convergence": {
+        "cpu_time": 2.475266933441162,
+        "evaluations": 2300,
+        "iteration": 182,
+        "total_cpu_time": 8.612351179122925,
+        "total_evaluations": 8547,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 4,
+      "seed": 407,
+      "makespan": 1051,
+      "stability": 6.736479062274841,
+      "convergence": {
+        "cpu_time": 1.5873675346374512,
+        "evaluations": 1792,
+        "iteration": 141,
+        "total_cpu_time": 8.013603448867798,
+        "total_evaluations": 8378,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 5,
+      "seed": 507,
+      "makespan": 1051,
+      "stability": 5.985072849584389,
+      "convergence": {
+        "cpu_time": 4.302754163742065,
+        "evaluations": 4886,
+        "iteration": 413,
+        "total_cpu_time": 8.04625153541565,
+        "total_evaluations": 8950,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 6,
+      "seed": 607,
+      "makespan": 1051,
+      "stability": 6.496240483905178,
+      "convergence": {
+        "cpu_time": 3.7653188705444336,
+        "evaluations": 4263,
+        "iteration": 346,
+        "total_cpu_time": 8.172893047332764,
+        "total_evaluations": 9100,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 7,
+      "seed": 707,
+      "makespan": 1051,
+      "stability": 5.985072849584389,
+      "convergence": {
+        "cpu_time": 3.1586954593658447,
+        "evaluations": 3674,
+        "iteration": 304,
+        "total_cpu_time": 7.866720199584961,
+        "total_evaluations": 8783,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 8,
+      "seed": 807,
+      "makespan": 1051,
+      "stability": 5.985072849584389,
+      "convergence": {
+        "cpu_time": 1.9963443279266357,
+        "evaluations": 2185,
+        "iteration": 174,
+        "total_cpu_time": 8.576226949691772,
+        "total_evaluations": 8615,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 9,
+      "seed": 907,
+      "makespan": 1051,
+      "stability": 5.985072849584389,
+      "convergence": {
+        "cpu_time": 1.3646366596221924,
+        "evaluations": 1646,
+        "iteration": 127,
+        "total_cpu_time": 6.720924615859985,
+        "total_evaluations": 8403,
+        "total_iterations": 800
+      }
+    }
+  ],
+  "ILS_insert_relink": [
+    {
+      "trial": 0,
+      "seed": 7,
+      "makespan": 1051,
+      "stability": 5.985072849584389,
+      "convergence": {
+        "cpu_time": 0.5125586986541748,
+        "evaluations": 787,
+        "iteration": 38,
+        "total_cpu_time": 13.422382593154907,
+        "total_evaluations": 19780,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 1,
+      "seed": 107,
+      "makespan": 1044,
+      "stability": 9.619951518509758,
+      "convergence": {
+        "cpu_time": 10.099627256393433,
+        "evaluations": 14929,
+        "iteration": 573,
+        "total_cpu_time": 14.209444522857666,
+        "total_evaluations": 21059,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 2,
+      "seed": 207,
+      "makespan": 1051,
+      "stability": 5.985072849584389,
+      "convergence": {
+        "cpu_time": 3.813218355178833,
+        "evaluations": 4965,
+        "iteration": 178,
+        "total_cpu_time": 15.096576690673828,
+        "total_evaluations": 20447,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 3,
+      "seed": 307,
+      "makespan": 1051,
+      "stability": 6.262124373590435,
+      "convergence": {
+        "cpu_time": 2.8941290378570557,
+        "evaluations": 3987,
+        "iteration": 150,
+        "total_cpu_time": 14.094765901565552,
+        "total_evaluations": 20721,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 4,
+      "seed": 407,
+      "makespan": 1044,
+      "stability": 10.250556433109079,
+      "convergence": {
+        "cpu_time": 2.21439790725708,
+        "evaluations": 3215,
+        "iteration": 125,
+        "total_cpu_time": 14.784050226211548,
+        "total_evaluations": 22195,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 5,
+      "seed": 507,
+      "makespan": 1051,
+      "stability": 6.225311427954052,
+      "convergence": {
+        "cpu_time": 1.842383623123169,
+        "evaluations": 2522,
+        "iteration": 104,
+        "total_cpu_time": 13.785753011703491,
+        "total_evaluations": 20016,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 6,
+      "seed": 607,
+      "makespan": 1051,
+      "stability": 6.496240483905178,
+      "convergence": {
+        "cpu_time": 0.5296483039855957,
+        "evaluations": 713,
+        "iteration": 28,
+        "total_cpu_time": 13.766348838806152,
+        "total_evaluations": 20272,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 7,
+      "seed": 707,
+      "makespan": 1051,
+      "stability": 6.225311427954052,
+      "convergence": {
+        "cpu_time": 1.6983163356781006,
+        "evaluations": 2595,
+        "iteration": 97,
+        "total_cpu_time": 12.957244634628296,
+        "total_evaluations": 19911,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 8,
+      "seed": 807,
+      "makespan": 1051,
+      "stability": 8.964424716890795,
+      "convergence": {
+        "cpu_time": 4.219130039215088,
+        "evaluations": 5895,
+        "iteration": 193,
+        "total_cpu_time": 12.623748779296875,
+        "total_evaluations": 22166,
+        "total_iterations": 800
+      }
+    },
+    {
+      "trial": 9,
+      "seed": 907,
+      "makespan": 1051,
+      "stability": 6.262124373590435,
+      "convergence": {
+        "cpu_time": 0.6926639080047607,
+        "evaluations": 988,
+        "iteration": 37,
+        "total_cpu_time": 11.15845513343811,
+        "total_evaluations": 21021,
+        "total_iterations": 800
+      }
+    }
+  ]
+}

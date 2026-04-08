@@ -1,0 +1,150 @@
+{
+  "GA": [
+    {
+      "weights": [
+        1.0,
+        0.0
+      ],
+      "makespan": 1080,
+      "stability": 6.1261625282989804,
+      "cpu_time": 33.544793367385864
+    },
+    {
+      "weights": [
+        0.95,
+        0.05
+      ],
+      "makespan": 1080,
+      "stability": 1.0272801601039951,
+      "cpu_time": 34.00593852996826
+    },
+    {
+      "weights": [
+        0.9,
+        0.1
+      ],
+      "makespan": 1080,
+      "stability": 1.0272801601039951,
+      "cpu_time": 32.7036497592926
+    },
+    {
+      "weights": [
+        0.85,
+        0.15
+      ],
+      "makespan": 1080,
+      "stability": 1.0272801601039951,
+      "cpu_time": 34.00945854187012
+    },
+    {
+      "weights": [
+        0.8,
+        0.2
+      ],
+      "makespan": 1080,
+      "stability": 1.0272801601039951,
+      "cpu_time": 34.27311587333679
+    },
+    {
+      "weights": [
+        0.7,
+        0.3
+      ],
+      "makespan": 1080,
+      "stability": 1.0272801601039951,
+      "cpu_time": 33.506324768066406
+    },
+    {
+      "weights": [
+        0.5,
+        0.5
+      ],
+      "makespan": 1080,
+      "stability": 1.0272801601039951,
+      "cpu_time": 31.356915712356567
+    },
+    {
+      "weights": [
+        0.0,
+        1.0
+      ],
+      "makespan": 1080,
+      "stability": 1.0272801601039951,
+      "cpu_time": 31.43185567855835
+    }
+  ],
+  "ILS_swap": [
+    {
+      "weights": [
+        1.0,
+        0.0
+      ],
+      "makespan": 1080,
+      "stability": 0.0,
+      "cpu_time": 6.092265605926514
+    },
+    {
+      "weights": [
+        0.95,
+        0.05
+      ],
+      "makespan": 1080,
+      "stability": 0.0,
+      "cpu_time": 8.606729984283447
+    },
+    {
+      "weights": [
+        0.9,
+        0.1
+      ],
+      "makespan": 1080,
+      "stability": 0.0,
+      "cpu_time": 5.881778717041016
+    },
+    {
+      "weights": [
+        0.85,
+        0.15
+      ],
+      "makespan": 1080,
+      "stability": 0.0,
+      "cpu_time": 5.838959455490112
+    },
+    {
+      "weights": [
+        0.8,
+        0.2
+      ],
+      "makespan": 1080,
+      "stability": 0.0,
+      "cpu_time": 7.906067132949829
+    },
+    {
+      "weights": [
+        0.7,
+        0.3
+      ],
+      "makespan": 1080,
+      "stability": 0.0,
+      "cpu_time": 8.51908254623413
+    },
+    {
+      "weights": [
+        0.5,
+        0.5
+      ],
+      "makespan": 1080,
+      "stability": 0.0,
+      "cpu_time": 6.300581693649292
+    },
+    {
+      "weights": [
+        0.0,
+        1.0
+      ],
+      "makespan": 1080,
+      "stability": 0.0,
+      "cpu_time": 5.6849658489227295
+    }
+  ]
+}
