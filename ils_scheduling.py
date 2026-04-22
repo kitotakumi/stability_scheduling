@@ -317,6 +317,22 @@ class ILSSolver:
         }
         return evaluation.weighted_objective(makespan, stability, self.weights, norm_params)
 
+    def _score_lower_bound(self, est_ms, machine_orders):
+        """Taillard推定MSと正確な安定性から合成スコアの下界を計算
+
+        est_ms ≤ actual_ms かつ stability は正確な値なので、
+        返り値 ≤ evaluate(machine_orders) が保証される。
+        weights[1] == 0 のときは est_ms <= current_ms と等価。
+        """
+        stability = self.compute_stability(machine_orders)
+        norm_params = {
+            'min_eff': self.min_eff,
+            'max_eff': self.max_eff,
+            'max_stab': self.max_stab,
+        }
+        return evaluation.weighted_objective(
+            est_ms, stability, self.weights, norm_params)
+
     def evaluate_pareto(self, machine_orders):
         """(メイクスパン, 安定性) を返す"""
         op_times = self.build_gantt(machine_orders)
@@ -584,9 +600,9 @@ class ILSSolver:
         strategy: 'best' = 最良改善, 'first' = 最初改善
 
         taillard_acceleration有効時:
-          メイクスパンのみの評価(安定性の重みが0)の場合、Taillardの高速化で
-          ガント再構築なしにメイクスパンを推定。安定性も使う場合は、Taillardで
-          メイクスパンを推定しつつ安定性は直接計算（ガント不要）して評価。
+          Taillard推定MS（下界）と正確な安定性（machine_ordersから直接計算）を
+          合成した score_lb でスクリーニングし、通過した近傍のみ build_gantt で
+          フル評価する。weights[1]==0 のときは est_ms <= current_ms と等価。
         """
         current = self._copy_orders(machine_orders)
         current_score = self.evaluate(current)
@@ -607,16 +623,16 @@ class ILSSolver:
                 if not neighbors_with_ms:
                     break
 
-                # 推定メイクスパンの下界でスクリーニング
-                current_ms = self.get_makespan(op_times)
-                candidates = [(n, est) for n, est in neighbors_with_ms
-                              if est <= current_ms]
+                # 合成スコアの下界でスクリーニング
+                # Taillard推定MS(下界) + 正確な安定性 → score_lb ≤ 実際のscore
+                candidates = [n for n, est_ms in neighbors_with_ms
+                              if self._score_lower_bound(est_ms, n) <= current_score]
 
                 if not candidates:
                     # 下界でも改善見込みなし → 全近傍を通常評価にフォールバック
                     neighbors = [n for n, _ in neighbors_with_ms]
                 else:
-                    neighbors = [n for n, _ in candidates]
+                    neighbors = candidates
 
                 if strategy == 'best':
                     best_neighbor = None
@@ -689,7 +705,7 @@ class ILSSolver:
         """摂動: 局所最適解から脱出するためのキック操作
         method: 'swap' = N5近傍のスワップをstrength回連続適用
                 'insert' = 操作を抜き取り別の位置に挿入
-                'path_relink' = 初期順序への部分的復元
+                'repair' = 初期解方向への direct swap を strength 回適用 (P-1: 安定性修復型)
         strength: 操作の回数 (大きいほど強い摂動)
         """
         for _ in range(20):  # 実行可能解が見つかるまでリトライ
@@ -720,30 +736,221 @@ class ILSSolver:
                     j = random.randrange(len(ops) + 1)
                     ops.insert(j, op)
 
-            elif method == 'path_relink':
-                # 初期順序への部分的復元（ランダム選択）
-                # NOTE: greedy版（全候補を評価してスコア最良を選択）を試したが、
-                # 摂動の多様性が失われ局所最適から脱出できなくなり効果がゼロになった。
-                # 摂動はキック操作なのでランダム性が重要。(2026-04-04)
+            elif method == 'repair':
+                # 初期解との不一致位置からランダムに選び、その位置を初期解に
+                # 一致させる direct swap を strength 回適用。
+                # 不一致がない場合は N5 ランダムswap にフォールバック。
                 for _ in range(strength):
-                    machines = list(new_orders.keys())
-                    m = random.choice(machines)
-                    current_ops = new_orders[m]
-                    initial_ops = self.initial_machine_orders[m]
-                    diffs = [i for i in range(len(current_ops))
-                             if current_ops[i] != initial_ops[i]]
-                    if not diffs:
-                        continue
-                    pos = random.choice(diffs)
-                    target_op = initial_ops[pos]
-                    current_pos = current_ops.index(target_op)
-                    current_ops.pop(current_pos)
-                    current_ops.insert(pos, target_op)
+                    mismatches = []
+                    for m, cur_ops in new_orders.items():
+                        ref_ops = self.initial_machine_orders.get(m, cur_ops)
+                        for i in range(min(len(cur_ops), len(ref_ops))):
+                            if cur_ops[i] != ref_ops[i]:
+                                target_op = ref_ops[i]
+                                if target_op in cur_ops:
+                                    mismatches.append((m, i, target_op))
+                    if mismatches:
+                        m, i, target_op = random.choice(mismatches)
+                        cur_ops = new_orders[m]
+                        q = cur_ops.index(target_op)
+                        cur_ops[i], cur_ops[q] = cur_ops[q], cur_ops[i]
+                    else:
+                        op_times = self.build_gantt(new_orders)
+                        if op_times is None:
+                            break
+                        neighbors = self.generate_n5_neighbors(new_orders, op_times)
+                        if not neighbors:
+                            break
+                        new_orders = random.choice(neighbors)
 
             if self.build_gantt(new_orders) is not None:
                 return new_orders
 
         return machine_orders  # フォールバック
+
+    # ========== Path Relinking ==========
+
+    def _count_diffs(self, S, S_ref):
+        """2つの解の不一致位置数を返す"""
+        count = 0
+        for m in S:
+            ref_ops = S_ref.get(m, S[m])
+            for i in range(min(len(S[m]), len(ref_ops))):
+                if S[m][i] != ref_ops[i]:
+                    count += 1
+        return count
+
+    def path_relinking(self, S_cur, S_ref, L_max=None, stall_limit=5,
+                       ls_strategy=None, trace=False):
+        """Direct-swap型 Path Relinking
+
+        S_cur (initiating solution) から S_ref (guiding solution) へ向かう経路を
+        direct swap で系統的にたどり、経路上の最良解を返す。
+
+        Args:
+            S_cur: 現在の局所最適解（機械ごとのジョブ列）
+            S_ref: ガイディング解（初期スケジュール等）
+            L_max: 最大ステップ数（Noneなら不一致数を上限とする）
+            stall_limit: 改善なしが続いた場合の打切りステップ数
+            ls_strategy: PR経路上の最良中間解にlocal_searchを適用する戦略
+                None: LSなし（従来動作）
+                'best': 経路完了後に best-improvement LS
+                'first': 経路完了後に first-improvement LS
+            trace: Trueなら各ステップの詳細情報を返す
+
+        Returns:
+            S_best: 経路上で見つかった最良解
+            F_best: そのスコア
+            trace_log: (trace=Trueのみ) ステップごとの詳細情報リスト
+        """
+        S = self._copy_orders(S_cur)
+        F_best = self.evaluate(S)
+        S_best = self._copy_orders(S)
+
+        # 初期状態の記録
+        cur_ms, cur_st = self.evaluate_pareto(S)
+        initial_diffs = self._count_diffs(S, S_ref)
+
+        trace_log = []
+        if trace:
+            trace_log.append({
+                'step': 0, 'type': 'init',
+                'makespan': cur_ms, 'stability': cur_st,
+                'score': F_best, 'best_score': F_best,
+                'n_candidates': 0, 'n_feasible': 0, 'n_infeasible': 0,
+                'diffs_to_ref': initial_diffs,
+            })
+
+        stall_count = 0
+        step = 0
+        # 経路上の最もマシな中間解（出発点より悪くても追跡）
+        S_best_intermediate = None
+        best_intermediate_score = float('inf')
+
+        while True:
+            # 不一致位置から全 direct-swap 候補を生成
+            candidates = []
+            candidate_info = []  # trace用
+            for m, cur_ops in S.items():
+                ref_ops = S_ref.get(m, cur_ops)
+                for i in range(len(cur_ops)):
+                    if i >= len(ref_ops):
+                        break
+                    if cur_ops[i] != ref_ops[i]:
+                        target_op = ref_ops[i]
+                        if target_op not in cur_ops:
+                            continue
+                        q = cur_ops.index(target_op)
+                        cand = self._copy_orders(S)
+                        cand[m][i], cand[m][q] = cand[m][q], cand[m][i]
+                        candidates.append(cand)
+                        if trace:
+                            candidate_info.append({'machine': m, 'pos': i, 'swap_with': q})
+
+            if not candidates:
+                if trace:
+                    trace_log.append({
+                        'step': step + 1, 'type': 'end_no_candidates',
+                        'diffs_to_ref': self._count_diffs(S, S_ref),
+                    })
+                break
+
+            # 各候補を評価
+            best_cand = None
+            best_cand_score = float('inf')
+            best_cand_idx = -1
+            n_feasible = 0
+            n_infeasible = 0
+            cand_scores = []
+
+            for idx, cand in enumerate(candidates):
+                score = self.evaluate(cand)
+                if score == float('inf'):
+                    n_infeasible += 1
+                else:
+                    n_feasible += 1
+                cand_scores.append(score)
+                if score < best_cand_score:
+                    best_cand_score = score
+                    best_cand = cand
+                    best_cand_idx = idx
+
+            if best_cand is None:
+                if trace:
+                    trace_log.append({
+                        'step': step + 1, 'type': 'end_all_infeasible',
+                        'n_candidates': len(candidates),
+                        'n_infeasible': n_infeasible,
+                    })
+                break
+
+            S = best_cand
+            cand_ms, cand_st = self.evaluate_pareto(S)
+
+            # 経路上の最もマシな中間解を追跡（出発点より悪くても記録）
+            if best_cand_score < best_intermediate_score:
+                best_intermediate_score = best_cand_score
+                S_best_intermediate = self._copy_orders(S)
+
+            improved = best_cand_score < F_best
+            if improved:
+                F_best = best_cand_score
+                S_best = self._copy_orders(S)
+                stall_count = 0
+            else:
+                stall_count += 1
+
+            step += 1
+
+            if trace:
+                finite_scores = [s for s in cand_scores if s < float('inf')]
+                entry = {
+                    'step': step, 'type': 'step',
+                    'makespan': cand_ms, 'stability': cand_st,
+                    'score': best_cand_score, 'best_score': F_best,
+                    'improved': improved,
+                    'n_candidates': len(candidates),
+                    'n_feasible': n_feasible, 'n_infeasible': n_infeasible,
+                    'score_min': min(finite_scores) if finite_scores else None,
+                    'score_max': max(finite_scores) if finite_scores else None,
+                    'diffs_to_ref': self._count_diffs(S, S_ref),
+                    'stall_count': stall_count,
+                }
+                trace_log.append(entry)
+
+            if L_max is not None and step >= L_max:
+                break
+            if stall_count >= stall_limit:
+                break
+
+            all_match = all(
+                S.get(m) == S_ref.get(m)
+                for m in S_ref
+            )
+            if all_match:
+                break
+
+        # PR+LS: 経路上の最もマシな中間解にLSをかけてMS回復を試みる
+        if ls_strategy is not None and S_best_intermediate is not None:
+            ls_result, ls_score, _ = self.local_search(
+                S_best_intermediate, ls_strategy)
+            if ls_score < F_best:
+                S_best = self._copy_orders(ls_result)
+                F_best = ls_score
+
+        if trace:
+            best_ms, best_st = self.evaluate_pareto(S_best)
+            trace_log.append({
+                'step': step, 'type': 'result',
+                'best_makespan': best_ms, 'best_stability': best_st,
+                'best_score': F_best,
+                'total_steps': step,
+                'initial_diffs': initial_diffs,
+                'final_diffs': self._count_diffs(S_best, S_ref),
+            })
+            return S_best, F_best, trace_log
+
+        return S_best, F_best
 
     # ========== 正規化パラメータ推定 ==========
 
@@ -830,13 +1037,32 @@ class ILSSolver:
 
     def run(self, max_iterations=800, strategy='best', perturb_method='swap',
             initial_strength=2, max_strength=5, verbose=True,
-            path_relink_mode=False, relink_trigger=50):
+            path_relink_mode=False, relink_trigger=50,
+            pr_ls_strategy=None,
+            repair_mode=False, repair_strength=2,
+            stagnation_threshold=None, accept_delta=0.05):
         """
         ILSメインループ
 
+        best（全体最良解）と current（探索出発点）を分離し、停滞時には
+        currentを悪化方向にも移動させて多様化を図る。
+
         Args:
+            perturb_method: 主摂動方式 ('swap' / 'insert')。repair は副摂動として
+                            repair_mode で制御するため、ここでは通常指定しない。
             path_relink_mode: Trueの場合、主摂動で停滞したらpath_relinkに切り替える
             relink_trigger: path_relinkに切り替えるまでの無改善反復数
+            pr_ls_strategy: PRの各ステップ後にLSを適用 (None/'best'/'first')
+            repair_mode: Trueの場合、停滞時に repair 摂動（初期解方向への direct swap）
+                         を1回キックとして発動する。P-1 (Mini-PR kick)。
+                         発動ゲートは stagnation_threshold と共通（δ受理と同時に ON）。
+            repair_strength: repair 1回あたりの direct swap 回数
+            stagnation_threshold: この反復数だけ改善なしが続いたら「停滞」とみなす。
+                                  停滞中は (a) 通常摂動で δ 以内の悪化受理、
+                                  (b) repair_mode=True なら repair キック発動。
+                                  Noneの場合はどちらも発動せず（旧動作、改善のみ受理）。
+            accept_delta: 悪化受理の許容幅（通常摂動時、best_scoreに対する割合）
+                          例: 0.05 なら best_score * 1.05 まで受理
 
         Returns:
             best, best_score, convergence_info, history
@@ -845,12 +1071,12 @@ class ILSSolver:
                      ls_makespan, ls_stability, ls_score, accepted, perturb_used}]
         """
         start_time = time.time()
-        current = self._copy_orders(self.initial_machine_orders)
+        init_orders = self._copy_orders(self.initial_machine_orders)
         eval_count = 0
         history = []
 
         # 初期局所探索
-        best, best_score, ls_steps = self.local_search(current, strategy)
+        best, best_score, ls_steps = self.local_search(init_orders, strategy)
         eval_count = self._last_eval_count if hasattr(self, '_last_eval_count') else ls_steps
 
         ms, st = self.evaluate_pareto(best)
@@ -858,6 +1084,10 @@ class ILSSolver:
         if verbose:
             print(f"\n初期局所探索完了 ({ls_steps}ステップ): "
                   f"Makespan={ms}, Stability={st:.2f}, Score={best_score:.4f}")
+
+        # best: 全体最良解（絶対に悪化しない）
+        # current: 次の摂動の出発点（停滞時に悪化方向にも動かす）
+        current = self._copy_orders(best)
 
         best_iteration = 0
         best_cpu_time = time.time() - start_time
@@ -879,62 +1109,109 @@ class ILSSolver:
 
         strength = initial_strength
         no_improve_count = 0
-        no_improve_since_switch = 0  # relink切替後の無改善カウント
         total_ls_steps = ls_steps
-        using_relink = False  # path_relinkモード中かどうか
-        relink_burst = 30  # relinkを試す反復数（これを超えたら主摂動に戻る）
+        stagnating = False  # 停滞中フラグ
 
         for i in range(max_iterations):
-            # path_relink_mode: 停滞時にpath_relinkへ切り替え
-            if path_relink_mode and not using_relink and no_improve_count >= relink_trigger:
-                using_relink = True
-                no_improve_since_switch = 0
-                strength = initial_strength
-                if verbose:
-                    print(f"  Iter {i+1}: path_relinkモードに切替 "
-                          f"({no_improve_count}反復停滞)")
+            # 停滞判定（stagnation_threshold=Noneなら悪化受理なし）
+            stagnating = (stagnation_threshold is not None
+                          and no_improve_count >= stagnation_threshold)
 
-            # relinkバーストが終了 → 主摂動に戻す
-            if using_relink and no_improve_since_switch >= relink_burst:
-                using_relink = False
-                no_improve_count = 0  # リセットして主摂動を再試行
-                strength = initial_strength
-                if verbose:
-                    print(f"  Iter {i+1}: path_relinkバースト終了、主摂動に復帰")
+            # PR切り替え判定（停滞中かつPRモード有効）
+            use_pr = (path_relink_mode and stagnating
+                      and no_improve_count >= relink_trigger)
+            # repair キック判定（PR優先、停滞ゲートを共有）
+            use_repair = (not use_pr and repair_mode and stagnating)
 
-            current_method = 'path_relink' if using_relink else perturb_method
-            perturbed = self.perturb(best, current_method, strength)
-
-            ls_result, ls_score, ls_steps = self.local_search(perturbed, strategy)
-            total_ls_steps += ls_steps
-            eval_count += self._last_eval_count if hasattr(self, '_last_eval_count') else ls_steps
-
-            ls_ms, ls_st = self.evaluate_pareto(ls_result)
+            if use_pr:
+                current_method = 'path_relink'
+            elif use_repair:
+                current_method = 'repair'
+            else:
+                current_method = perturb_method
             accepted = False
 
+            if use_pr:
+                # PRはbestから初期解方向に戻す（currentではなくbestから）
+                pr_result, pr_score = self.path_relinking(
+                    best, self.initial_machine_orders,
+                    ls_strategy=pr_ls_strategy)
+                ls_result = pr_result
+                ls_score = pr_score
+                pr_ms, pr_st = self.evaluate_pareto(pr_result)
+                ls_ms, ls_st = pr_ms, pr_st
+                ls_steps = 0
+                if verbose:
+                    print(f"  Iter {i+1}: PR完了 Makespan={pr_ms}, "
+                          f"Stability={pr_st:.2f}, Score={pr_score:.4f}")
+            else:
+                # 通常摂動はcurrentから出発。repairキック時は repair_strength を使用。
+                use_strength = repair_strength if use_repair else strength
+                perturbed = self.perturb(current, current_method, use_strength)
+                ls_result, ls_score, ls_steps = self.local_search(perturbed, strategy)
+                total_ls_steps += ls_steps
+                eval_count += self._last_eval_count if hasattr(self, '_last_eval_count') else ls_steps
+                ls_ms, ls_st = self.evaluate_pareto(ls_result)
+
+            # === 受理判定 ===
+            # no_improve_count: bestが最後に改善してからの反復数
+            #   - best改善時とPR受理時のみリセット
+            #   - 悪化受理ではリセットしない（PRトリガーに到達させるため）
             if ls_score < best_score:
+                # (1) best改善 → best, current 両方更新
                 best = self._copy_orders(ls_result)
                 best_score = ls_score
                 best_ms, best_st = ls_ms, ls_st
                 best_iteration = i + 1
                 best_cpu_time = time.time() - start_time
                 best_eval_count = eval_count
+                current = self._copy_orders(ls_result)
                 accepted = True
+                strength = initial_strength
+                no_improve_count = 0
                 if verbose:
                     print(f"  Iter {i+1}: 改善! Makespan={ls_ms}, Stability={ls_st:.2f}, "
                           f"Score={best_score:.4f} (method={current_method}, strength={strength})")
-                strength = initial_strength
+            elif use_repair:
+                # (2a) repair キックは無条件で current 受理・カウンタリセット
+                # （修復方向に出発点を移してILSを継続）
+                current = self._copy_orders(ls_result)
+                accepted = True
                 no_improve_count = 0
-                no_improve_since_switch = 0
-                # path_relink中に改善 → 主摂動に戻る
-                if using_relink:
-                    using_relink = False
+                strength = initial_strength
+                if verbose:
+                    print(f"  Iter {i+1}: repairキック current受理 "
+                          f"Makespan={ls_ms}, Stability={ls_st:.2f}, "
+                          f"Score={ls_score:.4f} (best={best_score:.4f})")
+            elif stagnating:
+                # (2b) 停滞中の悪化受理 → currentだけ移動、bestは保持
+                if use_pr:
+                    # PR結果は無条件でcurrentに受理し、カウンタリセット
+                    # （新しい出発点からILSを再開するため）
+                    current = self._copy_orders(ls_result)
+                    accepted = True
+                    no_improve_count = 0
+                    strength = initial_strength
                     if verbose:
-                        print(f"  Iter {i+1}: path_relink改善成功、主摂動に復帰")
-            else:
+                        print(f"  Iter {i+1}: PR結果をcurrentに受理 "
+                              f"Makespan={ls_ms}, Stability={ls_st:.2f}, "
+                              f"Score={ls_score:.4f} (best={best_score:.4f})")
+                elif ls_score < best_score * (1 + accept_delta):
+                    # 通常摂動: δ以内なら受理（カウンタはリセットしない）
+                    current = self._copy_orders(ls_result)
+                    accepted = True
+                    strength = initial_strength
+                    if verbose:
+                        print(f"  Iter {i+1}: 悪化受理 Makespan={ls_ms}, "
+                              f"Stability={ls_st:.2f}, Score={ls_score:.4f} "
+                              f"(best={best_score:.4f}, delta={accept_delta})")
+                # δを超えている or 通常摂動の悪化受理後 → カウンタ増加
                 no_improve_count += 1
-                if using_relink:
-                    no_improve_since_switch += 1
+                if no_improve_count % 3 == 0:
+                    strength = min(strength + 1, max_strength)
+            else:
+                # (3) 非停滞時の非改善 → 棄却
+                no_improve_count += 1
                 if no_improve_count % 3 == 0:
                     strength = min(strength + 1, max_strength)
 

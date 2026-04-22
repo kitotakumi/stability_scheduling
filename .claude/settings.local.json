@@ -71,7 +71,10 @@
       "Bash(python experiments/ils_analysis/run_ils_multi_problem.py --problems mt10:mt10_delay90 la21:la21_delay147 --methods ILS_swap --weights 1.0,0.0)",
       "Bash(python experiments/ils_analysis/run_ils_multi_problem.py)",
       "Bash(tasklist)",
-      "Bash(python experiments/ga_vs_ils/run_ga_vs_ils_multi_problem.py)"
+      "Bash(python experiments/ga_vs_ils/run_ga_vs_ils_multi_problem.py)",
+      "Bash(python experiments/ils_analysis/run_pr_experiment.py --trials 5 --weights \"0.95,0.05\" \"0.8,0.2\")",
+      "Bash(python experiments/ils_analysis/run_pr_diagnosis.py)",
+      "Bash(python experiments/ils_analysis/run_pr_ls_diagnosis.py)"
     ]
   }
 }

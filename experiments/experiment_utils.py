@@ -77,20 +77,30 @@ def get_initial_makespan(problem_name=None, scenario_name=None):
 
 # ========== 個別実行関数 (並列用) ==========
 
-def run_ga(weights, seed, ngen, norm_params=None, problem_name=None, scenario_name=None):
+def run_ga(weights, seed, ngen, norm_params=None, problem_name=None, scenario_name=None,
+           track_population=False):
     jm_table, fixed_gantt, reschedule_gantt, reschedule_time = get_problem(
         problem_name, scenario_name)
     random.seed(seed)
     solver = ga_scheduling.GASolver(
         jm_table, fixed_gantt, reschedule_time, weights, pop_size=GA_POP_SIZE)
     _, ms, st, conv_info, history = solver.run(
-        ngen=ngen, verbose=False, norm_params=norm_params)
-    return {'makespan': ms, 'stability': st, 'convergence': conv_info, 'history': history}
+        ngen=ngen, verbose=False, norm_params=norm_params,
+        track_population=track_population)
+    # GA の初期個体（original_individual）を active schedule でデコードした評価値。
+    # 初期解相当として Pareto 分析で除外する目印。
+    baseline = [solver.baseline_ms, solver.baseline_st]
+    return {'makespan': ms, 'stability': st, 'convergence': conv_info,
+            'history': history, 'baseline': baseline}
 
 
 def run_ils(weights, seed, perturb_method, max_iterations, norm_params=None,
             active_schedule=False, taillard_acceleration=True,
             path_relink_mode=False, relink_trigger=200,
+            pr_ls_strategy=None,
+            repair_mode=False, repair_strength=2,
+            stagnation_threshold=None, accept_delta=0.05,
+            strategy='best',
             problem_name=None, scenario_name=None):
     jm_table, fixed_gantt, reschedule_gantt, reschedule_time = get_problem(
         problem_name, scenario_name)
@@ -102,9 +112,18 @@ def run_ils(weights, seed, perturb_method, max_iterations, norm_params=None,
     solver.estimate_normalization_params(n_samples=100, norm_params=norm_params)
     best_orders, _, conv_info, history = solver.run(
         max_iterations=max_iterations, perturb_method=perturb_method, verbose=False,
-        path_relink_mode=path_relink_mode, relink_trigger=relink_trigger)
+        path_relink_mode=path_relink_mode, relink_trigger=relink_trigger,
+        pr_ls_strategy=pr_ls_strategy,
+        repair_mode=repair_mode, repair_strength=repair_strength,
+        stagnation_threshold=stagnation_threshold, accept_delta=accept_delta,
+        strategy=strategy)
     ms, st = solver.evaluate_pareto(best_orders)
-    return {'makespan': ms, 'stability': st, 'convergence': conv_info, 'history': history}
+    # ILS は semi-active decoding なので initial_machine_orders の stability は定義上 0。
+    # baseline = (init_ms, 0.0)
+    init_ms, init_st = solver.evaluate_pareto(solver.initial_machine_orders)
+    baseline = [init_ms, init_st]
+    return {'makespan': ms, 'stability': st, 'convergence': conv_info,
+            'history': history, 'baseline': baseline}
 
 
 # ========== 可視化ユーティリティ ==========

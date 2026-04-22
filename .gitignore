@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 実験結果（experiment results）
+# experiments/ 配下の結果データは git 管理外。
+# 再現は各 run_*.py スクリプトから可能。
+experiments/*/results/
+
+# achirve/ （過去の archive）は除外せず残す
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 仮想環境
+.venv/
+venv/
+env/

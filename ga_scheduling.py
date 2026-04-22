@@ -50,19 +50,40 @@ class GASolver:
             init_gantt, delayed_gantt)
         return reschedule_gantt
 
-    def run(self, ngen=300, verbose=True, norm_params=None):
+    def _evaluate_individual(self, ind, norm_params):
+        """fitness 計算時に ms/st も同時に計算してキャッシュする。
+
+        objective_function は内部で compute_makespan / compute_stability を
+        呼ぶが結果を捨てるため、best 個体の ms/st を後で再計算していた。
+        ここで (ms, st) を個体属性にキャッシュすれば再計算不要になる。
+        """
+        ms = genetic_operation.compute_makespan(
+            self.jm_table, self.fixed_gantt, self.reschedule_time, ind)
+        st = genetic_operation.compute_stability(
+            self.jm_table, self.fixed_gantt, self.reschedule_time, ind)
+        score = evaluation.weighted_objective(ms, st, self.weights, norm_params)
+        ind.fitness.values = (score,)
+        ind.cached_ms = ms
+        ind.cached_st = st
+        return ms, st
+
+    def run(self, ngen=300, verbose=True, norm_params=None, track_population=False):
         """GAメインループ
 
         Parameters:
             ngen: 世代数
             verbose: 詳細出力
             norm_params: 事前計算済み正規化パラメータ（Noneの場合は従来方式で推定）
+            track_population: True の場合、各世代の offspring 全個体の (ms, st)
+                を history の 'pop_points' に保存する。多 weights Pareto 集約や
+                EAF 分析で使う。保存量が増えるので分析目的時のみ有効にする。
 
         Returns:
             best_individual, best_makespan, best_stability, convergence_info, history
             convergence_info: 最良解到達時点の計算量指標
             history: 世代ごとの記録リスト [{cpu_time, evaluations, generation,
-                     best_makespan, best_stability, best_score}]
+                     best_makespan, best_stability, best_score,
+                     (track_population=True 時) pop_points: [[ms, st], ...]}]
         """
         from deap import tools
 
@@ -77,6 +98,24 @@ class GASolver:
         global_best_ms = None
         global_best_st = None
 
+        def snapshot(gen, offspring):
+            entry = {
+                'cpu_time': time.time() - start_time,
+                'evaluations': eval_count,
+                'generation': gen,
+                'best_makespan': global_best_ms,
+                'best_stability': global_best_st,
+                'best_score': global_best_score,
+            }
+            if track_population:
+                entry['pop_points'] = [
+                    [ind.cached_ms, ind.cached_st] for ind in offspring
+                ]
+            history.append(entry)
+
+        self.baseline_ms = None
+        self.baseline_st = None
+
         for gen in range(ngen):
             if gen == 0:
                 population = self.toolbox.population(n=self.pop_size)
@@ -86,18 +125,18 @@ class GASolver:
                         self.jm_table, self.fixed_gantt, self.reschedule_time,
                         population)
                 for ind in population:
-                    ind.fitness.values = genetic_operation.objective_function(
-                        self.jm_table, self.fixed_gantt, self.reschedule_time,
-                        ind, self.weights, norm_params)
+                    self._evaluate_individual(ind, norm_params)
                     eval_count += 1
+                # original_individual の評価値を baseline として記録。
+                # active schedule デコードで stab が厳密な 0 にならないため、
+                # 後段の分析で「初期解相当の点」を弱 dominance で検知するのに使う。
+                self.baseline_ms = population[0].cached_ms
+                self.baseline_st = population[0].cached_st
                 offspring = population[:]
 
                 best = tools.selBest(offspring, 1)[0]
                 score = best.fitness.values[0]
-                ms = genetic_operation.compute_makespan(
-                    self.jm_table, self.fixed_gantt, self.reschedule_time, best)
-                st = genetic_operation.compute_stability(
-                    self.jm_table, self.fixed_gantt, self.reschedule_time, best)
+                ms, st = best.cached_ms, best.cached_st
                 if score < global_best_score:
                     global_best_score = score
                     global_best_ms = ms
@@ -106,14 +145,7 @@ class GASolver:
                     best_cpu_time = time.time() - start_time
                     best_eval_count = eval_count
 
-                history.append({
-                    'cpu_time': time.time() - start_time,
-                    'evaluations': eval_count,
-                    'generation': 0,
-                    'best_makespan': global_best_ms,
-                    'best_stability': global_best_st,
-                    'best_score': global_best_score,
-                })
+                snapshot(0, offspring)
                 continue
 
             population = offspring[:]
@@ -132,24 +164,17 @@ class GASolver:
 
             for ind in offspring:
                 del ind.fitness.values
-                ind.fitness.values = genetic_operation.objective_function(
-                    self.jm_table, self.fixed_gantt, self.reschedule_time,
-                    ind, self.weights, norm_params)
+                self._evaluate_individual(ind, norm_params)
                 eval_count += 1
 
             best_prev = tools.selBest(population, 1)[0]
-            best_prev.fitness.values = genetic_operation.objective_function(
-                self.jm_table, self.fixed_gantt, self.reschedule_time,
-                best_prev, self.weights, norm_params)
+            self._evaluate_individual(best_prev, norm_params)
             eval_count += 1
             offspring[0] = tools.selBest(offspring + [best_prev], 1)[0]
 
             best = tools.selBest(offspring, 1)[0]
             score = best.fitness.values[0]
-            ms = genetic_operation.compute_makespan(
-                self.jm_table, self.fixed_gantt, self.reschedule_time, best)
-            st = genetic_operation.compute_stability(
-                self.jm_table, self.fixed_gantt, self.reschedule_time, best)
+            ms, st = best.cached_ms, best.cached_st
             if score < global_best_score:
                 global_best_score = score
                 global_best_ms = ms
@@ -158,14 +183,7 @@ class GASolver:
                 best_cpu_time = time.time() - start_time
                 best_eval_count = eval_count
 
-            history.append({
-                'cpu_time': time.time() - start_time,
-                'evaluations': eval_count,
-                'generation': gen,
-                'best_makespan': global_best_ms,
-                'best_stability': global_best_st,
-                'best_score': global_best_score,
-            })
+            snapshot(gen, offspring)
 
             if verbose and (gen % 50 == 0 or gen == ngen - 1):
                 elapsed = time.time() - start_time
@@ -173,10 +191,7 @@ class GASolver:
 
         elapsed = time.time() - start_time
         best = tools.selBest(offspring, 1)[0]
-        ms = genetic_operation.compute_makespan(
-            self.jm_table, self.fixed_gantt, self.reschedule_time, best)
-        st = genetic_operation.compute_stability(
-            self.jm_table, self.fixed_gantt, self.reschedule_time, best)
+        ms, st = best.cached_ms, best.cached_st
         if verbose:
             print(f"\nGA完了: {ngen}世代, {elapsed:.2f}秒")
 
