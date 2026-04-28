@@ -27,7 +27,10 @@ PROBLEM_NAME = "mt10"
 SCENARIO_NAME = "mt10_delay60"
 GA_NGEN = 500
 GA_POP_SIZE = 50
-ILS_MAX_ITER = 800
+# ILS_MAX_ITER: 4 問題の last_improvement_iter 実測 (p_max × 1.5 マージン) から決定。
+# p_max 966-996, p99 962-995 → 1500 で 50% マージン確保。
+# 詳細は doc/ils_parameter_sweep.md §2.1.1 / experiments/ils_sweep/.../convergence_safety_cross.txt
+ILS_MAX_ITER = 1500
 
 
 def setup_output_dir(prefix="", base_dir=None):
@@ -98,9 +101,10 @@ def run_ils(weights, seed, perturb_method, max_iterations, norm_params=None,
             active_schedule=False, taillard_acceleration=True,
             path_relink_mode=False, relink_trigger=200,
             pr_ls_strategy=None,
-            repair_mode=False, repair_strength=2,
+            repair_mode=False, repair_trigger=50, repair_strength=2,
             stagnation_threshold=None, accept_delta=0.05,
             strategy='best',
+            initial_strength=2, max_strength=5,
             problem_name=None, scenario_name=None):
     jm_table, fixed_gantt, reschedule_gantt, reschedule_time = get_problem(
         problem_name, scenario_name)
@@ -112,9 +116,11 @@ def run_ils(weights, seed, perturb_method, max_iterations, norm_params=None,
     solver.estimate_normalization_params(n_samples=100, norm_params=norm_params)
     best_orders, _, conv_info, history = solver.run(
         max_iterations=max_iterations, perturb_method=perturb_method, verbose=False,
+        initial_strength=initial_strength, max_strength=max_strength,
         path_relink_mode=path_relink_mode, relink_trigger=relink_trigger,
         pr_ls_strategy=pr_ls_strategy,
-        repair_mode=repair_mode, repair_strength=repair_strength,
+        repair_mode=repair_mode, repair_trigger=repair_trigger,
+        repair_strength=repair_strength,
         stagnation_threshold=stagnation_threshold, accept_delta=accept_delta,
         strategy=strategy)
     ms, st = solver.evaluate_pareto(best_orders)
