@@ -100,9 +100,7 @@ def run_ga(weights, seed, ngen, norm_params=None, problem_name=None, scenario_na
 def run_ils(weights, seed, perturb_method, max_iterations, norm_params=None,
             active_schedule=False, taillard_acceleration=True,
             path_relink_mode=False, relink_trigger=200,
-            pr_ls_strategy=None,
             repair_mode=False, repair_trigger=50, repair_strength=2,
-            stagnation_threshold=None, accept_delta=0.05,
             strategy='best',
             initial_strength=2, max_strength=5,
             problem_name=None, scenario_name=None):
@@ -118,10 +116,8 @@ def run_ils(weights, seed, perturb_method, max_iterations, norm_params=None,
         max_iterations=max_iterations, perturb_method=perturb_method, verbose=False,
         initial_strength=initial_strength, max_strength=max_strength,
         path_relink_mode=path_relink_mode, relink_trigger=relink_trigger,
-        pr_ls_strategy=pr_ls_strategy,
         repair_mode=repair_mode, repair_trigger=repair_trigger,
         repair_strength=repair_strength,
-        stagnation_threshold=stagnation_threshold, accept_delta=accept_delta,
         strategy=strategy)
     ms, st = solver.evaluate_pareto(best_orders)
     # ILS は semi-active decoding なので initial_machine_orders の stability は定義上 0。

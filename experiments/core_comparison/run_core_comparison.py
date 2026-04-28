@@ -101,15 +101,16 @@ DEFAULT_PROBLEM_SETS = [
     ('la40', 'la40_delay148'),
 ]
 
-# repair / 停滞受理のデフォルトパラメータ（実験2で確定したら差し替える）
-STAGNATION_THRESHOLD_DEFAULT = 30
+# repair のデフォルトパラメータ（実験2で確定したら差し替える）
+REPAIR_TRIGGER_DEFAULT = 30
 REPAIR_STRENGTH_DEFAULT = 2
 
 
 # ========== 個別実行 dispatcher ==========
 
 def _run_method(method_key, weights, seed, norm_params, problem_name, scenario_name,
-                ils_max_iter, ga_ngen, stagnation_threshold, repair_strength):
+                ils_max_iter, ga_ngen,
+                repair_trigger, repair_strength):
     cfg = METHODS[method_key]
     kind = cfg['kind']
     if kind == 'ga':
@@ -121,8 +122,8 @@ def _run_method(method_key, weights, seed, norm_params, problem_name, scenario_n
             weights, seed, cfg['perturb'], ils_max_iter, norm_params,
             strategy='best',
             repair_mode=cfg['repair_mode'],
+            repair_trigger=repair_trigger,
             repair_strength=repair_strength,
-            stagnation_threshold=stagnation_threshold,
             problem_name=problem_name, scenario_name=scenario_name)
     else:
         raise ValueError(f"Unknown method kind: {kind}")
@@ -132,7 +133,8 @@ def _run_method(method_key, weights, seed, norm_params, problem_name, scenario_n
 
 def _slim_anytime(history, kind):
     """履歴から anytime curve に必要な情報だけを抜き出す。
-    GA / ILS 共通スキーマ: [{cpu_time, best_ms, best_st, best_score}, ...]"""
+    GA / ILS 共通スキーマ: [{cpu_time, best_ms, best_st, best_score, evaluations}, ...]
+    evaluations は GA の sub-gen snapshot を描画時刻に正しく対応づけるのに使う。"""
     if history is None:
         return None
     out = []
@@ -142,6 +144,7 @@ def _slim_anytime(history, kind):
             'best_ms': h.get('best_makespan'),
             'best_st': h.get('best_stability'),
             'best_score': h.get('best_score'),
+            'evaluations': h.get('evaluations'),
         })
     return out
 
@@ -170,15 +173,14 @@ def _slim_points(history, kind):
 
 def run_problem_experiment(problem_name, scenario_name, weights, methods, n_trials,
                            out_dir, ils_max_iter, ga_ngen,
-                           stagnation_threshold, repair_strength):
+                           repair_trigger, repair_strength):
     prob_label = f"{problem_name}_{scenario_name}"
     w_label = f"eff={weights[0]}_stab={weights[1]}"
     print(f"\n{'='*70}")
     print(f"問題: {prob_label}, weights={weights}")
     print(f"  methods={methods}, trials={n_trials}")
     print(f"  ILS max_iter={ils_max_iter}, GA ngen={ga_ngen}")
-    print(f"  stagnation_threshold={stagnation_threshold}, "
-          f"repair_strength={repair_strength}")
+    print(f"  repair_trigger={repair_trigger}, repair_strength={repair_strength}")
     print(f"{'='*70}")
 
     norm_params = compute_shared_norm_params(problem_name, scenario_name)
@@ -199,7 +201,7 @@ def run_problem_experiment(problem_name, scenario_name, weights, methods, n_tria
                     _run_method, mk, weights, seed, norm_params,
                     problem_name, scenario_name,
                     ils_max_iter, ga_ngen,
-                    stagnation_threshold, repair_strength)
+                    repair_trigger, repair_strength)
                 futures[f] = (mk, trial, seed)
 
         baselines_by_method = {mk: None for mk in methods}
@@ -242,7 +244,7 @@ def run_problem_experiment(problem_name, scenario_name, weights, methods, n_tria
         'n_trials': n_trials,
         'ils_max_iter': ils_max_iter,
         'ga_ngen': ga_ngen,
-        'stagnation_threshold': stagnation_threshold,
+        'repair_trigger': repair_trigger,
         'repair_strength': repair_strength,
         'methods': {},
     }
@@ -341,7 +343,7 @@ def write_cross_summary(all_summaries, out_dir, args):
         f.write(f"weights={args.weights}\n")
         f.write(f"trials={args.trials}\n")
         f.write(f"ILS max_iter={args.ils_max_iter}, GA ngen={args.ga_ngen}\n")
-        f.write(f"stagnation_threshold={args.stagnation_threshold}, "
+        f.write(f"repair_trigger={args.repair_trigger}, "
                 f"repair_strength={args.repair_strength}\n")
         f.write("=" * 70 + "\n\n")
         for lines in all_summaries:
@@ -376,9 +378,8 @@ def main():
         '--ga-ngen', type=int, default=GA_NGEN,
         help=f'GA 世代数 (デフォルト: {GA_NGEN})')
     parser.add_argument(
-        '--stagnation-threshold', type=int, default=STAGNATION_THRESHOLD_DEFAULT,
-        help=f'停滞判定の無改善反復数 (δ受理 / repair キックの共通ゲート, '
-             f'デフォルト: {STAGNATION_THRESHOLD_DEFAULT})')
+        '--repair-trigger', type=int, default=REPAIR_TRIGGER_DEFAULT,
+        help=f'repair キック発動の無改善反復数 (デフォルト: {REPAIR_TRIGGER_DEFAULT})')
     parser.add_argument(
         '--repair-strength', type=int, default=REPAIR_STRENGTH_DEFAULT,
         help=f'repair 強度 (デフォルト: {REPAIR_STRENGTH_DEFAULT})')
@@ -410,7 +411,7 @@ def main():
         'trials': args.trials,
         'ils_max_iter': args.ils_max_iter,
         'ga_ngen': args.ga_ngen,
-        'stagnation_threshold': args.stagnation_threshold,
+        'repair_trigger': args.repair_trigger,
         'repair_strength': args.repair_strength,
     }
     with open(os.path.join(out_dir, 'config.json'), 'w', encoding='utf-8') as f:
@@ -424,7 +425,7 @@ def main():
                     problem_name, scenario_name, weights,
                     args.methods, args.trials, out_dir,
                     args.ils_max_iter, args.ga_ngen,
-                    args.stagnation_threshold, args.repair_strength)
+                    args.repair_trigger, args.repair_strength)
                 all_summaries.append(summary)
             except Exception as e:
                 import traceback

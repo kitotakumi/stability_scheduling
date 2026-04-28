@@ -4,8 +4,8 @@ P-1 (Mini-PR kick / repair キック) 検証実験
 
 === 位置づけ ===
 repair 摂動は主摂動を置き換えるのではなく、停滞時に発動する副摂動として
-機能させる設計。PR モードと同じ構造で `repair_mode=True` を指定し、
-発動ゲートは `stagnation_threshold`（δ受理と共通）で制御する。
+機能させる設計。`repair_mode=True` + `repair_trigger` で制御し、
+PR とは独立して動作する。
 
 === 実験の目的 ===
 以下の4条件を比較し、repair キックが追加価値を生むかを検証する:
@@ -50,7 +50,7 @@ from experiment_utils import (
 
 
 N_TRIALS = 10
-STAGNATION_THRESHOLD_DEFAULT = 30
+REPAIR_TRIGGER_DEFAULT = 30
 REPAIR_STRENGTH_DEFAULT = 2
 
 PROBLEM_SETS = [
@@ -97,14 +97,14 @@ REPAIR_PAIRS = [
 # ========== 個別実行 ==========
 
 def _run_method(method_key, weights, seed, norm_params, problem_name, scenario_name,
-                stagnation_threshold, repair_strength):
+                repair_trigger, repair_strength):
     cfg = ILS_METHODS[method_key]
     return run_ils(
         weights, seed, cfg['perturb'], ILS_MAX_ITER, norm_params,
         strategy='best',
         repair_mode=cfg['repair_mode'],
+        repair_trigger=repair_trigger,
         repair_strength=repair_strength,
-        stagnation_threshold=stagnation_threshold,
         problem_name=problem_name, scenario_name=scenario_name)
 
 
@@ -322,13 +322,12 @@ def compute_comparison_stats(all_results, methods, w_label, out_dir, prob_label)
 # ========== ランナー ==========
 
 def run_problem_experiment(problem_name, scenario_name, weights, methods, out_dir,
-                           stagnation_threshold, repair_strength):
+                           repair_trigger, repair_strength):
     prob_label = f"{problem_name}_{scenario_name}"
     w_label = f"eff={weights[0]}_stab={weights[1]}"
     print(f"\n{'='*70}")
     print(f"問題: {prob_label}, weights={weights}")
-    print(f"  stagnation_threshold={stagnation_threshold}, "
-          f"repair_strength={repair_strength}")
+    print(f"  repair_trigger={repair_trigger}, repair_strength={repair_strength}")
     print(f"{'='*70}")
 
     norm_params = compute_shared_norm_params(problem_name, scenario_name)
@@ -343,7 +342,7 @@ def run_problem_experiment(problem_name, scenario_name, weights, methods, out_di
                 f = executor.submit(
                     _run_method, mk, weights, seed, norm_params,
                     problem_name, scenario_name,
-                    stagnation_threshold, repair_strength)
+                    repair_trigger, repair_strength)
                 futures[f] = (mk, trial, seed)
 
         all_results = {
@@ -351,7 +350,7 @@ def run_problem_experiment(problem_name, scenario_name, weights, methods, out_di
             'scenario': scenario_name,
             'weights': weights,
             'init_makespan': init_ms,
-            'stagnation_threshold': stagnation_threshold,
+            'repair_trigger': repair_trigger,
             'repair_strength': repair_strength,
         }
         for mk in methods:
@@ -415,12 +414,13 @@ def run_problem_experiment(problem_name, scenario_name, weights, methods, out_di
     return all_results, summary_lines
 
 
-def write_cross_summary(all_summaries, out_dir, stagnation_threshold, repair_strength):
+def write_cross_summary(all_summaries, out_dir,
+                        repair_trigger, repair_strength):
     path = os.path.join(out_dir, "cross_problem_summary.txt")
     with open(path, 'w', encoding='utf-8') as f:
         f.write("repair キック (P-1) 検証実験 横断サマリー\n")
         f.write("=" * 70 + "\n")
-        f.write(f"stagnation_threshold={stagnation_threshold}, "
+        f.write(f"repair_trigger={repair_trigger}, "
                 f"repair_strength={repair_strength}\n\n")
         f.write("判断基準:\n")
         f.write("  stab={0.1, 0.2} レンジで base vs base+repair を比較。\n")
@@ -454,9 +454,8 @@ def main():
         '--trials', type=int, default=N_TRIALS,
         help='試行回数 (デフォルト: 10)')
     parser.add_argument(
-        '--stagnation-threshold', type=int, default=STAGNATION_THRESHOLD_DEFAULT,
-        help='停滞判定の無改善反復数 (δ受理 / repair キックの共通ゲート, '
-             'デフォルト: 30)')
+        '--repair-trigger', type=int, default=REPAIR_TRIGGER_DEFAULT,
+        help='repair キック発動までの無改善反復数 (デフォルト: 30)')
     parser.add_argument(
         '--repair-strength', type=int, default=REPAIR_STRENGTH_DEFAULT,
         help='repair 1回あたりの direct swap 回数 (デフォルト: 2)')
@@ -479,7 +478,7 @@ def main():
     print(f"手法: {methods}")
     print(f"試行回数: {N_TRIALS}")
     print(f"ILS最大反復数: {ILS_MAX_ITER}")
-    print(f"stagnation_threshold={args.stagnation_threshold}, "
+    print(f"repair_trigger={args.repair_trigger}, "
           f"repair_strength={args.repair_strength}")
 
     all_summaries = []
@@ -488,7 +487,7 @@ def main():
             try:
                 _, summary_lines = run_problem_experiment(
                     problem_name, scenario_name, weights, methods, out_dir,
-                    args.stagnation_threshold, args.repair_strength)
+                    args.repair_trigger, args.repair_strength)
                 all_summaries.append(summary_lines)
             except Exception as e:
                 import traceback
@@ -497,7 +496,7 @@ def main():
                 all_summaries.append([f"ERROR: {problem_name}/{scenario_name}: {e}"])
 
     write_cross_summary(all_summaries, out_dir,
-                        args.stagnation_threshold, args.repair_strength)
+                        args.repair_trigger, args.repair_strength)
     print(f"\n全実験完了。結果は {out_dir} に保存されました。")
 
 

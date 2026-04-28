@@ -1038,37 +1038,28 @@ class ILSSolver:
     def run(self, max_iterations=1500, strategy='best', perturb_method='swap',
             initial_strength=2, max_strength=5, verbose=True,
             path_relink_mode=False, relink_trigger=50,
-            pr_ls_strategy=None,
-            repair_mode=False, repair_trigger=50, repair_strength=2,
-            stagnation_threshold=None, accept_delta=0.05):
+            repair_mode=False, repair_trigger=50, repair_strength=2):
         """
         ILSメインループ
 
         best（全体最良解）と current（探索出発点）を分離し、停滞時には
         currentを悪化方向にも移動させて多様化を図る。
 
-        停滞脱出の仕組みは3つあり、それぞれ独立に ON/OFF・閾値設定が可能:
+        停滞脱出の仕組みは2つあり、それぞれ独立に ON/OFF・閾値設定が可能:
           - repair キック: repair_mode + repair_trigger
-          - δ 悪化受理  : stagnation_threshold
           - Path Relink  : path_relink_mode + relink_trigger
 
         Args:
             perturb_method: 主摂動方式 ('swap' / 'insert')。repair は副摂動として
                             repair_mode で制御するため、ここでは通常指定しない。
             path_relink_mode: Trueの場合、無改善が relink_trigger 回続いたら
-                              path_relink に切り替える
-            relink_trigger: path_relink に切り替えるまでの無改善反復数
-            pr_ls_strategy: PR の各ステップ後に LS を適用 (None/'best'/'first')
+                              path_relink を摂動として発動し、その後通常 LS をかける
+            relink_trigger: path_relink を発動するまでの無改善反復数
             repair_mode: Trueの場合、無改善が repair_trigger 回続いたら repair
                          摂動（初期解方向への direct swap）を1回キックとして発動。
                          P-1 (Mini-PR kick)。他モードとは独立して動作する。
             repair_trigger: repair キックを発動する無改善反復数
             repair_strength: repair 1回あたりの direct swap 回数
-            stagnation_threshold: この反復数だけ改善なしが続いたら通常摂動で δ 以内
-                                  の悪化を受理する。None の場合は δ 受理無効（改善
-                                  のみ受理）。repair_mode とは独立。
-            accept_delta: 悪化受理の許容幅（通常摂動時、best_scoreに対する割合）
-                          例: 0.05 なら best_score * 1.05 まで受理
 
         Returns:
             best, best_score, convergence_info, history
@@ -1117,58 +1108,44 @@ class ILSSolver:
         strength = initial_strength
         no_improve_count = 0
         total_ls_steps = ls_steps
-        stagnating = False  # 停滞中フラグ
 
         for i in range(max_iterations):
-            # δ 悪化受理ゲート（stagnation_threshold=None なら無効）
-            stagnating = (stagnation_threshold is not None
-                          and no_improve_count >= stagnation_threshold)
-
-            # PR キック判定（PR 優先）
-            use_pr = (path_relink_mode
-                      and no_improve_count >= relink_trigger)
-            # repair キック判定（PR 優先、stagnation とは独立）
-            use_repair = (not use_pr and repair_mode
-                          and no_improve_count >= repair_trigger)
-
-            if use_pr:
+            # --- 摂動フェーズ ---
+            # PR / repair は摂動の一種として扱う。
+            # 発動時に no_improve_count を先行リセットして再発動を防ぎ、
+            # 摂動結果には常に通常 LS をかけてから受理判定する。
+            accepted = False
+            if (path_relink_mode and no_improve_count >= relink_trigger):
+                # PR: best から initial 方向に経路探索し、その結果を摂動出力とする
                 current_method = 'path_relink'
-            elif use_repair:
+                iter_strength = None
+                no_improve_count = 0
+                perturbed, _ = self.path_relinking(best, self.initial_machine_orders)
+                if verbose:
+                    print(f"  Iter {i+1}: PR発動")
+            elif (repair_mode and no_improve_count >= repair_trigger):
+                # repair: current から初期解方向に direct swap
                 current_method = 'repair'
+                iter_strength = repair_strength
+                no_improve_count = 0
+                perturbed = self.perturb(current, 'repair', repair_strength)
+                if verbose:
+                    print(f"  Iter {i+1}: repair発動")
             else:
                 current_method = perturb_method
-            accepted = False
+                iter_strength = strength
+                perturbed = self.perturb(current, perturb_method, strength)
 
-            # 履歴記録用: この iter で実際に使われた強度。PR では None
-            iter_strength = None
+            # --- LS フェーズ（摂動方式によらず常に実行）---
+            ls_result, ls_score, ls_steps = self.local_search(perturbed, strategy)
+            total_ls_steps += ls_steps
+            eval_count += self._last_eval_count if hasattr(self, '_last_eval_count') else ls_steps
+            ls_ms, ls_st = self.evaluate_pareto(ls_result)
 
-            if use_pr:
-                # PRはbestから初期解方向に戻す（currentではなくbestから）
-                pr_result, pr_score = self.path_relinking(
-                    best, self.initial_machine_orders,
-                    ls_strategy=pr_ls_strategy)
-                ls_result = pr_result
-                ls_score = pr_score
-                pr_ms, pr_st = self.evaluate_pareto(pr_result)
-                ls_ms, ls_st = pr_ms, pr_st
-                ls_steps = 0
-                if verbose:
-                    print(f"  Iter {i+1}: PR完了 Makespan={pr_ms}, "
-                          f"Stability={pr_st:.2f}, Score={pr_score:.4f}")
-            else:
-                # 通常摂動はcurrentから出発。repairキック時は repair_strength を使用。
-                use_strength = repair_strength if use_repair else strength
-                iter_strength = use_strength
-                perturbed = self.perturb(current, current_method, use_strength)
-                ls_result, ls_score, ls_steps = self.local_search(perturbed, strategy)
-                total_ls_steps += ls_steps
-                eval_count += self._last_eval_count if hasattr(self, '_last_eval_count') else ls_steps
-                ls_ms, ls_st = self.evaluate_pareto(ls_result)
-
-            # === 受理判定 ===
+            # --- 受理判定 ---
             # no_improve_count: best が最後に改善してからの反復数
-            #   - best 改善 / PR 受理 / repair 受理でリセット
-            #   - δ 受理ではリセットしない（次のキックトリガーに到達させるため）
+            #   - best 改善時にリセット（PR / repair 発動時は摂動フェーズで先行リセット済み）
+            #   - PR / repair 後は無条件受理（スカラー改善なくても Pareto 的に有用）
             if ls_score < best_score:
                 # (1) best 改善 → best, current 両方更新
                 best = self._copy_orders(ls_result)
@@ -1184,41 +1161,17 @@ class ILSSolver:
                 if verbose:
                     print(f"  Iter {i+1}: 改善! Makespan={ls_ms}, Stability={ls_st:.2f}, "
                           f"Score={best_score:.4f} (method={current_method}, strength={strength})")
-            elif use_pr:
-                # (2) PR 結果は無条件で current 受理・カウンタリセット
+            elif current_method in ('path_relink', 'repair'):
+                # (2) PR / repair 後は無条件 current 受理
                 current = self._copy_orders(ls_result)
                 accepted = True
-                no_improve_count = 0
                 strength = initial_strength
                 if verbose:
-                    print(f"  Iter {i+1}: PR結果をcurrentに受理 "
+                    print(f"  Iter {i+1}: {current_method} 受理 "
                           f"Makespan={ls_ms}, Stability={ls_st:.2f}, "
                           f"Score={ls_score:.4f} (best={best_score:.4f})")
-            elif use_repair:
-                # (3) repair キックは無条件で current 受理・カウンタリセット
-                # （修復方向に出発点を移して ILS を継続）
-                current = self._copy_orders(ls_result)
-                accepted = True
-                no_improve_count = 0
-                strength = initial_strength
-                if verbose:
-                    print(f"  Iter {i+1}: repairキック current受理 "
-                          f"Makespan={ls_ms}, Stability={ls_st:.2f}, "
-                          f"Score={ls_score:.4f} (best={best_score:.4f})")
-            elif stagnating and ls_score < best_score * (1 + accept_delta):
-                # (4) 停滞中の通常摂動で δ 以内の悪化 → current だけ移動、best は保持
-                current = self._copy_orders(ls_result)
-                accepted = True
-                strength = initial_strength
-                no_improve_count += 1
-                if no_improve_count % 3 == 0:
-                    strength = min(strength + 1, max_strength)
-                if verbose:
-                    print(f"  Iter {i+1}: 悪化受理 Makespan={ls_ms}, "
-                          f"Stability={ls_st:.2f}, Score={ls_score:.4f} "
-                          f"(best={best_score:.4f}, delta={accept_delta})")
             else:
-                # (5) 棄却
+                # (3) 棄却
                 no_improve_count += 1
                 if no_improve_count % 3 == 0:
                     strength = min(strength + 1, max_strength)
