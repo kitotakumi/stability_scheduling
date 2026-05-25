@@ -780,20 +780,21 @@ class ILSSolver:
                     count += 1
         return count
 
-    def path_relinking(self, S_cur, S_ref, L_max=None, stall_limit=5,
+    def path_relinking(self, S_cur, S_ref, L_max=None,
                        ls_strategy=None, trace=False):
         """Direct-swap型 Path Relinking
 
         S_cur (initiating solution) から S_ref (guiding solution) へ向かう経路を
         direct swap で系統的にたどり、経路上の最良解を返す。
+        各ステップで全候補を評価し最良 swap を選ぶ (best selection)。
+        経路は S_cur と S_ref の差分がなくなるまで、または L_max ステップまで辿る。
 
         Args:
             S_cur: 現在の局所最適解（機械ごとのジョブ列）
             S_ref: ガイディング解（初期スケジュール等）
-            L_max: 最大ステップ数（Noneなら不一致数を上限とする）
-            stall_limit: 改善なしが続いた場合の打切りステップ数
+            L_max: 最大ステップ数（Noneなら差分数を上限とする）
             ls_strategy: PR経路上の最良中間解にlocal_searchを適用する戦略
-                None: LSなし（従来動作）
+                None: LSなし
                 'best': 経路完了後に best-improvement LS
                 'first': 経路完了後に first-improvement LS
             trace: Trueなら各ステップの詳細情報を返す
@@ -821,9 +822,7 @@ class ILSSolver:
                 'diffs_to_ref': initial_diffs,
             })
 
-        stall_count = 0
         step = 0
-        # 経路上の最もマシな中間解（出発点より悪くても追跡）
         S_best_intermediate = None
         best_intermediate_score = float('inf')
 
@@ -896,9 +895,6 @@ class ILSSolver:
             if improved:
                 F_best = best_cand_score
                 S_best = self._copy_orders(S)
-                stall_count = 0
-            else:
-                stall_count += 1
 
             step += 1
 
@@ -914,13 +910,10 @@ class ILSSolver:
                     'score_min': min(finite_scores) if finite_scores else None,
                     'score_max': max(finite_scores) if finite_scores else None,
                     'diffs_to_ref': self._count_diffs(S, S_ref),
-                    'stall_count': stall_count,
                 }
                 trace_log.append(entry)
 
             if L_max is not None and step >= L_max:
-                break
-            if stall_count >= stall_limit:
                 break
 
             all_match = all(
@@ -1035,10 +1028,11 @@ class ILSSolver:
 
     # ========== ILSメインループ ==========
 
-    def run(self, max_iterations=1500, strategy='best', perturb_method='swap',
+    def run(self, max_iterations=3000, strategy='best', perturb_method='swap',
             initial_strength=2, max_strength=5, verbose=True,
             path_relink_mode=False, relink_trigger=50,
-            repair_mode=False, repair_trigger=50, repair_strength=2):
+            repair_mode=False, repair_trigger=50, repair_strength=2,
+            patience=None):
         """
         ILSメインループ
 
@@ -1107,6 +1101,7 @@ class ILSSolver:
 
         strength = initial_strength
         no_improve_count = 0
+        patience_count = 0
         total_ls_steps = ls_steps
 
         for i in range(max_iterations):
@@ -1115,20 +1110,21 @@ class ILSSolver:
             # 発動時に no_improve_count を先行リセットして再発動を防ぎ、
             # 摂動結果には常に通常 LS をかけてから受理判定する。
             accepted = False
+            kick_ms, kick_st = None, None
             if (path_relink_mode and no_improve_count >= relink_trigger):
-                # PR: best から initial 方向に経路探索し、その結果を摂動出力とする
                 current_method = 'path_relink'
                 iter_strength = None
                 no_improve_count = 0
-                perturbed, _ = self.path_relinking(best, self.initial_machine_orders)
+                perturbed, _ = self.path_relinking(current, self.initial_machine_orders)
+                kick_ms, kick_st = self.evaluate_pareto(perturbed)
                 if verbose:
                     print(f"  Iter {i+1}: PR発動")
             elif (repair_mode and no_improve_count >= repair_trigger):
-                # repair: current から初期解方向に direct swap
                 current_method = 'repair'
                 iter_strength = repair_strength
                 no_improve_count = 0
                 perturbed = self.perturb(current, 'repair', repair_strength)
+                kick_ms, kick_st = self.evaluate_pareto(perturbed)
                 if verbose:
                     print(f"  Iter {i+1}: repair発動")
             else:
@@ -1176,6 +1172,11 @@ class ILSSolver:
                 if no_improve_count % 3 == 0:
                     strength = min(strength + 1, max_strength)
 
+            if best_iteration == i + 1:
+                patience_count = 0
+            else:
+                patience_count += 1
+
             history.append({
                 'cpu_time': time.time() - start_time,
                 'evaluations': eval_count,
@@ -1189,11 +1190,18 @@ class ILSSolver:
                 'accepted': accepted,
                 'perturb_used': current_method,
                 'strength': iter_strength,
+                'kick_makespan': kick_ms,
+                'kick_stability': kick_st,
             })
+
+            if patience is not None and patience_count >= patience:
+                if verbose:
+                    print(f"  早期終了: {patience}反復改善なし (iter={i+1})")
+                break
 
         elapsed = time.time() - start_time
         if verbose:
-            print(f"\nILS完了: {max_iterations}反復, {total_ls_steps}局所探索ステップ, "
+            print(f"\nILS完了: {i+1}反復/{max_iterations}, {total_ls_steps}局所探索ステップ, "
                   f"{elapsed:.2f}秒")
 
         convergence_info = {
@@ -1202,7 +1210,7 @@ class ILSSolver:
             'iteration': best_iteration,
             'total_cpu_time': elapsed,
             'total_evaluations': eval_count,
-            'total_iterations': max_iterations,
+            'total_iterations': i + 1,
         }
         if verbose:
             print(f"最良解到達: 反復={best_iteration}, 評価回数={best_eval_count}, "
@@ -1249,7 +1257,7 @@ if __name__ == "__main__":
 
     # ILS実行
     best_orders, best_score, conv_info, history = solver.run(
-        max_iterations=1500,
+        max_iterations=3000,
         strategy='best',
         perturb_method='swap',
     )

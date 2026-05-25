@@ -1,0 +1,183 @@
+
+<h2 class="sr-only">再スケジューリングにおけるGAとILSの探索挙動の対比イメージ図</h2>
+<style>
+  .wrap { padding: 0.5rem 0; }
+  .panels { display: flex; gap: 10px; }
+  .panel { flex: 1; text-align: center; }
+  .ptitle { font-family: var(--font-sans); font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 4px; }
+  canvas { width: 100%; aspect-ratio: 0.9; display: block; border-radius: var(--border-radius-lg); border: 0.5px solid var(--color-border-tertiary); }
+  .legend { display: flex; gap: 14px; margin-top: 8px; font-family: var(--font-sans); font-size: 11px; color: var(--color-text-secondary); flex-wrap: wrap; justify-content: center; }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+  .ldot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .lline { width: 14px; height: 0; flex-shrink: 0; }
+</style>
+
+<div class="wrap">
+  <div class="panels">
+    <div class="panel">
+      <div class="ptitle">GA（遺伝的アルゴリズム）</div>
+      <canvas id="cGA"></canvas>
+    </div>
+    <div class="panel">
+      <div class="ptitle">ILS（反復局所探索）</div>
+      <canvas id="cILS"></canvas>
+    </div>
+  </div>
+  <div class="legend">
+    <div class="legend-item"><div class="ldot" style="background:#E24B4A"></div>初期スケジュール（局所最適解）</div>
+    <div class="legend-item"><div class="ldot" style="background:#1D9E75"></div>最適解</div>
+    <div class="legend-item"><div class="ldot" style="background:#EF9F27"></div>親個体</div>
+    <div class="legend-item"><div class="ldot" style="background:rgba(127,119,221,0.8)"></div>交叉で生成された子個体</div>
+    <div class="legend-item"><div class="lline" style="border-top:1.5px dashed rgba(226,75,74,0.5)"></div>安定性の許容範囲</div>
+  </div>
+</div>
+
+<script>
+const dk = matchMedia('(prefers-color-scheme: dark)').matches;
+const BG = dk ? '#1a1a18' : '#f8f7f4';
+const CONTOUR = dk ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)';
+const CONTOUR_S = dk ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.09)';
+const TXT = dk ? '#9c9a92' : '#73726c';
+
+const cGA = document.getElementById('cGA');
+const cILS = document.getElementById('cILS');
+const gGA = cGA.getContext('2d');
+const gILS = cILS.getContext('2d');
+const W = 400, H = 360;
+cGA.width = cILS.width = W;
+cGA.height = cILS.height = H;
+
+const CX = 0.5, CY = 0.5, SPAN = 0.6;
+function px(v) { return ((v-(CX-SPAN/2))/SPAN)*W; }
+function py(v) { return ((v-(CY-SPAN/2))/SPAN)*H; }
+
+const IX = 0.5, IY = 0.5;
+const OPT_X = 0.42, OPT_Y = 0.4;
+const STAB_R = 0.17;
+
+function drawBase(ctx) {
+  ctx.fillStyle = BG;
+  ctx.fillRect(0,0,W,H);
+  for (let lv=0.04;lv<0.55;lv+=0.035) {
+    ctx.beginPath();
+    for (let i=0;i<W;i+=2) for (let j=0;j<H;j+=2) {
+      const wx=(CX-SPAN/2)+(i/W)*SPAN, wy=(CY-SPAN/2)+(j/H)*SPAN;
+      if (Math.abs(Math.sqrt((wx-IX)**2+(wy-IY)**2)-lv)<0.008) ctx.rect(i,j,2,2);
+    }
+    ctx.fillStyle = lv%0.105<0.012 ? CONTOUR_S : CONTOUR;
+    ctx.fill();
+  }
+  ctx.strokeStyle='rgba(226,75,74,0.4)'; ctx.lineWidth=1.5; ctx.setLineDash([6,5]);
+  ctx.beginPath(); ctx.arc(px(IX),py(IY),(STAB_R/SPAN)*W,0,Math.PI*2); ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle='#E24B4A';
+  ctx.beginPath(); ctx.arc(px(IX),py(IY),8,0,Math.PI*2); ctx.fill();
+
+  ctx.fillStyle='#1D9E75';
+  ctx.beginPath(); ctx.arc(px(OPT_X),py(OPT_Y),7,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#1D9E75'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(px(OPT_X),py(OPT_Y),12,0,Math.PI*2); ctx.stroke();
+
+  ctx.fillStyle=TXT; ctx.font='11px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('初期スケジュール',px(IX),py(IY)+24);
+  // Label optimum to the upper-left so ILS trail doesn't overlap
+  ctx.textAlign='right';
+  ctx.fillText('最適解',px(OPT_X)-16,py(OPT_Y)-6);
+}
+
+function rng(s){let v=s;return()=>{v=(v*16807)%2147483647;return v/2147483647;};}
+
+// ===== GA =====
+const R1=rng(63);
+const gen0=[];
+for(let i=0;i<8;i++){
+  const a=R1()*Math.PI*2, d=0.08+R1()*0.25;
+  gen0.push({x:IX+Math.cos(a)*d, y:IY+Math.sin(a)*d});
+}
+
+function cross(parents,rng){
+  const kids=[], pairs=[];
+  const idx=Array.from({length:parents.length},(_,i)=>i);
+  for(let i=idx.length-1;i>0;i--){const j=Math.floor(rng()*i);[idx[i],idx[j]]=[idx[j],idx[i]];}
+  for(let i=0;i+1<idx.length;i+=2){
+    const pA=parents[idx[i]],pB=parents[idx[i+1]];
+    const t=0.1+rng()*0.8, ov=(rng()-0.35)*0.12;
+    const child={
+      x:Math.max(0.08,Math.min(0.92,pA.x*t+pB.x*(1-t)+ov)),
+      y:Math.max(0.08,Math.min(0.92,pA.y*t+pB.y*(1-t)+ov))
+    };
+    kids.push(child); pairs.push({pA,pB,child});
+  }
+  return {kids,pairs};
+}
+
+const g1=cross(gen0,R1);
+const pool1=[...gen0,...g1.kids].sort(()=>R1()-0.5).slice(0,8);
+const g2=cross(pool1,R1);
+
+drawBase(gGA);
+
+[...g1.pairs,...g2.pairs].forEach(c=>{
+  gGA.strokeStyle=dk?'rgba(175,169,236,0.22)':'rgba(127,119,221,0.22)';
+  gGA.lineWidth=1;
+  gGA.beginPath();gGA.moveTo(px(c.pA.x),py(c.pA.y));gGA.lineTo(px(c.child.x),py(c.child.y));gGA.stroke();
+  gGA.beginPath();gGA.moveTo(px(c.pB.x),py(c.pB.y));gGA.lineTo(px(c.child.x),py(c.child.y));gGA.stroke();
+});
+
+gen0.forEach(p=>{
+  gGA.fillStyle='rgba(239,159,39,0.55)';
+  gGA.beginPath();gGA.arc(px(p.x),py(p.y),5,0,Math.PI*2);gGA.fill();
+});
+
+[...g1.kids,...g2.kids].forEach(p=>{
+  gGA.fillStyle=dk?'rgba(175,169,236,0.75)':'rgba(127,119,221,0.75)';
+  gGA.beginPath();gGA.arc(px(p.x),py(p.y),5,0,Math.PI*2);gGA.fill();
+});
+
+
+// ===== ILS =====
+drawBase(gILS);
+
+const R2=rng(103);
+const ilsPts=[{x:IX, y:IY}];
+
+// Keep points away from optimum label area (upper-left of OPT)
+// Wander mostly to the right/below of initial schedule
+for(let i=0;i<8;i++){
+  const last=ilsPts[ilsPts.length-1];
+  const angle = R2()*Math.PI*2;
+  const dist = 0.025 + R2()*0.035;
+  let nx = last.x + Math.cos(angle)*dist;
+  let ny = last.y + Math.sin(angle)*dist;
+  // Mild bias toward optimum
+  nx = nx*0.7 + (last.x + (OPT_X-last.x)*0.15)*0.3;
+  ny = ny*0.7 + (last.y + (OPT_Y-last.y)*0.15)*0.3;
+  // Clamp and keep minimum distance from optimum label zone
+  nx = Math.max(0.15, Math.min(0.85, nx));
+  ny = Math.max(0.15, Math.min(0.85, ny));
+  // If too close to optimum point, nudge away slightly
+  const dOpt = Math.sqrt((nx-OPT_X)**2+(ny-OPT_Y)**2);
+  if(dOpt < 0.03) {
+    nx += 0.03;
+    ny += 0.02;
+  }
+  ilsPts.push({x:nx, y:ny});
+}
+
+gILS.strokeStyle='rgba(239,159,39,0.3)';
+gILS.lineWidth=1.3;
+gILS.beginPath();
+gILS.moveTo(px(ilsPts[0].x),py(ilsPts[0].y));
+for(let i=1;i<ilsPts.length;i++) gILS.lineTo(px(ilsPts[i].x),py(ilsPts[i].y));
+gILS.stroke();
+
+ilsPts.forEach((p,i)=>{
+  if(i===0) return;
+  const isLast=i===ilsPts.length-1;
+  gILS.fillStyle=isLast?'#EF9F27':'rgba(239,159,39,0.55)';
+  gILS.beginPath();
+  gILS.arc(px(p.x),py(p.y),isLast?6:4.5,0,Math.PI*2);
+  gILS.fill();
+});
+</script>

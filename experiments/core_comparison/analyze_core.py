@@ -202,7 +202,7 @@ def c_metric(A_front, B_front):
 # ========== Region-restricted HV ==========
 
 def compute_regions(union_pareto_all_methods):
-    """全手法共通 union Pareto の stab 軸 quartile から 3 領域の境界を計算
+    """全手法共通 union Pareto の stab_max を用いて [0, stab_max] を等 3 分割
 
     Returns: dict {region_name: (stab_lo, stab_hi)}
     MS 軸は呼び出し側で init_ms を上限に使う。
@@ -210,16 +210,17 @@ def compute_regions(union_pareto_all_methods):
     if len(union_pareto_all_methods) == 0:
         return None
     stab = union_pareto_all_methods[:, 1]
-    q1 = float(np.quantile(stab, 0.25))
-    q3 = float(np.quantile(stab, 0.75))
     stab_max = float(stab.max())
-    # 退化時（Q1==Q3）を避ける微小マージン
+    if stab_max <= 0:
+        return None
+    t1 = stab_max / 3.0
+    t2 = 2.0 * stab_max / 3.0
     eps = 1e-9
     return {
-        'low_stab':  (0.0, q1),
-        'mid_stab':  (q1 + eps if q3 > q1 else q1, q3),
-        'high_stab': (q3 + eps if stab_max > q3 else q3, stab_max),
-        '_q1': q1, '_q3': q3, '_stab_max': stab_max,
+        'low_stab':  (0.0, t1),
+        'mid_stab':  (t1 + eps, t2),
+        'high_stab': (t2 + eps, stab_max),
+        '_t1': t1, '_t2': t2, '_stab_max': stab_max,
     }
 
 
@@ -350,18 +351,24 @@ def pareto_points_until_time(trial_anytime_list, trial_points_list, kind, t,
             n_take = min(idx, len(all_pts))
             pts_out.append(all_pts[:n_take])
         elif kind == 'ga':
-            # GA: hist の各 entry が 1 世代 = pop_size 個体
-            # points は全世代 flat に並ぶので pop_size = len(all_pts) / n_gens
-            n_gens_total = len(hist)
-            if n_gens_total > 0 and len(all_pts) % n_gens_total == 0:
-                pop_size = len(all_pts) // n_gens_total
-                n_take = idx * pop_size
+            # GA: 新形式は entry['evaluations'] (累積評価数) を持つ。
+            # 旧形式 (1 entry/gen) も entry['evaluations'] = (gen+1)*pop_size で同じく動く。
+            last_entry = hist[idx - 1]
+            ev = last_entry.get('evaluations')
+            if ev is not None:
+                n_take = min(int(ev), len(all_pts))
                 pts_out.append(all_pts[:n_take])
             else:
-                # fallback: 比率で推定
-                ratio = idx / max(n_gens_total, 1)
-                n_take = int(len(all_pts) * ratio)
-                pts_out.append(all_pts[:n_take])
+                # 超旧 fallback: 世代単位で推定
+                n_gens_total = len(hist)
+                if n_gens_total > 0 and len(all_pts) % n_gens_total == 0:
+                    pop_size = len(all_pts) // n_gens_total
+                    n_take = idx * pop_size
+                    pts_out.append(all_pts[:n_take])
+                else:
+                    ratio = idx / max(n_gens_total, 1)
+                    n_take = int(len(all_pts) * ratio)
+                    pts_out.append(all_pts[:n_take])
     if not pts_out:
         return np.zeros((0, 2))
     concat = np.concatenate(pts_out)
@@ -372,38 +379,133 @@ def pareto_points_until_time(trial_anytime_list, trial_points_list, kind, t,
 
 # ========== プロット: anytime curves ==========
 
-def _compute_t_grid(anytime_by_method, methods, n_points=30):
-    """全手法の最短 CPU 時間までをカバーする t_grid"""
-    max_t_per_method = []
-    for m in methods:
-        ts = []
-        for hist in anytime_by_method[m]:
-            if hist and len(hist) > 0:
-                ts.append(hist[-1]['cpu_time'])
-        if ts:
-            max_t_per_method.append(min(ts))
-    if not max_t_per_method:
+def _trial_last_pareto_update_time(hist, all_pts, kind, baseline=None):
+    """trial 内で最後に Pareto front が更新された cpu_time を返す.
+
+    points の発見時刻を hist の cpu_time から逆算し、時系列順に Pareto に足し
+    込んで、非被支配な新規点が入ったタイミングを追う。収束後の平坦部分を
+    切り捨てるために使う。
+    """
+    if hist is None or len(hist) == 0 or len(all_pts) == 0:
         return None
-    t_max = min(max_t_per_method)
-    return np.linspace(max(0.1, t_max * 0.02), t_max, n_points)
+    tp_pairs = []
+    if kind == 'ga':
+        # 各 entry の (累積評価数, cpu_time) を sort し、点 idx → cpu_time を割当
+        ev_times = sorted(
+            (int(e['evaluations']), float(e['cpu_time']))
+            for e in hist if 'evaluations' in e and 'cpu_time' in e
+        )
+        if not ev_times:
+            return hist[-1]['cpu_time']
+        j = 0
+        for i in range(len(all_pts)):
+            target = i + 1
+            while j < len(ev_times) and ev_times[j][0] < target:
+                j += 1
+            t_pt = ev_times[j][1] if j < len(ev_times) else ev_times[-1][1]
+            tp_pairs.append((t_pt, tuple(all_pts[i])))
+    elif kind == 'ils':
+        # hist[0] は init, hist[1..] が iter。points は iter 分のみ。
+        for i in range(len(all_pts)):
+            h_idx = min(i + 1, len(hist) - 1)
+            tp_pairs.append((hist[h_idx]['cpu_time'], tuple(all_pts[i])))
+    else:
+        return hist[-1]['cpu_time']
+
+    if baseline is not None:
+        tp_pairs = [(t, p) for (t, p) in tp_pairs
+                    if not (p[0] >= baseline[0] and p[1] >= baseline[1])]
+
+    tp_pairs.sort(key=lambda x: x[0])
+    current = []
+    last_update_t = None
+    for t, p in tp_pairs:
+        dominated = False
+        new_pareto = []
+        for q in current:
+            if q[0] <= p[0] and q[1] <= p[1] and (q[0] < p[0] or q[1] < p[1]):
+                dominated = True
+                break
+            if q[0] == p[0] and q[1] == p[1]:
+                dominated = True
+                break
+            if p[0] <= q[0] and p[1] <= q[1] and (p[0] < q[0] or p[1] < q[1]):
+                continue  # q dominated by p → drop
+            new_pareto.append(q)
+        if dominated:
+            continue
+        new_pareto.append(p)
+        current = new_pareto
+        last_update_t = t
+    if last_update_t is None:
+        return hist[-1]['cpu_time']
+    return last_update_t
 
 
-def plot_anytime_hv(trial_pts_by_method, anytime_by_method,
-                    methods, kind_by_method, baselines_by_method,
-                    ref, init_ms,
-                    title, outpath, n_points=30):
-    """anytime HV curve: per-trial HV を時刻 t で計算 → trial 平均"""
-    t_grid = _compute_t_grid(anytime_by_method, methods, n_points)
-    if t_grid is None:
-        return
+def _compute_t_grid(trial_pts_by_method, anytime_by_method, methods,
+                    kind_by_method, baselines_by_method, n_points=60,
+                    xscale='linear'):
+    """各 trial の最終 Pareto 更新時刻 → trial 間 median → 手法間 max で t_max.
 
-    fig, ax = plt.subplots(figsize=(10, 6))
+    収束後フラットになった部分は情報量ゼロなので切り捨てる。手法間で探索時間が
+    大きく違う場合、max 採用で長い手法の後半も描画される（短い手法は end で
+    フラット）。xscale='log' なら等比、'linear' なら等差サンプリング。
+    """
+    medians = []
     for m in methods:
         kind = kind_by_method[m]
         baseline = baselines_by_method.get(m)
         anytime_list = anytime_by_method[m]
         points_list = trial_pts_by_method[m]
-        hv_curves = []  # (n_trials, n_points)
+        trial_lasts = []
+        for i, hist in enumerate(anytime_list):
+            pts = points_list[i] if i < len(points_list) else np.zeros((0, 2))
+            t_last = _trial_last_pareto_update_time(hist, pts, kind,
+                                                     baseline=baseline)
+            if t_last is not None and t_last > 0:
+                trial_lasts.append(t_last)
+        if trial_lasts:
+            medians.append(float(np.median(trial_lasts)))
+    if not medians:
+        return None
+    t_max = max(medians)
+    if xscale == 'log':
+        t_min = max(0.02, t_max * 0.002)
+        if t_min >= t_max:
+            return None
+        return np.geomspace(t_min, t_max, n_points)
+    else:
+        t_min = max(0.1, t_max * 0.02)
+        if t_min >= t_max:
+            return None
+        return np.linspace(t_min, t_max, n_points)
+
+
+def plot_anytime_hv(trial_pts_by_method, anytime_by_method,
+                    methods, kind_by_method, baselines_by_method,
+                    ref, init_ms,
+                    title, outpath, n_points=60, xscale='linear'):
+    """anytime HV curve: 1 画像 2 パネル (left=per-trial median+IQR, right=union).
+
+    per-trial: 各 trial で Pareto-front を作って HV→trial 間で median+IQR
+    union:     時刻 t までに全 trial が観測した点の合算 Pareto で HV（1 本）
+    """
+    t_grid = _compute_t_grid(trial_pts_by_method, anytime_by_method, methods,
+                              kind_by_method, baselines_by_method, n_points,
+                              xscale=xscale)
+    if t_grid is None:
+        return
+
+    fig, (ax_pt, ax_un) = plt.subplots(1, 2, figsize=(16, 6), sharey=True)
+    for m in methods:
+        kind = kind_by_method[m]
+        baseline = baselines_by_method.get(m)
+        anytime_list = anytime_by_method[m]
+        points_list = trial_pts_by_method[m]
+        color = get_color(m)
+
+        # per-trial HV
+        hv_curves = []
         for trial_idx in range(len(anytime_list)):
             hv_per_t = []
             for t in t_grid:
@@ -415,21 +517,35 @@ def plot_anytime_hv(trial_pts_by_method, anytime_by_method,
                 else:
                     hv_per_t.append(0.0)
             hv_curves.append(hv_per_t)
-        if not hv_curves:
-            continue
-        arr = np.array(hv_curves)
-        median_hv = np.nanmedian(arr, axis=0)
-        q25_hv = np.nanpercentile(arr, 25, axis=0)
-        q75_hv = np.nanpercentile(arr, 75, axis=0)
-        color = get_color(m)
-        ax.plot(t_grid, median_hv, color=color, lw=2.0, label=m)
-        ax.fill_between(t_grid, q25_hv, q75_hv, color=color, alpha=0.15)
+        if hv_curves:
+            arr = np.array(hv_curves)
+            median_hv = np.nanmedian(arr, axis=0)
+            q25_hv = np.nanpercentile(arr, 25, axis=0)
+            q75_hv = np.nanpercentile(arr, 75, axis=0)
+            ax_pt.plot(t_grid, median_hv, color=color, lw=2.0, label=m)
+            ax_pt.fill_between(t_grid, q25_hv, q75_hv, color=color, alpha=0.15)
 
-    ax.set_xlabel('CPU time (s)')
-    ax.set_ylabel('HV (per-trial median, band=IQR 25-75%)')
-    ax.set_title(title)
-    ax.grid(True, alpha=0.3)
-    ax.legend(loc='lower right', fontsize=10)
+        # union HV (全 trial 合算)
+        union_hv = []
+        for t in t_grid:
+            pts = pareto_points_until_time(anytime_list, points_list, kind, t,
+                                            baseline=baseline)
+            if len(pts) > 0:
+                union_hv.append(hypervolume_2d(pareto_front_2d(pts), ref))
+            else:
+                union_hv.append(0.0)
+        ax_un.plot(t_grid, union_hv, color=color, lw=2.0, label=m)
+
+    for ax, subtitle in [(ax_pt, 'per-trial (median, band=IQR 25-75%)'),
+                          (ax_un, 'union (all trials combined)')]:
+        ax.set_xlabel('CPU time (s)')
+        if xscale == 'log':
+            ax.set_xscale('log')
+        ax.set_title(subtitle)
+        ax.grid(True, alpha=0.3, which='both' if xscale == 'log' else 'major')
+        ax.legend(loc='lower right', fontsize=10)
+    ax_pt.set_ylabel('HV')
+    fig.suptitle(title, fontsize=12)
     fig.tight_layout()
     fig.savefig(outpath, dpi=150)
     plt.close(fig)
@@ -437,27 +553,35 @@ def plot_anytime_hv(trial_pts_by_method, anytime_by_method,
 
 def plot_anytime_region_hv(trial_pts_by_method, anytime_by_method,
                            methods, kind_by_method, baselines_by_method,
-                           regions, init_ms, title, outpath, n_points=30):
-    """anytime Region-restricted HV: 3 領域 (low/mid/high stab) × N 手法.
+                           regions, init_ms, title, outpath, n_points=60,
+                           xscale='linear'):
+    """anytime Region-restricted HV: 2×3 subplots (row=per-trial/union, col=region).
 
-    領域境界は事前固定 (compute_regions で全手法共通 union Pareto から算出)、
-    時間で動かさない。各時刻 t で per-trial に領域別 HV を計算して trial 平均。
+    領域境界は事前固定 (compute_regions: [0, stab_max] 等 3 分割)。
+    top row: 各 trial で領域 HV → trial 間 median+IQR
+    bottom row: 時刻 t までの全 trial 合算点の Pareto で領域 HV（1 本）
     """
     if regions is None:
         return
-    t_grid = _compute_t_grid(anytime_by_method, methods, n_points)
+    t_grid = _compute_t_grid(trial_pts_by_method, anytime_by_method, methods,
+                              kind_by_method, baselines_by_method, n_points,
+                              xscale=xscale)
     if t_grid is None:
         return
 
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5), sharex=True)
+    fig, axes = plt.subplots(2, 3, figsize=(18, 10), sharex=True, sharey='col')
     for ax_idx, region_name in enumerate(REGION_NAMES):
         stab_lo, stab_hi = regions[region_name]
-        ax = axes[ax_idx]
+        ax_pt = axes[0, ax_idx]
+        ax_un = axes[1, ax_idx]
         for m in methods:
             kind = kind_by_method[m]
             baseline = baselines_by_method.get(m)
             anytime_list = anytime_by_method[m]
             points_list = trial_pts_by_method[m]
+            color = get_color(m)
+
+            # per-trial
             hv_curves = []
             for trial_idx in range(len(anytime_list)):
                 hv_per_t = []
@@ -472,52 +596,85 @@ def plot_anytime_region_hv(trial_pts_by_method, anytime_by_method,
                     hv, _ = region_restricted_hv(pf, (stab_lo, stab_hi), init_ms)
                     hv_per_t.append(hv)
                 hv_curves.append(hv_per_t)
-            if not hv_curves:
-                continue
-            arr = np.array(hv_curves)
-            median_hv = np.nanmedian(arr, axis=0)
-            q25_hv = np.nanpercentile(arr, 25, axis=0)
-            q75_hv = np.nanpercentile(arr, 75, axis=0)
-            color = get_color(m)
-            ax.plot(t_grid, median_hv, color=color, lw=2.0, label=m)
-            ax.fill_between(t_grid, q25_hv, q75_hv, color=color, alpha=0.15)
-        ax.set_xlabel('CPU time (s)')
-        ax.set_ylabel(f'HV in {region_name}')
-        ax.set_title(f'{region_name}  stab ∈ [{stab_lo:.2f}, {stab_hi:.2f}]')
-        ax.grid(True, alpha=0.3)
-        ax.legend(fontsize=9, loc='lower right')
-    fig.suptitle(title + '  (line=median, band=IQR 25-75%)', fontsize=12)
+            if hv_curves:
+                arr = np.array(hv_curves)
+                median_hv = np.nanmedian(arr, axis=0)
+                q25_hv = np.nanpercentile(arr, 25, axis=0)
+                q75_hv = np.nanpercentile(arr, 75, axis=0)
+                ax_pt.plot(t_grid, median_hv, color=color, lw=2.0, label=m)
+                ax_pt.fill_between(t_grid, q25_hv, q75_hv, color=color, alpha=0.15)
+
+            # union
+            union_hv = []
+            for t in t_grid:
+                pts = pareto_points_until_time(anytime_list, points_list, kind, t,
+                                                baseline=baseline)
+                if len(pts) == 0:
+                    union_hv.append(0.0)
+                    continue
+                pf = pareto_front_2d(pts)
+                hv, _ = region_restricted_hv(pf, (stab_lo, stab_hi), init_ms)
+                union_hv.append(hv)
+            ax_un.plot(t_grid, union_hv, color=color, lw=2.0, label=m)
+
+        for ax in (ax_pt, ax_un):
+            if xscale == 'log':
+                ax.set_xscale('log')
+            ax.grid(True, alpha=0.3,
+                    which='both' if xscale == 'log' else 'major')
+            ax.legend(fontsize=9, loc='lower right')
+        ax_pt.set_title(f'{region_name}  stab ∈ [{stab_lo:.2f}, {stab_hi:.2f}]',
+                         fontsize=11)
+        ax_un.set_xlabel('CPU time (s)')
+        if ax_idx == 0:
+            ax_pt.set_ylabel('HV  per-trial (median, band=IQR)')
+            ax_un.set_ylabel('HV  union (all trials)')
+    fig.suptitle(title, fontsize=13)
     fig.tight_layout()
     fig.savefig(outpath, dpi=150)
     plt.close(fig)
 
 
-def plot_anytime_scalar(anytime_by_method, methods, title, outpath):
-    """anytime scalar curve: best_score の時系列（trial 平均）"""
-    max_t_per_method = []
-    min_t_per_method = []
-    for m in methods:
-        ts, ts_first = [], []
-        for hist in anytime_by_method[m]:
-            if hist and len(hist) > 0:
-                ts.append(hist[-1]['cpu_time'])
-                # 最初の entry（init）の直後、実質的に値が取れ始める時刻
-                if len(hist) >= 2:
-                    ts_first.append(hist[1]['cpu_time'])
-                else:
-                    ts_first.append(hist[0]['cpu_time'])
-        if ts:
-            max_t_per_method.append(min(ts))
-        if ts_first:
-            min_t_per_method.append(max(ts_first))
-    if not max_t_per_method:
-        return
-    t_max = min(max_t_per_method)
-    t_min = max(min_t_per_method) if min_t_per_method else max(0.01, t_max * 0.01)
-    t_min = max(t_min, 0.01)
-    if t_min >= t_max:
-        return
-    t_grid = np.linspace(t_min, t_max, 100)
+def plot_anytime_scalar(anytime_by_method, methods, title, outpath,
+                         trial_pts_by_method=None, kind_by_method=None,
+                         baselines_by_method=None, xscale='linear'):
+    """anytime scalar curve: best_score の時系列（trial median+IQR）.
+
+    時間軸は anytime HV / region HV と同じ「各 trial の最終 Pareto 更新時刻の
+    trial 間 median、手法間 max」を採用。best_score の更新は Pareto 更新と
+    同期的ではないが、大局的には同じ時間窓で見たいので揃える。
+    """
+    t_grid = None
+    if (trial_pts_by_method is not None and kind_by_method is not None
+            and baselines_by_method is not None):
+        t_grid = _compute_t_grid(trial_pts_by_method, anytime_by_method, methods,
+                                  kind_by_method, baselines_by_method,
+                                  n_points=100, xscale=xscale)
+    if t_grid is None:
+        # fallback: 旧 ロジック相当
+        max_t_per_method = []
+        min_t_per_method = []
+        for m in methods:
+            ts, ts_first = [], []
+            for hist in anytime_by_method[m]:
+                if hist and len(hist) > 0:
+                    ts.append(hist[-1]['cpu_time'])
+                    if len(hist) >= 2:
+                        ts_first.append(hist[1]['cpu_time'])
+                    else:
+                        ts_first.append(hist[0]['cpu_time'])
+            if ts:
+                max_t_per_method.append(max(ts))
+            if ts_first:
+                min_t_per_method.append(max(ts_first))
+        if not max_t_per_method:
+            return
+        t_max = max(max_t_per_method)
+        t_min = max(min_t_per_method) if min_t_per_method else max(0.01, t_max * 0.01)
+        t_min = max(t_min, 0.01)
+        if t_min >= t_max:
+            return
+        t_grid = np.linspace(t_min, t_max, 100)
 
     fig, ax = plt.subplots(figsize=(10, 6))
     for m in methods:
@@ -539,9 +696,11 @@ def plot_anytime_scalar(anytime_by_method, methods, title, outpath):
                         color=color, alpha=0.15)
 
     ax.set_xlabel('CPU time (s)')
+    if xscale == 'log':
+        ax.set_xscale('log')
     ax.set_ylabel('Best weighted score (per-trial median, band=IQR 25-75%)')
     ax.set_title(title)
-    ax.grid(True, alpha=0.3)
+    ax.grid(True, alpha=0.3, which='both' if xscale == 'log' else 'major')
     ax.legend(loc='upper right', fontsize=10)
     fig.tight_layout()
     fig.savefig(outpath, dpi=150)
@@ -930,8 +1089,8 @@ def format_region_hv_table(union_pf_by_method, methods, regions, init_ms):
     if regions is None:
         return "(領域計算に必要なデータ不足)"
     lines = []
-    lines.append("Region-restricted HV (stab 軸 quartile 3 分割, 全手法共通 union Pareto から自動決定)")
-    lines.append(f"  境界: Q1={regions['_q1']:.3f}, Q3={regions['_q3']:.3f}, "
+    lines.append("Region-restricted HV (stab 軸 [0, stab_max] 等 3 分割, stab_max は全手法共通 union Pareto の最大値)")
+    lines.append(f"  境界: T1={regions['_t1']:.3f}, T2={regions['_t2']:.3f}, "
                  f"stab_max={regions['_stab_max']:.3f}")
     lines.append(f"  参照点: (init_ms={init_ms}, R_upper)")
     lines.append("")
@@ -1014,7 +1173,7 @@ def resolve_eaf_pairs(cli_pairs, available_methods):
 # ========== メイン処理（per problem × weight） ==========
 
 def analyze_problem_weight(data, out_subdir, w_label, snapshot_times,
-                           cli_pairs):
+                           cli_pairs, xscale='linear'):
     methods = list(data['methods'].keys())
     kind_by_method = {m: data['methods'][m]['kind'] for m in methods}
     baselines_by_method = {m: extract_baseline(data['methods'][m])
@@ -1068,7 +1227,8 @@ def analyze_problem_weight(data, out_subdir, w_label, snapshot_times,
                     kind_by_method, baselines_by_method,
                     ref, init_ms,
                     f"{title_base}: anytime HV (full)",
-                    os.path.join(out_subdir, f"anytime_hv_{w_label}.png"))
+                    os.path.join(out_subdir, f"anytime_hv_{w_label}.png"),
+                    xscale=xscale)
 
     # 1b) anytime Region-restricted HV (3 regions × N methods)
     plot_anytime_region_hv(trial_pts_by_method, anytime_by_method, methods,
@@ -1076,12 +1236,17 @@ def analyze_problem_weight(data, out_subdir, w_label, snapshot_times,
                            regions, init_ms,
                            f"{title_base}: anytime Region-restricted HV",
                            os.path.join(out_subdir,
-                                         f"anytime_region_hv_{w_label}.png"))
+                                         f"anytime_region_hv_{w_label}.png"),
+                           xscale=xscale)
 
     # 2) anytime scalar curve
     plot_anytime_scalar(anytime_by_method, methods,
                          f"{title_base}: anytime best weighted score",
-                         os.path.join(out_subdir, f"anytime_scalar_{w_label}.png"))
+                         os.path.join(out_subdir, f"anytime_scalar_{w_label}.png"),
+                         trial_pts_by_method=trial_pts_by_method,
+                         kind_by_method=kind_by_method,
+                         baselines_by_method=baselines_by_method,
+                         xscale=xscale)
 
     # 3) final Pareto overlay
     plot_final_pareto_overlay(trial_pts_by_method, methods, baselines_by_method,
@@ -1230,7 +1395,7 @@ def write_cross_summary(all_results, out_dir):
             if r['regions'] is not None:
                 reg = r['regions']
                 f.write(f"  Region-restricted HV "
-                        f"(Q1={reg['_q1']:.3f}, Q3={reg['_q3']:.3f}):\n")
+                        f"(T1={reg['_t1']:.3f}, T2={reg['_t2']:.3f}):\n")
                 for region_name in REGION_NAMES:
                     stab_lo, stab_hi = reg[region_name]
                     f.write(f"    [{region_name} stab∈[{stab_lo:.3f},{stab_hi:.3f}]]\n")
@@ -1257,6 +1422,9 @@ def main():
     parser.add_argument('--eaf-pairs', nargs='+', type=str, default=None,
                         help='差分 EAF を描く pair. 形式: A:B (例: ils_insert:ga). '
                              '指定なしなら戦略 pair を自動選択')
+    parser.add_argument('--xscale', type=str, default='linear',
+                        choices=['linear', 'log'],
+                        help='anytime curve の横軸スケール (デフォルト: linear)')
     args = parser.parse_args()
 
     results_dir = args.results_dir
@@ -1284,7 +1452,8 @@ def main():
             os.makedirs(w_out, exist_ok=True)
             data = load_result_json(os.path.join(prob_path, fn))
             r = analyze_problem_weight(data, w_out, w_label,
-                                        args.snapshot_times, args.eaf_pairs)
+                                        args.snapshot_times, args.eaf_pairs,
+                                        xscale=args.xscale)
             if r is not None:
                 all_results.append(r)
 

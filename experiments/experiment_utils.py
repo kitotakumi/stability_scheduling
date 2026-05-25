@@ -27,10 +27,11 @@ PROBLEM_NAME = "mt10"
 SCENARIO_NAME = "mt10_delay60"
 GA_NGEN = 500
 GA_POP_SIZE = 50
+MEMETIC_NGEN = 500
 # ILS_MAX_ITER: 4 問題の last_improvement_iter 実測 (p_max × 1.5 マージン) から決定。
 # p_max 966-996, p99 962-995 → 1500 で 50% マージン確保。
 # 詳細は doc/ils_parameter_sweep.md §2.1.1 / experiments/ils_sweep/.../convergence_safety_cross.txt
-ILS_MAX_ITER = 1500
+ILS_MAX_ITER = 3000
 
 
 def setup_output_dir(prefix="", base_dir=None):
@@ -90,11 +91,13 @@ def run_ga(weights, seed, ngen, norm_params=None, problem_name=None, scenario_na
     _, ms, st, conv_info, history = solver.run(
         ngen=ngen, verbose=False, norm_params=norm_params,
         track_population=track_population)
-    # GA の初期個体（original_individual）を active schedule でデコードした評価値。
-    # 初期解相当として Pareto 分析で除外する目印。
+    # baseline: active decode 後の初期個体（GA の探索起点）
+    # baseline_rsr: RSR 解（active decode 前、安定性 = 0）
     baseline = [solver.baseline_ms, solver.baseline_st]
+    baseline_rsr = [solver.baseline_rsr_ms, solver.baseline_rsr_st]
     return {'makespan': ms, 'stability': st, 'convergence': conv_info,
-            'history': history, 'baseline': baseline}
+            'history': history, 'baseline': baseline, 'baseline_rsr': baseline_rsr,
+            'baseline_score': solver.baseline_score}
 
 
 def run_ils(weights, seed, perturb_method, max_iterations, norm_params=None,
@@ -103,6 +106,7 @@ def run_ils(weights, seed, perturb_method, max_iterations, norm_params=None,
             repair_mode=False, repair_trigger=50, repair_strength=2,
             strategy='best',
             initial_strength=2, max_strength=5,
+            patience=None,
             problem_name=None, scenario_name=None):
     jm_table, fixed_gantt, reschedule_gantt, reschedule_time = get_problem(
         problem_name, scenario_name)
@@ -118,14 +122,47 @@ def run_ils(weights, seed, perturb_method, max_iterations, norm_params=None,
         path_relink_mode=path_relink_mode, relink_trigger=relink_trigger,
         repair_mode=repair_mode, repair_trigger=repair_trigger,
         repair_strength=repair_strength,
-        strategy=strategy)
+        strategy=strategy, patience=patience)
     ms, st = solver.evaluate_pareto(best_orders)
     # ILS は semi-active decoding なので initial_machine_orders の stability は定義上 0。
     # baseline = (init_ms, 0.0)
     init_ms, init_st = solver.evaluate_pareto(solver.initial_machine_orders)
     baseline = [init_ms, init_st]
+    import evaluation as _ev
+    baseline_score = _ev.weighted_objective(
+        init_ms, init_st, weights,
+        {'min_eff': solver.min_eff, 'max_eff': solver.max_eff, 'max_stab': solver.max_stab})
     return {'makespan': ms, 'stability': st, 'convergence': conv_info,
-            'history': history, 'baseline': baseline}
+            'history': history, 'baseline': baseline,
+            'baseline_score': baseline_score}
+
+
+def run_memetic(weights, seed, ngen, norm_params=None, problem_name=None, scenario_name=None,
+                kick_mode='none', kick_prob=0.3, repair_strength=2,
+                track_population=False, ls_strategy='best'):
+    """Memetic GA (GA × N5 LS × kick) の実行"""
+    import sys as _sys
+    import os as _os
+    _sys.path.insert(0, _os.path.join(_os.path.dirname(__file__), '..'))
+    from memetic_scheduling import MemeticGASolver
+
+    jm_table, fixed_gantt, reschedule_gantt, reschedule_time = get_problem(
+        problem_name, scenario_name)
+    random.seed(seed)
+    solver = MemeticGASolver(
+        jm_table, fixed_gantt, reschedule_gantt, reschedule_time, weights,
+        pop_size=GA_POP_SIZE, kick_mode=kick_mode, kick_prob=kick_prob,
+        repair_strength=repair_strength, ls_strategy=ls_strategy)
+    _, ms, st, conv_info, history = solver.run(
+        ngen=ngen, verbose=False, norm_params=norm_params,
+        track_population=track_population)
+    # baseline: active decode 後の初期個体（GA と同方式）
+    # baseline_rsr: RSR 解（ILS の initial_machine_orders、安定性 ≈ 0）
+    baseline = [solver.baseline_active_ms, solver.baseline_active_st]
+    baseline_rsr = [solver.baseline_ms, solver.baseline_st]
+    return {'makespan': ms, 'stability': st, 'convergence': conv_info,
+            'history': history, 'baseline': baseline, 'baseline_rsr': baseline_rsr,
+            'baseline_score': solver.baseline_active_score}
 
 
 # ========== 可視化ユーティリティ ==========

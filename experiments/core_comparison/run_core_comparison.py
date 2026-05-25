@@ -61,30 +61,35 @@ METHODS = {
     'ga': {
         'kind': 'ga',
         'label': 'GA',
+        'short': 'ga',
     },
     'ils_insert': {
         'kind': 'ils',
         'perturb': 'insert',
         'repair_mode': False,
         'label': 'ILS-insert',
+        'short': 'insert',
     },
     'ils_insert_repair': {
         'kind': 'ils',
         'perturb': 'insert',
         'repair_mode': True,
         'label': 'ILS-insert+repair',
+        'short': 'insert_r',
     },
     'ils_swap': {
         'kind': 'ils',
         'perturb': 'swap',
         'repair_mode': False,
         'label': 'ILS-swap',
+        'short': 'swap',
     },
     'ils_swap_repair': {
         'kind': 'ils',
         'perturb': 'swap',
         'repair_mode': True,
         'label': 'ILS-swap+repair',
+        'short': 'swap_r',
     },
 }
 
@@ -395,7 +400,8 @@ def main():
                     if args.problems else DEFAULT_PROBLEM_SETS)
     weights_list = [[float(x) for x in w.split(',')] for w in args.weights]
 
-    out_dir = setup_output_dir(args.out_suffix, base_dir=os.path.dirname(__file__))
+    methods_tag = '_'.join(METHODS[mk]['short'] for mk in args.methods)
+    out_dir = setup_output_dir(f"{args.out_suffix}_{methods_tag}", base_dir=os.path.dirname(__file__))
     print(f"出力先: {out_dir}")
     print(f"問題セット: {problem_sets}")
     print(f"手法: {args.methods}")

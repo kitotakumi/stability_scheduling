@@ -164,63 +164,75 @@ def convert_to_2d_gantt(flattened_gantt, num_machines):
     return gantt_chart_2d
 
 
-# 終了時間が変わっている作業を認識する
-def check_disturbance(init_gantt, delayed_gantt):
-    # fixed_gantt = 既に始まっている作業  reschedule_gantt = リスケ対象の作業
-    fixed_gantt = [[] for _ in range(len(delayed_gantt))]
-    reschedule_gantt = []
-    # 終了時間が変わっている作業を特定
-    flag = False
-    for machine_index, (machine_init, machine_delayed) in enumerate(
-        zip(init_gantt, delayed_gantt)):  # fmt: skip
-        for task_init, task_delayed in zip(machine_init, machine_delayed):
-            # 作業終了時刻が15以上ずれていたら遅延として認識
-            if (task_init[1] - 15 > task_delayed[1]
-                or task_delayed[1] > task_init[1] + 15):  # fmt: skip
-                # different_task = [開始時刻, 終了時刻, ジョブ番号, 機械番号] = 遅延した作業
-                different_task = [task_delayed[0], task_delayed[1], task_delayed[2], machine_index]  # fmt: skip
-                reschedule_time = task_delayed[1] + 1
-                flag = True
-                break
-        if flag:
-            break
-    if flag:
-        sorted_gantt = convert_to_1d_gantt(delayed_gantt)
-        # 参照を切ってコピー
-        gantt_copy = [row[:] for row in sorted_gantt]
-        sorted_fixed_gantt = []
-        for i, row in enumerate(sorted_gantt):
-            st, et, job, machine = row
-            # 自分より前に同じjobを持つ要素があるかどうかをチェック
-            judge = True
-            for c in gantt_copy:
-                if c == row:
-                    break
-                if c[2] == job:
-                    judge = False
-            if judge == True:
-                # stがreschedule_time未満か確認
-                if st < reschedule_time:
-                    # diffの条件に該当しないか確認 (stがdiffのstより大きく、かつmachineが同じでないこと)
-                    if not (st > different_task[0] and machine == different_task[3]):
-                        # 条件を満たした場合、bに追加
-                        sorted_fixed_gantt.append(row)
-                        # その要素がdiffと等しくない限りa_copyから削除
-                        if row != different_task:
-                            gantt_copy.remove(row)
-        fixed_gantt = convert_to_2d_gantt(sorted_fixed_gantt, len(delayed_gantt))
-        # リスケジューリング対象の作業をreschedule_machineに格納
-        for machine_idx, machine in enumerate(delayed_gantt):
-            updated_machine = [task for task in machine if task not in fixed_gantt[machine_idx]]  # fmt: skip
-            reschedule_gantt.append(updated_machine)
+DELAY_DETECTION_THRESHOLD = 15  # この時刻以上ずれたら遅延として認識
 
-    if flag:
-        return (fixed_gantt, reschedule_gantt, reschedule_time,
-            "遅延作業を検知しました。リスケジューリングします",)  # fmt: skip
-    else:
-        reschedule_time = 0
-        return (fixed_gantt, reschedule_gantt, reschedule_time,
-            "リスケジューリングは行いません",)  # fmt: skip
+
+def check_disturbance(init_gantt, delayed_gantt):
+    """複数遅延に対応した外乱検知
+
+    挙動:
+      1. init_gantt と delayed_gantt を比較し、終了時刻が DELAY_DETECTION_THRESHOLD
+         以上ずれたタスク（= 遅延タスク）を全て検出する。
+      2. delayed_gantt 全体を right-shift して整合的なスケジュールを得る
+         （inject_delay は単一タスクの end しか書き換えないため delayed_gantt は
+          時刻不整合を含む。create_rsr_gantt を空の fixed_gantt 付きで使うことで
+          全タスクを左詰め直し、伝播遅延を含む正しい right-shift 結果を得る）。
+      3. right-shift 後の遅延タスクの end の最大値 + 1 を reschedule_time とする。
+         （= 観測された全遅延が finished する時刻の直後から再スケジュール開始）
+      4. right-shift 後のスケジュールを reschedule_time で分割:
+         - 開始時刻 < reschedule_time → fixed_gantt（既に開始済み or 完了）
+         - 開始時刻 >= reschedule_time → reschedule_gantt（最適化対象）
+
+    後方互換: 単一遅延の場合は latest_delay_end = その 1 個の end なので、
+              reschedule_time は従来実装と同じ値になる。
+
+    Returns:
+        (fixed_gantt, reschedule_gantt, reschedule_time, message)
+    """
+    n_machines = len(delayed_gantt)
+
+    # ========== 1. 全遅延検出 ==========
+    delayed_keys = set()  # (machine, job) のセット
+    for m_idx, (machine_init, machine_delayed) in enumerate(
+            zip(init_gantt, delayed_gantt)):
+        for task_init, task_delayed in zip(machine_init, machine_delayed):
+            if abs(task_delayed[1] - task_init[1]) > DELAY_DETECTION_THRESHOLD:
+                delayed_keys.add((m_idx, task_delayed[2]))
+
+    if not delayed_keys:
+        return ([[] for _ in range(n_machines)],
+                [list(m) for m in delayed_gantt],
+                0,
+                "リスケジューリングは行いません")
+
+    # ========== 2. delayed_gantt 全体を right-shift ==========
+    # 空の fixed_gantt で create_rsr_gantt を呼ぶと、全タスクが左詰めで
+    # 再配置される（PT は et - st で保存されるので延長 PT も維持される）
+    empty_fixed = [[] for _ in range(n_machines)]
+    rs_gantt, _ = create_rsr_gantt(empty_fixed, delayed_gantt)
+
+    # ========== 3. 遅延タスクの right-shift 後 end の最大値 + 1 ==========
+    latest_end = 0
+    for m_idx, machine in enumerate(rs_gantt):
+        for task in machine:
+            if (m_idx, task[2]) in delayed_keys:
+                latest_end = max(latest_end, task[1])
+    reschedule_time = latest_end + 1
+
+    # ========== 4. fixed / reschedule に分割 ==========
+    # rs_gantt（時刻整合済）を基準に判定する
+    fixed_gantt = [[] for _ in range(n_machines)]
+    reschedule_gantt = [[] for _ in range(n_machines)]
+    for m_idx, machine in enumerate(rs_gantt):
+        for task in machine:
+            if task[0] < reschedule_time:
+                fixed_gantt[m_idx].append(list(task))
+            else:
+                reschedule_gantt[m_idx].append(list(task))
+
+    msg = (f"遅延 {len(delayed_keys)} 箇所を検知。"
+           f"リスケジューリングします（リスケ開始 t={reschedule_time}）")
+    return fixed_gantt, reschedule_gantt, reschedule_time, msg
 
 
 def create_rsr_gantt(fixed_gantt, rescheduled_gantt):

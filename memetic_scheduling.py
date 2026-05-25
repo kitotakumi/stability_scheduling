@@ -1,0 +1,382 @@
+"""
+Memetic GA による再スケジューリング
+
+アーキテクチャ:
+  GA の交叉・突然変異 (広域探索) × N5 局所探索 (個体精緻化)
+  × repair キック (高安定性方向への引き戻し)
+  × path relinking キック (初期解方向への系統的探索)
+
+解表現の橋渡し:
+  GA 遺伝子 (GT法ジョブ列) ←→ ILS machine_orders (semi-active)
+  変換を通じて両者の探索インフラを共用する。
+"""
+
+import random
+import time
+
+import evaluation
+import gantt_chart_operation
+import genetic_operation
+from ga_scheduling import GASolver
+from ils_scheduling import ILSSolver
+
+
+class MemeticGASolver:
+    """Memetic GA: GA 広域探索 × N5 局所探索 × kick (repair / PR)
+
+    個体精緻化のキックモードは kick_mode で選択する。
+
+    Parameters
+    ----------
+    kick_mode : str
+        'none'   : LS のみ (キックなし)
+        'repair' : LS → repair → LS
+        'pr'     : LS → path relinking → LS
+    kick_prob : float
+        キックを各個体に確率的に適用する確率。
+    repair_strength : int
+        kick_mode='repair' 時の direct swap 回数の上限。適用ごとに [1, repair_strength] で一様サンプリングする。
+    """
+
+    def __init__(self, jm_table, fixed_gantt, reschedule_gantt, reschedule_time, weights,
+                 cx="hirano", mut="inversion", sel="Tournament",
+                 cxpb=0.85, mutpb=0.1, pop_size=50,
+                 kick_mode='repair', kick_prob=0.5,
+                 repair_strength=4, ls_strategy='best'):
+        self.jm_table = jm_table
+        self.fixed_gantt = fixed_gantt
+        self.reschedule_time = reschedule_time
+        self.weights = weights
+        self.pop_size = pop_size
+        self.cxpb = cxpb
+        self.mutpb = mutpb
+        self.kick_mode = kick_mode
+        self.kick_prob = kick_prob
+        self.repair_strength = repair_strength
+        self.ls_strategy = ls_strategy
+
+        # GA: crossover / mutation / selection の toolbox と original_individual を借りる
+        self._ga = GASolver(
+            jm_table, fixed_gantt, reschedule_time, weights,
+            cx, mut, sel, cxpb, mutpb, pop_size,
+        )
+        self.toolbox = self._ga.toolbox
+        self.original_individual = self._ga.original_individual
+
+        # ILS: N5 LS と repair のインフラを借りる
+        self._ils = ILSSolver(
+            jm_table, fixed_gantt, reschedule_gantt, reschedule_time, weights,
+            active_schedule=False, taillard_acceleration=True,
+        )
+
+    # ========== 解表現の変換 ==========
+
+    def _gene_to_machine_orders(self, ind):
+        """GA 遺伝子 → ILS machine_orders
+
+        GT法でデコードした full gantt から、固定済みタスクを除いた
+        reschedule 部分だけを ILS の machine_orders 形式に変換する。
+        """
+        full_gantt = gantt_chart_operation.get_gantt_reactive(
+            self.jm_table, ind, self.fixed_gantt, self.reschedule_time)
+
+        # fixed_gantt のタスクを (start, end, job_id) のセットで把握する
+        fixed_keys = {
+            (t[0], t[1], t[2])
+            for m_tasks in self.fixed_gantt
+            for t in m_tasks
+        }
+
+        reschedule_gantt = [
+            [t for t in m_tasks if (t[0], t[1], t[2]) not in fixed_keys]
+            for m_tasks in full_gantt
+        ]
+        return self._ils._gantt_to_machine_orders(reschedule_gantt)
+
+    def _machine_orders_to_gene(self, machine_orders):
+        """ILS machine_orders → GA 遺伝子
+
+        semi-active スケジュールを構築し、op_times から直接 reschedule_gantt を
+        組み立てて get_gene に渡す。None を返した場合は変換失敗。
+        """
+        op_times = self._ils.build_gantt(machine_orders)
+        if op_times is None:
+            return None
+
+        num_machines = self.jm_table.get_machine_count()
+        reschedule_gantt = [[] for _ in range(num_machines)]
+        for (job_id, _op_idx), (start, end, m_idx) in op_times.items():
+            reschedule_gantt[m_idx].append([start, end, job_id])
+        for m in reschedule_gantt:
+            m.sort(key=lambda x: x[0])
+
+        _, rsr_gantt = gantt_chart_operation.create_rsr_gantt(
+            self.fixed_gantt, reschedule_gantt)
+        return gantt_chart_operation.get_gene(rsr_gantt)
+
+    # ========== 個体精緻化 ==========
+
+    def _refine_individual(self, ind, norm_params):
+        """N5 LS (+ repair / PR キック) を適用し、遺伝子と fitness を更新する。
+
+        フロー: gene → LS → [repair → LS] → [PR → LS] → gene 書き戻し
+        repair / PR キック後の解は無条件採用し、質の判断を tournament selection に委ねる。
+        """
+        machine_orders = self._gene_to_machine_orders(ind)
+
+        # N5 local search
+        improved, _, _ = self._ils.local_search(machine_orders, strategy=self.ls_strategy)
+
+        # kick: repair または path relinking を確率的に適用し、結果は無条件採用
+        ind.kick_point = None
+        if self.kick_mode != 'none' and random.random() < self.kick_prob:
+            if self.kick_mode == 'repair':
+                kicked = self._ils.perturb(improved, 'repair', random.randint(1, self.repair_strength))
+            else:  # 'pr'
+                kicked, _ = self._ils.path_relinking(
+                    improved, self._ils.initial_machine_orders,
+                    ls_strategy=None)
+            kick_ms, kick_st = self._ils.evaluate_pareto(kicked)
+            ind.kick_point = (kick_ms, kick_st)
+            improved, _, _ = self._ils.local_search(kicked, strategy=self.ls_strategy)
+
+        # machine_orders → 遺伝子に書き戻す (DEAP Individual は array 型の場合があるため要素単位で代入)
+        new_gene = self._machine_orders_to_gene(improved)
+        if new_gene is not None and len(new_gene) == len(ind):
+            for i, v in enumerate(new_gene):
+                ind[i] = v
+
+        ms, st = self._ils.evaluate_pareto(improved)
+        score = evaluation.weighted_objective(ms, st, self.weights, norm_params)
+        ind.fitness.values = (score,)
+        ind.cached_ms = ms
+        ind.cached_st = st
+        return ms, st
+
+    # ========== メインループ ==========
+
+    def run(self, ngen=300, verbose=True, norm_params=None, track_population=False, patience=None):
+        """Memetic GA メインループ
+
+        GASolver.run と同じインタフェース。
+        各個体評価を _refine_individual (N5 LS + repair) に差し替えた版。
+
+        Returns
+        -------
+        best_individual, best_makespan, best_stability, convergence_info, history
+        """
+        from deap import tools
+
+        start_time = time.time()
+        eval_count = 0
+        history = []
+
+        global_best_score = float('inf')
+        best_gen = 0
+        best_cpu_time = 0.0
+        best_eval_count = 0
+        global_best_ms = None
+        global_best_st = None
+
+        def snapshot(gen, offspring):
+            entry = {
+                'cpu_time': time.time() - start_time,
+                'evaluations': eval_count,
+                'generation': gen,
+                'best_makespan': global_best_ms,
+                'best_stability': global_best_st,
+                'best_score': global_best_score,
+            }
+            if track_population:
+                entry['pop_points'] = [
+                    [ind.cached_ms, ind.cached_st] for ind in offspring
+                ]
+                entry['kick_points'] = [
+                    [ind.kick_point[0], ind.kick_point[1]]
+                    for ind in offspring
+                    if getattr(ind, 'kick_point', None) is not None
+                ]
+            history.append(entry)
+
+        def snapshot_intra(gen):
+            history.append({
+                'cpu_time': time.time() - start_time,
+                'evaluations': eval_count,
+                'generation': gen,
+                'best_makespan': global_best_ms,
+                'best_stability': global_best_st,
+                'best_score': global_best_score,
+            })
+
+        sub_every = max(1, self.pop_size // 4)
+
+        # 正規化パラメータ: GA と ILS で共有する
+        shared_norm = norm_params
+
+        for gen in range(ngen):
+            if gen == 0:
+                population = self.toolbox.population(n=self.pop_size)
+                population[0] = self.toolbox.original_individual()
+
+                # 正規化パラメータの推定 (未指定の場合)
+                if shared_norm is None:
+                    shared_norm = genetic_operation.estimate_normalization_params(
+                        self.jm_table, self.fixed_gantt, self.reschedule_time,
+                        population)
+                self._ils.set_normalization_params(shared_norm)
+
+                # RSR baseline: GA の __init__ で計算済みの値を再利用
+                self.baseline_ms = self._ga.baseline_rsr_ms
+                self.baseline_st = self._ga.baseline_rsr_st  # 0.0
+                self.baseline_score = evaluation.weighted_objective(
+                    self.baseline_ms, self.baseline_st, self.weights, shared_norm)
+
+                # active-decoded baseline: GA と同じ方式（N5 LS 適用前）
+                active_ms = genetic_operation.compute_makespan(
+                    self.jm_table, self.fixed_gantt, self.reschedule_time, population[0])
+                active_st = genetic_operation.compute_stability(
+                    self.jm_table, self.fixed_gantt, self.reschedule_time, population[0])
+                self.baseline_active_ms = active_ms
+                self.baseline_active_st = active_st
+                self.baseline_active_score = evaluation.weighted_objective(
+                    active_ms, active_st, self.weights, shared_norm)
+
+                for k_ind, ind in enumerate(population):
+                    self._refine_individual(ind, shared_norm)
+                    eval_count += 1
+                    if (k_ind + 1) % sub_every == 0 and (k_ind + 1) < len(population):
+                        partial = population[:k_ind + 1]
+                        cur_best = tools.selBest(partial, 1)[0]
+                        cur_score = cur_best.fitness.values[0]
+                        if cur_score < global_best_score:
+                            global_best_score = cur_score
+                            global_best_ms = cur_best.cached_ms
+                            global_best_st = cur_best.cached_st
+                            best_gen = 0
+                            best_cpu_time = time.time() - start_time
+                            best_eval_count = eval_count
+                        snapshot_intra(0)
+
+                offspring = population[:]
+                best = tools.selBest(offspring, 1)[0]
+                if best.fitness.values[0] < global_best_score:
+                    global_best_score = best.fitness.values[0]
+                    global_best_ms = best.cached_ms
+                    global_best_st = best.cached_st
+                    best_gen = 0
+                    best_cpu_time = time.time() - start_time
+                    best_eval_count = eval_count
+
+                snapshot(0, offspring)
+                continue
+
+            population = offspring[:]
+            offspring.clear()
+
+            for _ in range(self.pop_size // 2):
+                children = self.toolbox.select(population, 2, 4)
+                children = list(map(self.toolbox.clone, children))
+                if random.random() < self.cxpb:
+                    self.toolbox.crossover(children[0], children[1])
+                offspring.extend(children)
+
+            for mutant in offspring:
+                if random.random() < self.mutpb:
+                    self.toolbox.mutate(mutant)
+
+            for k_ind, ind in enumerate(offspring):
+                del ind.fitness.values
+                self._refine_individual(ind, shared_norm)
+                eval_count += 1
+                if (k_ind + 1) % sub_every == 0 and (k_ind + 1) < len(offspring):
+                    partial = offspring[:k_ind + 1]
+                    cur_best = tools.selBest(partial, 1)[0]
+                    cur_score = cur_best.fitness.values[0]
+                    if cur_score < global_best_score:
+                        global_best_score = cur_score
+                        global_best_ms = cur_best.cached_ms
+                        global_best_st = cur_best.cached_st
+                        best_gen = gen
+                        best_cpu_time = time.time() - start_time
+                        best_eval_count = eval_count
+                    snapshot_intra(gen)
+
+            # エリート保存: 前世代最良をそのまま競合させる
+            best_prev = tools.selBest(population, 1)[0]
+            offspring[0] = tools.selBest(offspring + [best_prev], 1)[0]
+
+            best = tools.selBest(offspring, 1)[0]
+            if best.fitness.values[0] < global_best_score:
+                global_best_score = best.fitness.values[0]
+                global_best_ms = best.cached_ms
+                global_best_st = best.cached_st
+                best_gen = gen
+                best_cpu_time = time.time() - start_time
+                best_eval_count = eval_count
+
+            snapshot(gen, offspring)
+
+            if verbose and (gen % 50 == 0 or gen == ngen - 1):
+                elapsed = time.time() - start_time
+                print(f"  Gen {gen}: Makespan={global_best_ms}, "
+                      f"Stability={global_best_st:.2f} ({elapsed:.1f}s)")
+
+            if patience is not None and gen - best_gen >= patience:
+                if verbose:
+                    print(f"  早期終了: {patience}世代改善なし (gen={gen})")
+                break
+
+        elapsed = time.time() - start_time
+        best = tools.selBest(offspring, 1)[0]
+        ms, st = best.cached_ms, best.cached_st
+        if verbose:
+            print(f"\nMemetic GA 完了: {gen + 1}世代/{ngen}, {elapsed:.2f}秒")
+
+        convergence_info = {
+            'cpu_time': best_cpu_time,
+            'evaluations': best_eval_count,
+            'generation': best_gen,
+            'total_cpu_time': elapsed,
+            'total_evaluations': eval_count,
+            'total_generations': gen + 1,
+        }
+        if verbose:
+            print(f"最良解到達: 世代={best_gen}, 評価回数={best_eval_count}, "
+                  f"CPU時間={best_cpu_time:.2f}秒")
+
+        return best, ms, st, convergence_info, history
+
+
+if __name__ == "__main__":
+    import sys
+    import job_shop_scheduling
+
+    problem_name = "mt10"
+    scenario_name = "mt10_delay60"
+    weights = [0.5, 0.5]
+
+    jm_table = job_shop_scheduling.get_jm_table(problem_name, scenario_name)
+    init_gantt = jm_table.initial_gantt()
+    delayed_gantt = jm_table.delayed_gantt()
+
+    fixed_gantt, reschedule_gantt, reschedule_time, msg = \
+        gantt_chart_operation.check_disturbance(init_gantt, delayed_gantt)
+
+    if reschedule_time == 0:
+        print("リスケジューリング不要")
+        sys.exit()
+
+    print(f"問題: {problem_name} / シナリオ: {scenario_name}")
+    print(msg)
+    print(f"重みベクトル: 効率性={weights[0]}, 安定性={weights[1]}")
+
+    solver = MemeticGASolver(
+        jm_table, fixed_gantt, reschedule_gantt, reschedule_time, weights,
+        kick_mode='repair', kick_prob=0.3, repair_strength=4,
+    )
+
+    best_ind, makespan, stability, conv_info, history = solver.run(ngen=100)
+
+    print(f"\n===== 最終結果 =====")
+    print(f"Makespan:  {makespan}")
+    print(f"Stability: {stability:.4f}")

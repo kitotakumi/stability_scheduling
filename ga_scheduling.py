@@ -36,6 +36,9 @@ class GASolver:
         rsr_gantt, rescheduled_rsr_gantt = gantt_chart_operation.create_rsr_gantt(
             fixed_gantt, reschedule_gantt)
         self.original_individual = gantt_chart_operation.get_gene(rescheduled_rsr_gantt)
+        # RSR baseline: 右シフト補修解（active decode 前）。安定性は定義上 0。
+        self.baseline_rsr_ms = evaluation.compute_makespan_from_gantt(rsr_gantt)
+        self.baseline_rsr_st = 0.0
 
         # DEAPツールボックスの初期化
         self.toolbox = genetic_operation.initialize(
@@ -67,7 +70,7 @@ class GASolver:
         ind.cached_st = st
         return ms, st
 
-    def run(self, ngen=300, verbose=True, norm_params=None, track_population=False):
+    def run(self, ngen=300, verbose=True, norm_params=None, track_population=False, patience=None):
         """GAメインループ
 
         Parameters:
@@ -113,8 +116,23 @@ class GASolver:
                 ]
             history.append(entry)
 
+        def snapshot_intra(gen):
+            """世代内のサブ snapshot. pop_points は持たず時刻と best のみ.
+            anytime curve を世代末だけでなく途中時刻でも描画するため."""
+            history.append({
+                'cpu_time': time.time() - start_time,
+                'evaluations': eval_count,
+                'generation': gen,
+                'best_makespan': global_best_ms,
+                'best_stability': global_best_st,
+                'best_score': global_best_score,
+            })
+
+        sub_every = max(1, self.pop_size // 4)
+
         self.baseline_ms = None
         self.baseline_st = None
+        self.baseline_score = None
 
         for gen in range(ngen):
             if gen == 0:
@@ -124,14 +142,27 @@ class GASolver:
                     norm_params = genetic_operation.estimate_normalization_params(
                         self.jm_table, self.fixed_gantt, self.reschedule_time,
                         population)
-                for ind in population:
+                for k_ind, ind in enumerate(population):
                     self._evaluate_individual(ind, norm_params)
                     eval_count += 1
+                    if (k_ind + 1) % sub_every == 0 and (k_ind + 1) < len(population):
+                        partial = population[:k_ind + 1]
+                        cur_best = tools.selBest(partial, 1)[0]
+                        cur_score = cur_best.fitness.values[0]
+                        if cur_score < global_best_score:
+                            global_best_score = cur_score
+                            global_best_ms = cur_best.cached_ms
+                            global_best_st = cur_best.cached_st
+                            best_gen = 0
+                            best_cpu_time = time.time() - start_time
+                            best_eval_count = eval_count
+                        snapshot_intra(0)
                 # original_individual の評価値を baseline として記録。
                 # active schedule デコードで stab が厳密な 0 にならないため、
                 # 後段の分析で「初期解相当の点」を弱 dominance で検知するのに使う。
                 self.baseline_ms = population[0].cached_ms
                 self.baseline_st = population[0].cached_st
+                self.baseline_score = float(population[0].fitness.values[0])
                 offspring = population[:]
 
                 best = tools.selBest(offspring, 1)[0]
@@ -162,10 +193,22 @@ class GASolver:
                 if random.random() < self.mutpb:
                     self.toolbox.mutate(mutant)
 
-            for ind in offspring:
+            for k_ind, ind in enumerate(offspring):
                 del ind.fitness.values
                 self._evaluate_individual(ind, norm_params)
                 eval_count += 1
+                if (k_ind + 1) % sub_every == 0 and (k_ind + 1) < len(offspring):
+                    partial = offspring[:k_ind + 1]
+                    cur_best = tools.selBest(partial, 1)[0]
+                    cur_score = cur_best.fitness.values[0]
+                    if cur_score < global_best_score:
+                        global_best_score = cur_score
+                        global_best_ms = cur_best.cached_ms
+                        global_best_st = cur_best.cached_st
+                        best_gen = gen
+                        best_cpu_time = time.time() - start_time
+                        best_eval_count = eval_count
+                    snapshot_intra(gen)
 
             best_prev = tools.selBest(population, 1)[0]
             self._evaluate_individual(best_prev, norm_params)
@@ -189,11 +232,16 @@ class GASolver:
                 elapsed = time.time() - start_time
                 print(f"  Gen {gen}: Makespan={global_best_ms}, Stability={global_best_st:.2f} ({elapsed:.1f}s)")
 
+            if patience is not None and gen - best_gen >= patience:
+                if verbose:
+                    print(f"  早期終了: {patience}世代改善なし (gen={gen})")
+                break
+
         elapsed = time.time() - start_time
         best = tools.selBest(offspring, 1)[0]
         ms, st = best.cached_ms, best.cached_st
         if verbose:
-            print(f"\nGA完了: {ngen}世代, {elapsed:.2f}秒")
+            print(f"\nGA完了: {gen + 1}世代/{ngen}, {elapsed:.2f}秒")
 
         convergence_info = {
             'cpu_time': best_cpu_time,
@@ -201,7 +249,7 @@ class GASolver:
             'generation': best_gen,
             'total_cpu_time': elapsed,
             'total_evaluations': eval_count,
-            'total_generations': ngen,
+            'total_generations': gen + 1,
         }
         if verbose:
             print(f"最良解到達: 世代={best_gen}, 評価回数={best_eval_count}, "

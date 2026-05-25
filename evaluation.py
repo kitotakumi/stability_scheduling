@@ -103,10 +103,16 @@ def _rank_diff_weighted(init_jobs, current_jobs):
 
 
 def _extract_changed_gantt(gantt, fixed_gantt):
-    """ガントチャートから確定済み部分を除外"""
+    """ガントチャートから確定済み部分を除外する。
+
+    標準 JSSP では (machine, job) が一意なのでジョブ番号で照合する。
+    タプル全体の時刻一致比較は、check_disturbance が right-shift 後の時刻で
+    fixed_gantt を返すようになったため一致しないケースがあり使えない。
+    """
     changed = []
     for gantt_machine, fixed_machine in zip(gantt, fixed_gantt):
-        changed_ops = [op for op in gantt_machine if op not in fixed_machine]
+        fixed_jobs = {op[2] for op in fixed_machine}
+        changed_ops = [op for op in gantt_machine if op[2] not in fixed_jobs]
         changed.append(changed_ops)
     return changed
 

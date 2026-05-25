@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 820 450" role="img">
+<title>再スケジューリングにおけるGAとILSの探索挙動の対比</title>
+<desc>GAは交叉により広域探索する一方、ILSは初期スケジュールの近傍を集中的に探索する</desc>
+<style>
+  .panel-bg { fill: #f8f7f4; }
+  .cn { stroke: rgba(0,0,0,0.04); stroke-width: 9; }
+  .cs { stroke: rgba(0,0,0,0.09); stroke-width: 9; }
+  .panel-border { fill: none; stroke: rgba(0,0,0,0.08); stroke-width: 0.5; }
+  .ptitle { font-family: sans-serif; font-size: 14px; font-weight: 500; fill: #2c2c2a; }
+  .lbl { font-family: sans-serif; font-size: 11px; fill: #73726c; }
+  .legend-text { font-family: sans-serif; font-size: 11px; fill: #73726c; }
+  .xline { stroke: rgba(127,119,221,0.22); stroke-width: 1; }
+  .kid { fill: rgba(127,119,221,0.75); }
+  @media (prefers-color-scheme: dark) {
+    .panel-bg { fill: #1a1a18; }
+    .cn { stroke: rgba(255,255,255,0.04); }
+    .cs { stroke: rgba(255,255,255,0.09); }
+    .panel-border { stroke: rgba(255,255,255,0.1); }
+    .ptitle { fill: #c2c0b6; }
+    .lbl { fill: #9c9a92; }
+    .legend-text { fill: #9c9a92; }
+    .xline { stroke: rgba(175,169,236,0.22); }
+    .kid { fill: rgba(175,169,236,0.75); }
+  }
+</style>
+
+<text x="200.00" y="20" class="ptitle" text-anchor="middle">GA（遺伝的アルゴリズム）</text>
+<text x="620.00" y="20" class="ptitle" text-anchor="middle">ILS（反復局所探索）</text>
+
+<g transform="translate(0, 30)">
+  <rect class="panel-bg" x="0" y="0" width="400" height="360" rx="12"/>
+  <rect class="panel-border" x="0" y="0" width="400" height="360" rx="12"/>
+  <clipPath id="clip-ga"><rect x="0" y="0" width="400" height="360" rx="12"/></clipPath>
+  <g clip-path="url(#clip-ga)"><circle cx="200.00" cy="180.00" r="26.67" fill="none" class="cn"/><circle cx="200.00" cy="180.00" r="50.00" fill="none" class="cn"/><circle cx="200.00" cy="180.00" r="73.33" fill="none" class="cs"/><circle cx="200.00" cy="180.00" r="96.67" fill="none" class="cn"/><circle cx="200.00" cy="180.00" r="120.00" fill="none" class="cn"/><circle cx="200.00" cy="180.00" r="143.33" fill="none" class="cs"/><circle cx="200.00" cy="180.00" r="166.67" fill="none" class="cn"/><circle cx="200.00" cy="180.00" r="190.00" fill="none" class="cn"/><circle cx="200.00" cy="180.00" r="213.33" fill="none" class="cs"/><circle cx="200.00" cy="180.00" r="236.67" fill="none" class="cn"/><circle cx="200.00" cy="180.00" r="260.00" fill="none" class="cn"/><circle cx="200.00" cy="180.00" r="283.33" fill="none" class="cs"/><circle cx="200.00" cy="180.00" r="306.67" fill="none" class="cn"/><circle cx="200.00" cy="180.00" r="330.00" fill="none" class="cn"/><circle cx="200.00" cy="180.00" r="353.33" fill="none" class="cs"/><circle cx="200.00" cy="180.00" r="113.33" fill="none" stroke="rgba(226,75,74,0.4)" stroke-width="1.5" stroke-dasharray="6 5"/><circle cx="200.00" cy="180.00" r="8" fill="#E24B4A"/><circle cx="146.67" cy="120.00" r="7" fill="#1D9E75"/><circle cx="146.67" cy="120.00" r="12" fill="none" stroke="#1D9E75" stroke-width="2"/><text x="200.00" y="204.00" class="lbl" text-anchor="middle">初期スケジュール</text><text x="130.67" y="114.00" class="lbl" text-anchor="end">最適解</text><line x1="122.17" y1="256.42" x2="130.50" y2="246.85" class="xline"/><line x1="150.87" y1="240.21" x2="130.50" y2="246.85" class="xline"/><line x1="376.74" y1="143.19" x2="323.21" y2="73.65" class="xline"/><line x1="256.88" y1="6.55" x2="323.21" y2="73.65" class="xline"/><line x1="292.58" y1="312.46" x2="287.58" y2="204.09" class="xline"/><line x1="301.15" y1="180.28" x2="287.58" y2="204.09" class="xline"/><line x1="29.23" y1="114.25" x2="36.34" y2="80.63" class="xline"/><line x1="38.56" y1="70.00" x2="36.34" y2="80.63" class="xline"/><line x1="323.21" y1="73.65" x2="369.45" y2="122.25" class="xline"/><line x1="376.74" y1="143.19" x2="369.45" y2="122.25" class="xline"/><line x1="292.58" y1="312.46" x2="207.27" y2="250.54" class="xline"/><line x1="29.23" y1="114.25" x2="207.27" y2="250.54" class="xline"/><line x1="38.56" y1="70.00" x2="108.86" y2="215.45" class="xline"/><line x1="122.17" y1="256.42" x2="108.86" y2="215.45" class="xline"/><line x1="287.58" y1="204.09" x2="295.52" y2="195.26" class="xline"/><line x1="301.15" y1="180.28" x2="295.52" y2="195.26" class="xline"/><circle cx="301.15" cy="180.28" r="5" fill="rgba(239,159,39,0.55)"/><circle cx="38.56" cy="70.00" r="5" fill="rgba(239,159,39,0.55)"/><circle cx="29.23" cy="114.25" r="5" fill="rgba(239,159,39,0.55)"/><circle cx="376.74" cy="143.19" r="5" fill="rgba(239,159,39,0.55)"/><circle cx="256.88" cy="6.55" r="5" fill="rgba(239,159,39,0.55)"/><circle cx="292.58" cy="312.46" r="5" fill="rgba(239,159,39,0.55)"/><circle cx="150.87" cy="240.21" r="5" fill="rgba(239,159,39,0.55)"/><circle cx="122.17" cy="256.42" r="5" fill="rgba(239,159,39,0.55)"/><circle cx="130.50" cy="246.85" r="5" class="kid"/><circle cx="323.21" cy="73.65" r="5" class="kid"/><circle cx="287.58" cy="204.09" r="5" class="kid"/><circle cx="36.34" cy="80.63" r="5" class="kid"/><circle cx="369.45" cy="122.25" r="5" class="kid"/><circle cx="207.27" cy="250.54" r="5" class="kid"/><circle cx="108.86" cy="215.45" r="5" class="kid"/><circle cx="295.52" cy="195.26" r="5" class="kid"/></g>
+</g>
+
+<g transform="translate(420, 30)">
+  <rect class="panel-bg" x="0" y="0" width="400" height="360" rx="12"/>
+  <rect class="panel-border" x="0" y="0" width="400" height="360" rx="12"/>
+  <clipPath id="clip-ils"><rect x="0" y="0" width="400" height="360" rx="12"/></clipPath>
+  <g clip-path="url(#clip-ils)"><circle cx="200.00" cy="180.00" r="26.67" fill="none" class="cn"/><circle cx="200.00" cy="180.00" r="50.00" fill="none" class="cn"/><circle cx="200.00" cy="180.00" r="73.33" fill="none" class="cs"/><circle cx="200.00" cy="180.00" r="96.67" fill="none" class="cn"/><circle cx="200.00" cy="180.00" r="120.00" fill="none" class="cn"/><circle cx="200.00" cy="180.00" r="143.33" fill="none" class="cs"/><circle cx="200.00" cy="180.00" r="166.67" fill="none" class="cn"/><circle cx="200.00" cy="180.00" r="190.00" fill="none" class="cn"/><circle cx="200.00" cy="180.00" r="213.33" fill="none" class="cs"/><circle cx="200.00" cy="180.00" r="236.67" fill="none" class="cn"/><circle cx="200.00" cy="180.00" r="260.00" fill="none" class="cn"/><circle cx="200.00" cy="180.00" r="283.33" fill="none" class="cs"/><circle cx="200.00" cy="180.00" r="306.67" fill="none" class="cn"/><circle cx="200.00" cy="180.00" r="330.00" fill="none" class="cn"/><circle cx="200.00" cy="180.00" r="353.33" fill="none" class="cs"/><circle cx="200.00" cy="180.00" r="113.33" fill="none" stroke="rgba(226,75,74,0.4)" stroke-width="1.5" stroke-dasharray="6 5"/><circle cx="200.00" cy="180.00" r="8" fill="#E24B4A"/><circle cx="146.67" cy="120.00" r="7" fill="#1D9E75"/><circle cx="146.67" cy="120.00" r="12" fill="none" stroke="#1D9E75" stroke-width="2"/><text x="200.00" y="204.00" class="lbl" text-anchor="middle">初期スケジュール</text><text x="130.67" y="114.00" class="lbl" text-anchor="end">最適解</text><polyline points="200.00,180.00 218.22,177.39 222.29,162.40 233.52,147.32 244.73,126.23 256.11,123.01 231.36,122.80 209.92,112.68 186.29,112.24" fill="none" stroke="rgba(239,159,39,0.3)" stroke-width="1.3"/><circle cx="218.22" cy="177.39" r="4.5" fill="rgba(239,159,39,0.55)"/><circle cx="222.29" cy="162.40" r="4.5" fill="rgba(239,159,39,0.55)"/><circle cx="233.52" cy="147.32" r="4.5" fill="rgba(239,159,39,0.55)"/><circle cx="244.73" cy="126.23" r="4.5" fill="rgba(239,159,39,0.55)"/><circle cx="256.11" cy="123.01" r="4.5" fill="rgba(239,159,39,0.55)"/><circle cx="231.36" cy="122.80" r="4.5" fill="rgba(239,159,39,0.55)"/><circle cx="209.92" cy="112.68" r="4.5" fill="rgba(239,159,39,0.55)"/><circle cx="186.29" cy="112.24" r="6" fill="#EF9F27"/></g>
+</g>
+
+<g transform="translate(410.00, 410.00)">
+  <g transform="translate(-380, 0)">
+    <circle cx="4" cy="0" r="4" fill="#E24B4A"/>
+    <text x="14" y="3" class="legend-text">初期スケジュール（局所最適解）</text>
+  </g>
+  <g transform="translate(-180, 0)">
+    <circle cx="4" cy="0" r="4" fill="#1D9E75"/>
+    <text x="14" y="3" class="legend-text">最適解</text>
+  </g>
+  <g transform="translate(-100, 0)">
+    <circle cx="4" cy="0" r="4" fill="rgba(239,159,39,0.85)"/>
+    <text x="14" y="3" class="legend-text">親個体</text>
+  </g>
+  <g transform="translate(-20, 0)">
+    <circle cx="4" cy="0" r="4" class="kid"/>
+    <text x="14" y="3" class="legend-text">交叉で生成された子個体</text>
+  </g>
+  <g transform="translate(180, 0)">
+    <line x1="0" y1="0" x2="14" y2="0" stroke="rgba(226,75,74,0.5)" stroke-width="1.5" stroke-dasharray="3 2"/>
+    <text x="20" y="3" class="legend-text">安定性の許容範囲</text>
+  </g>
+</g>
+</svg>
