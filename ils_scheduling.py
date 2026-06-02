@@ -629,10 +629,9 @@ class ILSSolver:
                               if self._score_lower_bound(est_ms, n) <= current_score]
 
                 if not candidates:
-                    # 下界でも改善見込みなし → 全近傍を通常評価にフォールバック
-                    neighbors = [n for n, _ in neighbors_with_ms]
-                else:
-                    neighbors = candidates
+                    # 全近傍の score_lb > current_score → actual_score も全て悪い → 局所最適
+                    break
+                neighbors = candidates
 
                 if strategy == 'best':
                     best_neighbor = None
@@ -781,7 +780,8 @@ class ILSSolver:
         return count
 
     def path_relinking(self, S_cur, S_ref, L_max=None,
-                       ls_strategy=None, trace=False):
+                       ls_strategy=None, trace=False,
+                       return_intermediate=False):
         """Direct-swap型 Path Relinking
 
         S_cur (initiating solution) から S_ref (guiding solution) へ向かう経路を
@@ -798,9 +798,23 @@ class ILSSolver:
                 'best': 経路完了後に best-improvement LS
                 'first': 経路完了後に first-improvement LS
             trace: Trueなら各ステップの詳細情報を返す
+            return_intermediate: False (デフォルト, 現行動作) の場合、S_best
+                （始点 S_cur を初期値とし、それより厳密に良い解が出た時だけ更新）を返す。
+                経路が単調悪化だと始点をそのまま返すため、キックとしては no-op になる。
+                True の場合、始点・終点を除外した経路上最良の中間解 S_best_intermediate
+                を返す（始点より悪くても返す）。キックとして PR を使い、確実に解を
+                入れ替えたい場合に指定する。中間解が存在しなければ S_best にフォールバック。
+                ※ ls_strategy 併用時はそちらが優先され、この分岐は無効。
+                ※ 始点の扱いは呼び出し元で異なる（2026-06-02 実験で確定）:
+                  - ILS (run): True。単一軌道では始点 current が強い局所最適で、初期解への
+                    経路が単調悪化するため、始点を返すと no-op になる。中間解を返して
+                    確実に動かす必要がある。
+                  - memetic: False (デフォルト)。集団が多様で個体ごとに改善中間解が存在する
+                    ことが多く、その場合 S_best がその中間解になる。始点除外は不要で、
+                    むしろ遠い中間解への LS で大幅に遅くなるため使わない。
 
         Returns:
-            S_best: 経路上で見つかった最良解
+            S_best: 経路上で見つかった最良解（return_intermediate=True なら最良中間解）
             F_best: そのスコア
             trace_log: (trace=Trueのみ) ステップごとの詳細情報リスト
         """
@@ -885,9 +899,11 @@ class ILSSolver:
 
             S = best_cand
             cand_ms, cand_st = self.evaluate_pareto(S)
+            reached_ref = all(S.get(m) == S_ref.get(m) for m in S_ref)
 
-            # 経路上の最もマシな中間解を追跡（出発点より悪くても記録）
-            if best_cand_score < best_intermediate_score:
+            # 経路上の最もマシな中間解を追跡（始点・終点を除外、出発点より悪くても記録）
+            # 始点はループ外なので自然に除外、終点は reached_ref で除外する。
+            if not reached_ref and best_cand_score < best_intermediate_score:
                 best_intermediate_score = best_cand_score
                 S_best_intermediate = self._copy_orders(S)
 
@@ -916,11 +932,7 @@ class ILSSolver:
             if L_max is not None and step >= L_max:
                 break
 
-            all_match = all(
-                S.get(m) == S_ref.get(m)
-                for m in S_ref
-            )
-            if all_match:
+            if reached_ref:
                 break
 
         # PR+LS: 経路上の最もマシな中間解にLSをかけてMS回復を試みる
@@ -931,19 +943,25 @@ class ILSSolver:
                 S_best = self._copy_orders(ls_result)
                 F_best = ls_score
 
+        # return_intermediate: 始点ではなく経路上最良の中間解を返す（ls_strategy 未使用時のみ）
+        ret_S, ret_F = S_best, F_best
+        if (return_intermediate and ls_strategy is None
+                and S_best_intermediate is not None):
+            ret_S, ret_F = S_best_intermediate, best_intermediate_score
+
         if trace:
-            best_ms, best_st = self.evaluate_pareto(S_best)
+            best_ms, best_st = self.evaluate_pareto(ret_S)
             trace_log.append({
                 'step': step, 'type': 'result',
                 'best_makespan': best_ms, 'best_stability': best_st,
-                'best_score': F_best,
+                'best_score': ret_F,
                 'total_steps': step,
                 'initial_diffs': initial_diffs,
-                'final_diffs': self._count_diffs(S_best, S_ref),
+                'final_diffs': self._count_diffs(ret_S, S_ref),
             })
-            return S_best, F_best, trace_log
+            return ret_S, ret_F, trace_log
 
-        return S_best, F_best
+        return ret_S, ret_F
 
     # ========== 正規化パラメータ推定 ==========
 
@@ -1055,6 +1073,10 @@ class ILSSolver:
             repair_trigger: repair キックを発動する無改善反復数
             repair_strength: repair 1回あたりの direct swap 回数
 
+        ※ PR/repair キック後の current 更新方針は実験により確定済み（下記キック処理を参照）:
+          単一軌道の ILS では、キック後に current を best に戻す (return-to-best) のが正解。
+          足場を漂流させると初期解方向へドリフトして探索を浪費し悪化する（2026-06-02 実証）。
+
         Returns:
             best, best_score, convergence_info, history
             history: 反復ごとの記録リスト [{cpu_time, evaluations, iteration,
@@ -1115,7 +1137,17 @@ class ILSSolver:
                 current_method = 'path_relink'
                 iter_strength = None
                 no_improve_count = 0
-                perturbed, _ = self.path_relinking(current, self.initial_machine_orders)
+                # ILS では return_intermediate=True で「始点・終点を除外した経路上最良の
+                # 中間解」を返させる。単一軌道の探索では current は強い局所最適なので、
+                # デフォルト (始点 S_best を返す) だと初期解方向の経路が単調悪化して始点を
+                # そのまま返す＝解が入れ替わらない no-op になってしまう。中間解を返すことで
+                # PR を確実に「別解への一手」として機能させる。
+                # （memetic は集団が多様なためデフォルトのままで機能する。memetic_scheduling
+                #   側のコメント参照。なお ILS では修正しても baseline 超えはせず、PR-toward-
+                #   initial は単一軌道では構造的に限定的、というのが 2026-06-02 の結論。）
+                perturbed, _ = self.path_relinking(
+                    current, self.initial_machine_orders,
+                    return_intermediate=True)
                 kick_ms, kick_st = self.evaluate_pareto(perturbed)
                 if verbose:
                     print(f"  Iter {i+1}: PR発動")
@@ -1158,12 +1190,18 @@ class ILSSolver:
                     print(f"  Iter {i+1}: 改善! Makespan={ls_ms}, Stability={ls_st:.2f}, "
                           f"Score={best_score:.4f} (method={current_method}, strength={strength})")
             elif current_method in ('path_relink', 'repair'):
-                # (2) PR / repair 後は無条件 current 受理
-                current = self._copy_orders(ls_result)
-                accepted = True
+                # (2) PR / repair が best を改善しなかった場合は current を best に戻す
+                # (return-to-best)。キックは「best からの一手探索プローブ」として扱い、
+                # 改善できなければ足場を best に保つ。これにより current が初期解方向へ
+                # 漂流して探索を浪費するのを防ぐ。
+                # ※ 足場を漂流させる方式 (current=ls_result) も実装・比較したが、PR が
+                #    実際に解を動かすようになると baseline より有意に悪化したため不採用
+                #    (2026-06-02 実証)。
+                current = self._copy_orders(best)
+                accepted = False
                 strength = initial_strength
                 if verbose:
-                    print(f"  Iter {i+1}: {current_method} 受理 "
+                    print(f"  Iter {i+1}: {current_method} RTB "
                           f"Makespan={ls_ms}, Stability={ls_st:.2f}, "
                           f"Score={ls_score:.4f} (best={best_score:.4f})")
             else:

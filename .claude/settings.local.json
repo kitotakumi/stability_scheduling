@@ -1,6 +1,11 @@
 {
   "permissions": {
     "allow": [
+      "PowerShell",
+      "Bash",
+      "Edit",
+      "Read",
+      "Write",
       "Bash(claude --version:*)",
       "Bash(npm install:*)",
       "Bash(claude extension:*)",
@@ -74,7 +79,23 @@
       "Bash(python experiments/ga_vs_ils/run_ga_vs_ils_multi_problem.py)",
       "Bash(python experiments/ils_analysis/run_pr_experiment.py --trials 5 --weights \"0.95,0.05\" \"0.8,0.2\")",
       "Bash(python experiments/ils_analysis/run_pr_diagnosis.py)",
-      "Bash(python experiments/ils_analysis/run_pr_ls_diagnosis.py)"
+      "Bash(python experiments/ils_analysis/run_pr_ls_diagnosis.py)",
+      "Bash(grep -E \"\\\\.\\(md|txt|py\\)$\")",
+      "Bash(find \"c:\\\\Users\\\\takum\\\\Documents\\\\研究\\\\program\\\\project01\\\\SourceCode\\\\experiments\\\\core_comparison\\\\\" -type f -name \"*.py\" | head -20)",
+      "Bash(python -m py_compile experiments/core_comparison_v2/run_v2.py)",
+      "Bash(python -m py_compile experiments/core_comparison_v2/analyze_v2.py)",
+      "Bash(python -u experiments/core_comparison_v2/analyze_v2.py --input-dir experiments/core_comparison_v2/results/pilot_v2)",
+      "Bash(find \"c:/Users/takum/Documents/研究/program/project01/SourceCode/experiments/core_comparison_v2/results/pilot_v2\" \\\\\\( -name \"ils_repair__*.json\" -o -name \"ils_pr__*.json\" \\\\\\) -delete)",
+      "Bash(python -u experiments/core_comparison_v2/analyze_v2.py --input-dir experiments/core_comparison_v2/results/pilot_v2 --n-jobs 4)",
+      "Bash(python3 -c \"import sys; data=sys.stdin.buffer.read\\(\\).decode\\('utf-8','ignore'\\); [print\\(l\\) for l in data.splitlines\\(\\) if any\\(k in l for k in ['la21','Anytime','w08','Error','repr','error','arrow','->']\\)]\")",
+      "Bash(python3 -c ' *)",
+      "Bash(iconv -f UTF-8 -t UTF-8//IGNORE \"C:\\\\Users\\\\takum\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-takum-Documents----program-project01-SourceCode\\\\2bb1920e-9174-4474-a0a6-8dd8cac29310\\\\tasks\\\\bx02iypr2.output\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('experiments/core_comparison_v2/analyze_v2.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK'\\)\")",
+      "Bash(python -W error -c \"import ast; ast.parse\\(open\\('experiments/core_comparison_v2/analyze_v2.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK'\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(python3 -c \"import json; d=json.load\\(open\\('c:/Users/takum/Documents/研究/program/project01/SourceCode/experiments/core_comparison_v2/results/pilot_v2/la21_la21_delay147/raw/ga__w00_10__t000.json'\\)\\); print\\(list\\(d.keys\\(\\)\\)\\)\")",
+      "Bash(python -c \"import json; d=json.load\\(open\\('c:/Users/takum/Documents/研究/program/project01/SourceCode/experiments/core_comparison_v2/results/pilot_v2/la21_la21_delay147/raw/ga__w00_10__t000.json'\\)\\); print\\(list\\(d.keys\\(\\)\\)\\)\")",
+      "Bash(python -c \"import json; d=json.load\\(open\\('c:/Users/takum/Documents/研究/program/project01/SourceCode/experiments/core_comparison_v2/results/pilot_v2/config.json'\\)\\); print\\(json.dumps\\(d, indent=2, ensure_ascii=False\\)\\)\")"
     ]
   }
 }

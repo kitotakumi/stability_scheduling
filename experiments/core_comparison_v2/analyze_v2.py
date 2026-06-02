@@ -318,9 +318,10 @@ def compute_p33_p67(method_data_by_method_weight_trial, baselines_by_method):
         return None
     all_stab = np.array(all_stab)
     p33 = float(np.percentile(all_stab, 33))
+    p50 = float(np.percentile(all_stab, 50))
     p67 = float(np.percentile(all_stab, 67))
     stab_max = float(all_stab.max())
-    return {'P33': p33, 'P67': p67, 'stab_max': stab_max}
+    return {'P33': p33, 'P50': p50, 'P67': p67, 'stab_max': stab_max}
 
 
 # ========== 統計検定 ==========
@@ -727,7 +728,7 @@ def _worker_union_hv_curve(args):
 # ========== Anytime テキスト出力 ==========
 
 # 前半密・後半疎な相対時刻チェックポイント (詳細テキスト用)
-_ANYTIME_FRACS = [0.005, 0.01, 0.02, 0.03, 0.05, 0.07, 0.10, 0.15, 0.20, 0.25, 0.30, 0.40, 0.50, 0.70, 1.00]
+_ANYTIME_FRACS = [0.001, 0.002, 0.003, 0.005, 0.007, 0.01, 0.02, 0.03, 0.05, 0.07, 0.10, 0.15, 0.20, 0.30, 0.50, 1.00]
 
 # summary.md 収束速度セクション用チェックポイント
 _SUMMARY_CONV_FRACS = [0.03, 0.05, 0.10, 0.30, 1.00]
@@ -846,7 +847,7 @@ def write_anytime_txt(method_info_list, ref, w_label, outpath, n_jobs=1):
 
 # ========== プロット: anytime ==========
 
-def plot_anytime_scalar(method_info_list, title, outpath, xscale='linear'):
+def plot_anytime_scalar(method_info_list, title, outpath, xscale='log'):
     """anytime best_score 曲線 (per-trial median + IQR)。"""
     t_grid = _build_t_grid(method_info_list, xscale=xscale)
     if t_grid is None:
@@ -883,6 +884,7 @@ def plot_anytime_scalar(method_info_list, title, outpath, xscale='linear'):
     ax.set_title(title)
     if xscale == 'log':
         ax.set_xscale('log')
+    ax.set_xlim(t_grid[0], t_grid[-1])
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=10)
     fig.tight_layout()
@@ -890,7 +892,7 @@ def plot_anytime_scalar(method_info_list, title, outpath, xscale='linear'):
     plt.close(fig)
 
 
-def plot_anytime_uea_hv(method_info_list, ref, title, outpath, xscale='linear', n_jobs=1):
+def plot_anytime_uea_hv(method_info_list, ref, title, outpath, xscale='log', n_jobs=1):
     """anytime per-weight UEA HV 曲線 (左: per-trial median+IQR, 右: union)。"""
     t_grid = _build_t_grid(method_info_list, xscale=xscale)
     if t_grid is None:
@@ -934,6 +936,7 @@ def plot_anytime_uea_hv(method_info_list, ref, title, outpath, xscale='linear', 
         ax.legend(fontsize=9)
         if xscale == 'log':
             ax.set_xscale('log')
+        ax.set_xlim(t_grid[0], t_grid[-1])
     ax_l.set_ylabel('HV')
     fig.suptitle(title, fontsize=11)
     fig.tight_layout()
@@ -1029,6 +1032,61 @@ def plot_region_hv_bars(region_hvs, methods, thresholds, title, outpath):
     fig.tight_layout()
     fig.savefig(outpath, dpi=150)
     plt.close(fig)
+
+
+def plot_region_hv_bars_2split(region_hvs_2split, methods, thresholds, title, outpath):
+    """高安定性/低安定性 の 2分割 region HV bar chart（P50 境界）。"""
+    regions = ['high_stability', 'low_stability']
+    p50 = thresholds['P50']
+    region_labels = [
+        f'高安定性（D≤P50）\n[0, {p50:.3f}]',
+        f'低安定性（D>P50）\n({p50:.3f}, max]',
+    ]
+    n_groups = len(regions)
+    n_methods = len(methods)
+    x = np.arange(n_groups)
+    width = 0.8 / n_methods
+    fig, ax = plt.subplots(figsize=(9, 6))
+    for j, m in enumerate(methods):
+        vals = [region_hvs_2split.get(m, {}).get(r, 0.0) for r in regions]
+        color = get_method_color(m)
+        offset = (j - n_methods / 2 + 0.5) * width
+        ax.bar(x + offset, vals, width, label=METHOD_LABELS.get(m, m),
+               color=color, alpha=0.8, edgecolor='black', linewidth=0.5)
+    ax.set_xticks(x)
+    ax.set_xticklabels(region_labels)
+    ax.set_ylabel('Region-restricted HV')
+    ax.set_title(title)
+    ax.legend(fontsize=9)
+    ax.grid(True, alpha=0.3, axis='y')
+    fig.tight_layout()
+    fig.savefig(outpath, dpi=150)
+    plt.close(fig)
+
+
+def format_region_hv_table_2split(region_hvs_2split, region_hv_counts_2split, methods, thresholds):
+    """2分割 領域別 HV の数値テキスト（P50 境界）。"""
+    p50, st_max = thresholds['P50'], thresholds['stab_max']
+    regions = [
+        ('high_stability', 0.0,  p50,    f'[0,       {p50:.4f}]  高安定性'),
+        ('low_stability',  p50,  st_max, f'({p50:.4f}, {st_max:.4f}]  低安定性'),
+    ]
+    lines = [
+        'Region-restricted HV 2分割（P50 境界）',
+        f'  P50={p50:.4f}, stab_max={st_max:.4f}',
+        '',
+    ]
+    col_w = 20
+    for rname, lo, hi, rng in regions:
+        lines.append(f'  [{rname}]  stab ∈ {rng}')
+        lines.append(f"    {'method':<{col_w}} {'HV':>12} {'n_points':>10}")
+        lines.append('    ' + '-' * (col_w + 24))
+        for m in methods:
+            hv = region_hvs_2split.get(m, {}).get(rname, 0.0)
+            n = region_hv_counts_2split.get(m, {}).get(rname, 0)
+            lines.append(f"    {METHOD_LABELS.get(m,m):<{col_w}} {hv:>12.4f} {n:>10}")
+        lines.append('')
+    return '\n'.join(lines)
 
 
 # ========== プロット: 差分 EAF ==========
@@ -1703,9 +1761,11 @@ def _compute_summary_for_md(method_data, methods, w_labels, baselines_by_method,
         'union_hv_summary':     union_hv_summary,
         'avg_imp':              avg_imp,
         'c_metric':             c_mat,
-        'region_hvs':           region_hvs,
-        'region_hv_counts':     region_hv_counts,
-        'thresholds':           thresholds,
+        'region_hvs':              region_hvs,
+        'region_hv_counts':        region_hv_counts,
+        'region_hvs_2split':       region_hvs_2split,
+        'region_hv_counts_2split': region_hv_counts_2split,
+        'thresholds':              thresholds,
         'coverage':             coverage,
         'n_sensitivity':        n_sens,
         'methods':              methods,
@@ -1815,24 +1875,24 @@ def generate_summary_md(all_summary, out_path, input_dir=''):
             lines.append(row)
         lines.append('')
 
-        # ---- 領域別 HV ----
-        p33, p67, st_max = thr['P33'], thr['P67'], thr['stab_max']
-        lines.append(f'### 領域別 HV  (P33={p33:.4f}, P67={p67:.4f}, stab_max={st_max:.4f})')
+        # ---- 領域別 HV (2分割・主筋) ----
+        p50, st_max = thr['P50'], thr['stab_max']
+        lines.append(f'### 領域別 HV 2分割  (P50={p50:.4f}, stab_max={st_max:.4f})')
         lines.append('')
         lines.append('| 領域 |' + ''.join(f' {l} |' for l in ml))
         lines.append('|------|' + ''.join(':---:|' for _ in methods))
         for rname, rlabel in [
-            ('low_stab',  f'low  [0, {p33:.4f}]'),
-            ('mid_stab',  f'mid  ({p33:.4f}, {p67:.4f}]'),
-            ('high_stab', f'high ({p67:.4f}, {st_max:.4f}]'),
+            ('high_stability', f'高安定性 [0, {p50:.4f}]'),
+            ('low_stability',  f'低安定性 ({p50:.4f}, max]'),
         ]:
             row = f'| {rlabel} |'
             for m in methods:
-                hv = sd['region_hvs'].get(m, {}).get(rname, 0.0)
-                n  = sd['region_hv_counts'].get(m, {}).get(rname, 0)
+                hv = sd.get('region_hvs_2split', {}).get(m, {}).get(rname, 0.0)
+                n  = sd.get('region_hv_counts_2split', {}).get(m, {}).get(rname, 0)
                 row += f' {hv:.4f} (n={n}) |'
             lines.append(row)
         lines.append('')
+
 
         # ---- N sensitivity ----
         n_sens = sd.get('n_sensitivity', {})
@@ -1903,7 +1963,7 @@ def generate_summary_md(all_summary, out_path, input_dir=''):
 # ========== メイン分析: 問題ごと ==========
 
 def analyze_problem(prob_key, method_data, out_dir, problems_filter=None,
-                    repr_weights=None, n_jobs=1):
+                    repr_weights=None, n_jobs=1, xscale='log'):
     """1 問題分の全指標を計算して出力する。
 
     method_data: {method: {w_label: {trial_idx: data_dict}}}
@@ -2077,25 +2137,25 @@ def analyze_problem(prob_key, method_data, out_dir, problems_filter=None,
 
     # ===== B-2b: 領域別 HV =====
     print('  B-2b: 領域別 HV...')
-    p33, p67, st_max = thresholds['P33'], thresholds['P67'], thresholds['stab_max']
-    regions = {
+    p33, p50, p67, st_max = thresholds['P33'], thresholds['P50'], thresholds['P67'], thresholds['stab_max']
+    regions_3split = {
         'low_stab':  (0.0,  p33),
         'mid_stab':  (p33,  p67),
-        'high_stab': (p67,  global_ref[1]),  # 上限を global_ref[1] にして stab > stab_max の点も捕捉
+        'high_stab': (p67,  global_ref[1]),
     }
-    region_hvs = {}
-    region_hv_counts = {}
+    regions_2split = {
+        'high_stability': (0.0, p50),
+        'low_stability':  (p50, global_ref[1]),
+    }
+
+    # per-trial union PF を一度だけ計算して両分割で共用する
+    trial_pfs_by_method = {}
     for m in methods:
-        region_hvs[m] = {}
-        region_hv_counts[m] = {}
         bl = baselines_by_method.get(m)
-        # per-trial 中央値で集計
-        rn_hv_lists = {rn: [] for rn in regions}
-        rn_n_lists  = {rn: [] for rn in regions}
-        # trial ごとに全重みを合体してから領域 HV を計算
         all_trial_indices = set()
         for wl in method_data[m]:
             all_trial_indices.update(method_data[m][wl].keys())
+        trial_pfs_by_method[m] = {}
         for t_idx in sorted(all_trial_indices):
             union_pts = []
             for wl in method_data[m]:
@@ -2107,30 +2167,54 @@ def analyze_problem(prob_key, method_data, out_dir, problems_filter=None,
                     pts = filter_baselines(pts, bl)
                 if len(pts) > 0:
                     union_pts.append(pts)
-            if union_pts:
-                pf_t = pareto_front(np.concatenate(union_pts))
-            else:
-                pf_t = np.zeros((0, 2))
-                for rn in regions:
-                    rn_hv_lists[rn].append(0.0)
-                    rn_n_lists[rn].append(0)
-                continue
-            for rn, (lo, hi) in regions.items():
-                hi_inc = (hi == global_ref[1])
-                hv, n = region_hv(pf_t, lo, hi, global_ref[0],
-                                  hi_inclusive=hi_inc)
-                rn_hv_lists[rn].append(hv)
-                rn_n_lists[rn].append(n)
-        for rn in regions:
-            region_hvs[m][rn]       = float(np.median(rn_hv_lists[rn])) if rn_hv_lists[rn] else 0.0
-            region_hv_counts[m][rn] = float(np.median(rn_n_lists[rn]))  if rn_n_lists[rn]  else 0
+            trial_pfs_by_method[m][t_idx] = (
+                pareto_front(np.concatenate(union_pts)) if union_pts else np.zeros((0, 2))
+            )
+
+    def _aggregate_region_hvs(regions_dict):
+        hvs, counts = {}, {}
+        for m in methods:
+            hvs[m] = {}
+            counts[m] = {}
+            rn_hv_lists = {rn: [] for rn in regions_dict}
+            rn_n_lists  = {rn: [] for rn in regions_dict}
+            for t_idx, pf_t in trial_pfs_by_method[m].items():
+                if len(pf_t) == 0:
+                    for rn in regions_dict:
+                        rn_hv_lists[rn].append(0.0)
+                        rn_n_lists[rn].append(0)
+                    continue
+                for rn, (lo, hi) in regions_dict.items():
+                    hi_inc = (hi == global_ref[1])
+                    hv_val, n_val = region_hv(pf_t, lo, hi, global_ref[0],
+                                              hi_inclusive=hi_inc)
+                    rn_hv_lists[rn].append(hv_val)
+                    rn_n_lists[rn].append(n_val)
+            for rn in regions_dict:
+                hvs[m][rn]    = float(np.median(rn_hv_lists[rn])) if rn_hv_lists[rn] else 0.0
+                counts[m][rn] = float(np.median(rn_n_lists[rn]))  if rn_n_lists[rn]  else 0
+        return hvs, counts
+
+    # 3分割（参照用・per-problem 図表のみ）
+    region_hvs, region_hv_counts = _aggregate_region_hvs(regions_3split)
     plot_region_hv_bars(
         region_hvs, methods, thresholds,
-        f'{prob_label}: region-restricted HV (P33/P67 分割)',
+        f'{prob_label}: region-restricted HV (P33/P67 3分割)',
         os.path.join(prob_out, 'b2b_region_hv.png'))
     region_hv_text = format_region_hv_table(region_hvs, region_hv_counts, methods, thresholds)
     with open(os.path.join(prob_out, 'b2b_region_hv.txt'), 'w', encoding='utf-8') as f:
         f.write(f'=== {prob_label} ===\n\n{region_hv_text}\n')
+
+    # 2分割（summary 主筋・per-problem 図表）
+    region_hvs_2split, region_hv_counts_2split = _aggregate_region_hvs(regions_2split)
+    plot_region_hv_bars_2split(
+        region_hvs_2split, methods, thresholds,
+        f'{prob_label}: region-restricted HV (P50 2分割)',
+        os.path.join(prob_out, 'b2b_region_hv_2split.png'))
+    region_hv_text_2split = format_region_hv_table_2split(
+        region_hvs_2split, region_hv_counts_2split, methods, thresholds)
+    with open(os.path.join(prob_out, 'b2b_region_hv_2split.txt'), 'w', encoding='utf-8') as f:
+        f.write(f'=== {prob_label} ===\n\n{region_hv_text_2split}\n')
 
     # ===== B-2b: 条件付き MS Wilcoxon =====
     print('  B-2b: 条件付き MS Wilcoxon...')
@@ -2219,12 +2303,14 @@ def analyze_problem(prob_key, method_data, out_dir, problems_filter=None,
         plot_anytime_scalar(
             method_info,
             f'{prob_label} [{wl}]: anytime best weighted score',
-            os.path.join(prob_out, f'anytime_scalar_{wl}.png'))
+            os.path.join(prob_out, f'anytime_scalar_{wl}.png'),
+            xscale=xscale)
 
         plot_anytime_uea_hv(
             method_info, w_ref,
             f'{prob_label} [{wl}]: anytime per-weight UEA HV',
             os.path.join(prob_out, f'anytime_uea_hv_{wl}.png'),
+            xscale=xscale,
             n_jobs=n_jobs)
 
         write_anytime_txt(
@@ -2297,7 +2383,8 @@ def main():
             prob_key, grouped[prob_key], out_dir,
             problems_filter=args.problems,
             repr_weights=repr_weights,
-            n_jobs=args.n_jobs)
+            n_jobs=args.n_jobs,
+            xscale=args.xscale)
         if result is not None:
             prob_label, summary_data = result
             all_summary[prob_label] = summary_data

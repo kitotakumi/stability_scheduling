@@ -116,29 +116,50 @@ class MemeticGASolver:
 
     # ========== 個体精緻化 ==========
 
-    def _refine_individual(self, ind, norm_params):
+    def _refine_individual(self, ind, norm_params, skip_first_ls=False):
         """N5 LS (+ repair / PR キック) を適用し、遺伝子と fitness を更新する。
 
-        フロー: gene → LS → [repair → LS] → [PR → LS] → gene 書き戻し
+        フロー: gene → [LS →] [repair → LS] | [PR → LS] → gene 書き戻し
         repair / PR キック後の解は無条件採用し、質の判断を tournament selection に委ねる。
+
+        skip_first_ls=True: 個体は既に局所最適のため最初の LS をスキップする。
+          キックも発火しなければ何も変更せず (None, None) を返す。
         """
+        if skip_first_ls and self.kick_mode == 'none':
+            return None, None
+
         machine_orders = self._gene_to_machine_orders(ind)
 
-        # N5 local search
-        improved, _, _ = self._ils.local_search(machine_orders, strategy=self.ls_strategy)
+        if not skip_first_ls:
+            improved, _, _ = self._ils.local_search(machine_orders, strategy=self.ls_strategy)
+        else:
+            improved = machine_orders  # 前世代のLS済み局所最適解なのでそのまま使う
 
         # kick: repair または path relinking を確率的に適用し、結果は無条件採用
         ind.kick_point = None
+        kick_applied = False
         if self.kick_mode != 'none' and random.random() < self.kick_prob:
             if self.kick_mode == 'repair':
                 kicked = self._ils.perturb(improved, 'repair', random.randint(1, self.repair_strength))
             else:  # 'pr'
+                # 集団ベースの memetic では path_relinking はデフォルト
+                # (return_intermediate=False = 始点 S_best を返す) のままで良い。
+                # ILS と違い個体が多様なため、初期解へ向かう経路に「始点より良い
+                # 改善中間解」が存在することが多く、その場合 S_best がその中間解に
+                # なる。エリート保存で best は保護されるので悪化もしない。
+                # → memetic+PR は no-op ではなく Pareto 域を広げる有効なキックになる。
+                # (実験: 2026-06-02, memetic+PR は memetic-LS に HV で有意勝ち。
+                #  始点・終点除外しても結果は変わらず、むしろ大幅減速するため不採用。)
                 kicked, _ = self._ils.path_relinking(
                     improved, self._ils.initial_machine_orders,
                     ls_strategy=None)
             kick_ms, kick_st = self._ils.evaluate_pareto(kicked)
             ind.kick_point = (kick_ms, kick_st)
             improved, _, _ = self._ils.local_search(kicked, strategy=self.ls_strategy)
+            kick_applied = True
+
+        if skip_first_ls and not kick_applied:
+            return None, None
 
         # machine_orders → 遺伝子に書き戻す (DEAP Individual は array 型の場合があるため要素単位で代入)
         new_gene = self._machine_orders_to_gene(improved)
@@ -276,18 +297,30 @@ class MemeticGASolver:
             for _ in range(self.pop_size // 2):
                 children = self.toolbox.select(population, 2, 4)
                 children = list(map(self.toolbox.clone, children))
-                if random.random() < self.cxpb:
+                parents_identical = children[0] == children[1]
+                if not parents_identical and random.random() < self.cxpb:
                     self.toolbox.crossover(children[0], children[1])
+                    children[0].modified = True
+                    children[1].modified = True
+                else:
+                    children[0].modified = False
+                    children[1].modified = False
                 offspring.extend(children)
 
             for mutant in offspring:
                 if random.random() < self.mutpb:
                     self.toolbox.mutate(mutant)
+                    mutant.modified = True
 
             for k_ind, ind in enumerate(offspring):
-                del ind.fitness.values
-                self._refine_individual(ind, shared_norm)
-                eval_count += 1
+                if ind.modified:
+                    del ind.fitness.values
+                    self._refine_individual(ind, shared_norm)
+                    eval_count += 1
+                else:
+                    ms, st = self._refine_individual(ind, shared_norm, skip_first_ls=True)
+                    if ms is not None:
+                        eval_count += 1
                 if (k_ind + 1) % sub_every == 0 and (k_ind + 1) < len(offspring):
                     partial = offspring[:k_ind + 1]
                     cur_best = tools.selBest(partial, 1)[0]
