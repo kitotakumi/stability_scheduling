@@ -781,7 +781,7 @@ class ILSSolver:
 
     def path_relinking(self, S_cur, S_ref, L_max=None,
                        ls_strategy=None, trace=False,
-                       return_intermediate=False):
+                       return_intermediate=False, step_strategy='best'):
         """Direct-swap型 Path Relinking
 
         S_cur (initiating solution) から S_ref (guiding solution) へ向かう経路を
@@ -839,6 +839,7 @@ class ILSSolver:
         step = 0
         S_best_intermediate = None
         best_intermediate_score = float('inf')
+        cur_score = F_best  # 現在の経路点のスコア（FI の「改善」判定の基準）
 
         while True:
             # 不一致位置から全 direct-swap 候補を生成
@@ -869,26 +870,40 @@ class ILSSolver:
                 break
 
             # 各候補を評価
+            #   step_strategy='best' : 全候補を評価して最良 swap を採る（従来）
+            #   step_strategy='first': 現在解を改善する最初の実行可能 swap を即採用。
+            #                          改善候補が無ければ最良（=改悪が最小）の候補を採る。
             best_cand = None
             best_cand_score = float('inf')
-            best_cand_idx = -1
             n_feasible = 0
             n_infeasible = 0
             cand_scores = []
 
-            for idx, cand in enumerate(candidates):
+            scan_order = list(range(len(candidates)))
+            if step_strategy == 'first':
+                random.shuffle(scan_order)  # 改善 swap の選択をばらつかせ多様性を出す
+
+            sel_cand = None
+            sel_score = float('inf')
+            for idx in scan_order:
+                cand = candidates[idx]
                 score = self.evaluate(cand)
                 if score == float('inf'):
                     n_infeasible += 1
                 else:
                     n_feasible += 1
                 cand_scores.append(score)
-                if score < best_cand_score:
+                if score < best_cand_score:          # 最良（=改悪が最小）を常に追跡
                     best_cand_score = score
                     best_cand = cand
-                    best_cand_idx = idx
+                if step_strategy == 'first' and score < cur_score:
+                    sel_cand, sel_score = cand, score  # 改善する最初の候補で打ち切り
+                    break
 
-            if best_cand is None:
+            if sel_cand is None:                     # 'best'、または FI で改善候補なし
+                sel_cand, sel_score = best_cand, best_cand_score
+
+            if sel_cand is None:                     # 全候補 infeasible → 経路終了
                 if trace:
                     trace_log.append({
                         'step': step + 1, 'type': 'end_all_infeasible',
@@ -897,19 +912,20 @@ class ILSSolver:
                     })
                 break
 
-            S = best_cand
+            S = sel_cand
+            cur_score = sel_score
             cand_ms, cand_st = self.evaluate_pareto(S)
             reached_ref = all(S.get(m) == S_ref.get(m) for m in S_ref)
 
             # 経路上の最もマシな中間解を追跡（始点・終点を除外、出発点より悪くても記録）
             # 始点はループ外なので自然に除外、終点は reached_ref で除外する。
-            if not reached_ref and best_cand_score < best_intermediate_score:
-                best_intermediate_score = best_cand_score
+            if not reached_ref and sel_score < best_intermediate_score:
+                best_intermediate_score = sel_score
                 S_best_intermediate = self._copy_orders(S)
 
-            improved = best_cand_score < F_best
+            improved = sel_score < F_best
             if improved:
-                F_best = best_cand_score
+                F_best = sel_score
                 S_best = self._copy_orders(S)
 
             step += 1
@@ -919,7 +935,7 @@ class ILSSolver:
                 entry = {
                     'step': step, 'type': 'step',
                     'makespan': cand_ms, 'stability': cand_st,
-                    'score': best_cand_score, 'best_score': F_best,
+                    'score': sel_score, 'best_score': F_best,
                     'improved': improved,
                     'n_candidates': len(candidates),
                     'n_feasible': n_feasible, 'n_infeasible': n_infeasible,

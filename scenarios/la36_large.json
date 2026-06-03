@@ -1,6 +1,6 @@
 {
     "problem": "la36",
-    "description": "Machine6のJob10の終了時刻が851→999に遅延 (148分遅延, PT×1.5). 初期MS=1580, right-shift後MS=1678",
+    "description": "la36 位置軸 大(遠い)pos~0.17. M7/Job1 start=276(pos=0.17) を98遅延(PT*1.0). rt=472, reschedule_ops=164, RSR=1653, headroom=62.",
     "initial_gantt": [
         [
             [
@@ -1659,7 +1659,7 @@
             ],
             [
                 752,
-                999,
+                851,
                 10
             ],
             [
@@ -1701,7 +1701,7 @@
         [
             [
                 276,
-                374,
+                472,
                 1
             ],
             [

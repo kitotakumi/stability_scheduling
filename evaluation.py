@@ -13,6 +13,15 @@ import gantt_chart_operation
 
 # ========== 安定性関数 ==========
 
+# 安定性 = 機械ごとのジョブ処理順序（順列）の偏差 D = Σ ω·|init_pos − cur_pos|。
+# 元スケジュール S_p から処理順がどれだけ動いたかを測る（小さいほど安定）。
+#
+# 重み指数 β（ω = 1/(cur_pos+1)^β）で 2 つの指標を切り替える:
+#   β = 0.0（既定）: 重みなしの順列偏差 D = Σ|init_pos − cur_pos|（修論で採用）。
+#   β = 1.25       : 早期投入ジョブの順序変動を重くみる重み付き偏差（卒論の提案指標）。
+STABILITY_RANK_WEIGHT_BETA = 0.0
+
+
 def compute_stability_from_orders(init_orders, current_orders):
     """machine_ordersから安定性を計算（ILS用）
 
@@ -21,7 +30,7 @@ def compute_stability_from_orders(init_orders, current_orders):
         current_orders: 現在解の同形式
 
     Returns:
-        float: 順位偏差の重み付き和
+        float: 順列偏差 Σ|init_pos − cur_pos|
     """
     total = 0.0
     for m_idx in init_orders:
@@ -29,7 +38,7 @@ def compute_stability_from_orders(init_orders, current_orders):
             continue
         init_jobs = [op[0] for op in init_orders[m_idx]]
         current_jobs = [op[0] for op in current_orders[m_idx]]
-        total += _rank_diff_weighted(init_jobs, current_jobs)
+        total += _rank_deviation(init_jobs, current_jobs)
     return total
 
 
@@ -42,7 +51,7 @@ def compute_stability_from_gantt(init_gantt, current_gantt, fixed_gantt):
         fixed_gantt: 確定済みガントチャート
 
     Returns:
-        float: 順位偏差の重み付き和
+        float: 順列偏差 Σ|init_pos − cur_pos|
     """
     init_changed = _extract_changed_gantt(init_gantt, fixed_gantt)
     current_changed = _extract_changed_gantt(current_gantt, fixed_gantt)
@@ -52,7 +61,7 @@ def compute_stability_from_gantt(init_gantt, current_gantt, fixed_gantt):
             continue
         init_jobs = [task[2] for task in init_changed[machine]]
         current_jobs = [task[2] for task in current_changed[machine]]
-        total += _rank_diff_weighted(init_jobs, current_jobs)
+        total += _rank_deviation(init_jobs, current_jobs)
     return total
 
 
@@ -60,7 +69,7 @@ def compute_stability_stat(init_gantt, current_gantt, fixed_gantt):
     """安定性の詳細統計を返す（分析用）
 
     Returns:
-        tuple: (rank_diff_weighted, changed_count, distance_mean, distance_sum,
+        tuple: (rank_deviation, changed_count, distance_mean, distance_sum,
                 per_position_distances[10])
     """
     init_changed = _extract_changed_gantt(init_gantt, fixed_gantt)
@@ -78,7 +87,7 @@ def compute_stability_stat(init_gantt, current_gantt, fixed_gantt):
         for init_pos, job_id in enumerate(init_jobs):
             current_pos = current_jobs.index(job_id)
             diff = abs(init_pos - current_pos)
-            rank_diff_sum += diff / (current_pos + 1) ** 1.25
+            rank_diff_sum += diff / (current_pos + 1) ** STABILITY_RANK_WEIGHT_BETA
             if diff != 0:
                 changed_count += 1
                 distance_sum += diff
@@ -89,16 +98,15 @@ def compute_stability_stat(init_gantt, current_gantt, fixed_gantt):
     return (rank_diff_sum, changed_count, distance_mean, distance_sum, *per_position)
 
 
-def _rank_diff_weighted(init_jobs, current_jobs):
-    """順位偏差の重み付き和（コア計算）
+def _rank_deviation(init_jobs, current_jobs):
+    """順位（処理順）偏差のコア計算: Σ |init_pos − cur_pos| / (cur_pos+1)^β
 
-    formula: Σ |init_pos - current_pos| / (current_pos + 1)^1.25
+    β = STABILITY_RANK_WEIGHT_BETA。既定 β=0 では重みが消え、単純な順列偏差になる。
     """
     total = 0.0
     for init_pos, job_id in enumerate(init_jobs):
         current_pos = current_jobs.index(job_id)
-        diff = abs(init_pos - current_pos)
-        total += diff / (current_pos + 1) ** 1.25
+        total += abs(init_pos - current_pos) / (current_pos + 1) ** STABILITY_RANK_WEIGHT_BETA
     return total
 
 

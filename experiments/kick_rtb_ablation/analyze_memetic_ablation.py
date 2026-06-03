@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-memetic kick PR ablation 分析: memetic vs memetic+PR を no-op / 始点終点除外 で比較。
+memetic kick PR ablation 分析: memetic（kick なし）と memetic+PR を比較。
 
 analyze_v2 のメトリクス (scalar / UEA HV / 領域別HV) と analyze_ablation の
 ヘルパをそのまま流用する。
@@ -23,13 +23,13 @@ from analyze_ablation import (
     per_trial_uea_hv, paired, med_iqr, fmt_stat,
 )
 
-METHOD_ORDER = ['memetic_ls', 'memetic_pr', 'memetic_prfix']
+METHOD_ORDER = ['memetic_ls', 'memetic_pr', 'memetic_pr_fi']
 
 # (A, B): A が B より良いを対立仮説に
 PAIRS = [
-    ('memetic_pr', 'memetic_ls'),       # 現状PR は memetic単体より良い？
-    ('memetic_prfix', 'memetic_ls'),    # 修正PR は memetic単体より良い？
-    ('memetic_prfix', 'memetic_pr'),    # 修正PR は 現状PR より良い？(始点終点除外の効果)
+    ('memetic_pr', 'memetic_ls'),          # BI-PR は memetic 単体より良い？
+    ('memetic_pr_fi', 'memetic_ls'),       # FI-PR は memetic 単体より良い？
+    ('memetic_pr_fi', 'memetic_pr'),       # FI-PR は BI-PR と比べてどうか
 ]
 
 

@@ -177,14 +177,15 @@ def check_disturbance(init_gantt, delayed_gantt):
          （inject_delay は単一タスクの end しか書き換えないため delayed_gantt は
           時刻不整合を含む。create_rsr_gantt を空の fixed_gantt 付きで使うことで
           全タスクを左詰め直し、伝播遅延を含む正しい right-shift 結果を得る）。
-      3. right-shift 後の遅延タスクの end の最大値 + 1 を reschedule_time とする。
-         （= 観測された全遅延が finished する時刻の直後から再スケジュール開始）
+      3. right-shift 後の遅延タスクの end の最大値を reschedule_time とする
+         （遅延が解消する時刻 = 再スケジューリング開始時刻）。
+         +1 しないのが重要: 遅延opの直後工程は rs_start = 遅延op終了 = reschedule_time
+         ちょうどに開始する。+1 すると下の < 判定でこの直後工程まで凍結され、外乱に直撃
+         された「一番リスケすべき工程」を最適化対象から外してしまう（2026-06 修正）。
       4. right-shift 後のスケジュールを reschedule_time で分割:
-         - 開始時刻 < reschedule_time → fixed_gantt（既に開始済み or 完了）
-         - 開始時刻 >= reschedule_time → reschedule_gantt（最適化対象）
-
-    後方互換: 単一遅延の場合は latest_delay_end = その 1 個の end なので、
-              reschedule_time は従来実装と同じ値になる。
+         - 開始時刻 < reschedule_time → fixed_gantt（遅延解消までに実際に開始済み）
+         - 開始時刻 >= reschedule_time → reschedule_gantt（最適化対象。ブロックされて
+           まだ開始できていない直後工程もこちらに入る）
 
     Returns:
         (fixed_gantt, reschedule_gantt, reschedule_time, message)
@@ -211,13 +212,14 @@ def check_disturbance(init_gantt, delayed_gantt):
     empty_fixed = [[] for _ in range(n_machines)]
     rs_gantt, _ = create_rsr_gantt(empty_fixed, delayed_gantt)
 
-    # ========== 3. 遅延タスクの right-shift 後 end の最大値 + 1 ==========
+    # ========== 3. 遅延タスクの right-shift 後 end の最大値 ==========
+    # +1 しない（直後工程を凍結しないため。docstring 参照）
     latest_end = 0
     for m_idx, machine in enumerate(rs_gantt):
         for task in machine:
             if (m_idx, task[2]) in delayed_keys:
                 latest_end = max(latest_end, task[1])
-    reschedule_time = latest_end + 1
+    reschedule_time = latest_end
 
     # ========== 4. fixed / reschedule に分割 ==========
     # rs_gantt（時刻整合済）を基準に判定する

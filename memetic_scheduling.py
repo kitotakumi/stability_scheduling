@@ -42,7 +42,7 @@ class MemeticGASolver:
                  cx="hirano", mut="inversion", sel="Tournament",
                  cxpb=0.85, mutpb=0.1, pop_size=50,
                  kick_mode='repair', kick_prob=0.5,
-                 repair_strength=4, ls_strategy='best'):
+                 repair_strength=4, ls_strategy='best', pr_step_strategy='best'):
         self.jm_table = jm_table
         self.fixed_gantt = fixed_gantt
         self.reschedule_time = reschedule_time
@@ -54,6 +54,7 @@ class MemeticGASolver:
         self.kick_prob = kick_prob
         self.repair_strength = repair_strength
         self.ls_strategy = ls_strategy
+        self.pr_step_strategy = pr_step_strategy
 
         # GA: crossover / mutation / selection の toolbox と original_individual を借りる
         self._ga = GASolver(
@@ -152,7 +153,7 @@ class MemeticGASolver:
                 #  始点・終点除外しても結果は変わらず、むしろ大幅減速するため不採用。)
                 kicked, _ = self._ils.path_relinking(
                     improved, self._ils.initial_machine_orders,
-                    ls_strategy=None)
+                    ls_strategy=None, step_strategy=self.pr_step_strategy)
             kick_ms, kick_st = self._ils.evaluate_pareto(kicked)
             ind.kick_point = (kick_ms, kick_st)
             improved, _, _ = self._ils.local_search(kicked, strategy=self.ls_strategy)

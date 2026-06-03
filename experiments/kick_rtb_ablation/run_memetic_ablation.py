@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """
-memetic 版 kick ablation: memetic vs memetic+PR を「現状(no-op PR)」と
-「始点・終点除外PR(return_intermediate)」で比較する。
-
-問い: PR の始点・終点除外は memetic+PR の成績を変えるか？
-      （memetic+PR の好成績が PR 由来か memetic 枠組み由来かの切り分け）
+memetic 版 kick ablation: memetic（kick なし）と memetic+PR を比較する。
 
 手法 (kick_prob=0.3, weight 既定 [0.8,0.2]):
-  memetic_ls     : kick なし (memetic 単体 = baseline)
-  memetic_pr     : PR kick, 現状 (始点を返す no-op)
-  memetic_prfix  : PR kick, 始点・終点除外 (中間解を返す)
+  memetic_ls : kick なし (memetic 単体 = baseline)
+  memetic_pr : PR kick (memetic では return_intermediate=False が適切)
+
+※ 始点・終点除外PR (return_intermediate=True) は memetic では効果なし＋大幅減速で
+   不採用と確定済み（2026-06-02）。本スクリプトからは prfix を除外した。
+   （ILS では逆に return_intermediate=True が採用 → run_ablation.py 側を参照）
 
 保存形式は run_ablation.py と同一 (analyze_memetic_ablation.py で流用)。
 """
@@ -30,12 +29,9 @@ from experiment_utils import compute_shared_norm_params, MEMETIC_NGEN
 
 
 METHODS = {
-    'memetic_ls': dict(kick_mode='none', pr_return_intermediate=False,
-                       label='Memetic-LS'),
-    'memetic_pr': dict(kick_mode='pr', pr_return_intermediate=False,
-                       label='Memetic+PR(noop)'),
-    'memetic_prfix': dict(kick_mode='pr', pr_return_intermediate=True,
-                          label='Memetic+PRfix'),
+    'memetic_ls': dict(kick_mode='none', pr_step_strategy='best', label='Memetic-LS'),
+    'memetic_pr': dict(kick_mode='pr', pr_step_strategy='best', label='Memetic+PR(BI)'),
+    'memetic_pr_fi': dict(kick_mode='pr', pr_step_strategy='first', label='Memetic+PR(FI)'),
 }
 DEFAULT_METHODS = list(METHODS.keys())
 
@@ -107,7 +103,7 @@ def _run_one_task(task):
             task['weights'], task['seed'], task['ngen'], task['norm_params'],
             problem_name=task['problem'], scenario_name=task['scenario'],
             kick_mode=cfg['kick_mode'], kick_prob=KICK_PROB,
-            pr_return_intermediate=cfg['pr_return_intermediate'],
+            pr_step_strategy=cfg['pr_step_strategy'],
             track_population=True)
         history = r['history']
         save_data = {

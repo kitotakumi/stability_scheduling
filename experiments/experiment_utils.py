@@ -139,7 +139,7 @@ def run_ils(weights, seed, perturb_method, max_iterations, norm_params=None,
 
 def run_memetic(weights, seed, ngen, norm_params=None, problem_name=None, scenario_name=None,
                 kick_mode='none', kick_prob=0.3, repair_strength=2,
-                track_population=False, ls_strategy='best'):
+                track_population=False, ls_strategy='best', pr_step_strategy='best'):
     """Memetic GA (GA × N5 LS × kick) の実行"""
     import sys as _sys
     import os as _os
@@ -152,7 +152,8 @@ def run_memetic(weights, seed, ngen, norm_params=None, problem_name=None, scenar
     solver = MemeticGASolver(
         jm_table, fixed_gantt, reschedule_gantt, reschedule_time, weights,
         pop_size=GA_POP_SIZE, kick_mode=kick_mode, kick_prob=kick_prob,
-        repair_strength=repair_strength, ls_strategy=ls_strategy)
+        repair_strength=repair_strength, ls_strategy=ls_strategy,
+        pr_step_strategy=pr_step_strategy)
     _, ms, st, conv_info, history = solver.run(
         ngen=ngen, verbose=False, norm_params=norm_params,
         track_population=track_population)
