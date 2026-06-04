@@ -153,7 +153,8 @@ class MemeticGASolver:
                 #  始点・終点除外しても結果は変わらず、むしろ大幅減速するため不採用。)
                 kicked, _ = self._ils.path_relinking(
                     improved, self._ils.initial_machine_orders,
-                    ls_strategy=None, step_strategy=self.pr_step_strategy)
+                    ls_strategy=None, step_strategy=self.pr_step_strategy,
+                    escape_infeasible=True)
             kick_ms, kick_st = self._ils.evaluate_pareto(kicked)
             ind.kick_point = (kick_ms, kick_st)
             improved, _, _ = self._ils.local_search(kicked, strategy=self.ls_strategy)

@@ -84,8 +84,9 @@ def compute_stability_stat(init_gantt, current_gantt, fixed_gantt):
             continue
         init_jobs = [task[2] for task in init_changed[machine]]
         current_jobs = [task[2] for task in current_changed[machine]]
+        cur_pos_of = {job_id: idx for idx, job_id in enumerate(current_jobs)}
         for init_pos, job_id in enumerate(init_jobs):
-            current_pos = current_jobs.index(job_id)
+            current_pos = cur_pos_of[job_id]
             diff = abs(init_pos - current_pos)
             rank_diff_sum += diff / (current_pos + 1) ** STABILITY_RANK_WEIGHT_BETA
             if diff != 0:
@@ -102,10 +103,13 @@ def _rank_deviation(init_jobs, current_jobs):
     """順位（処理順）偏差のコア計算: Σ |init_pos − cur_pos| / (cur_pos+1)^β
 
     β = STABILITY_RANK_WEIGHT_BETA。既定 β=0 では重みが消え、単純な順列偏差になる。
+    cur_pos は current_jobs 内の位置を辞書で前計算する。ループ内 .index() (O(L²)) を
+    避けるための最適化で、結果は厳密に同一・計算量は O(L)。
     """
+    cur_pos_of = {job_id: idx for idx, job_id in enumerate(current_jobs)}
     total = 0.0
     for init_pos, job_id in enumerate(init_jobs):
-        current_pos = current_jobs.index(job_id)
+        current_pos = cur_pos_of[job_id]
         total += abs(init_pos - current_pos) / (current_pos + 1) ** STABILITY_RANK_WEIGHT_BETA
     return total
 

@@ -301,15 +301,20 @@ class ILSSolver:
         return evaluation.compute_stability_from_orders(
             self.initial_machine_orders, machine_orders)
 
-    def evaluate(self, machine_orders, op_times=None):
-        """正規化した重み付き評価値（evaluation.pyの共通関数を使用）"""
+    def evaluate(self, machine_orders, op_times=None, stability=None):
+        """正規化した重み付き評価値（evaluation.pyの共通関数を使用）
+
+        stability を渡すと安定性の再計算を省く（PR の差分計算で求めた値を注入する用途。
+        semi-active 前提。None なら従来どおり compute_stability で計算）。
+        """
         if op_times is None:
             op_times = self.build_gantt(machine_orders)
         if op_times is None:
             return float('inf')
 
         makespan = self.get_makespan(op_times)
-        stability = self.compute_stability(machine_orders, op_times)
+        if stability is None:
+            stability = self.compute_stability(machine_orders, op_times)
         norm_params = {
             'min_eff': self.min_eff,
             'max_eff': self.max_eff,
@@ -317,14 +322,16 @@ class ILSSolver:
         }
         return evaluation.weighted_objective(makespan, stability, self.weights, norm_params)
 
-    def _score_lower_bound(self, est_ms, machine_orders):
+    def _score_lower_bound(self, est_ms, machine_orders, stability=None):
         """Taillard推定MSと正確な安定性から合成スコアの下界を計算
 
         est_ms ≤ actual_ms かつ stability は正確な値なので、
         返り値 ≤ evaluate(machine_orders) が保証される。
         weights[1] == 0 のときは est_ms <= current_ms と等価。
+        stability を渡すと安定性の再計算を省く（差分計算で求めた正確値を注入する用途）。
         """
-        stability = self.compute_stability(machine_orders)
+        if stability is None:
+            stability = self.compute_stability(machine_orders)
         norm_params = {
             'min_eff': self.min_eff,
             'max_eff': self.max_eff,
@@ -520,7 +527,7 @@ class ILSSolver:
     def _generate_n5_with_taillard(self, machine_orders, op_times):
         """N5近傍を生成し、Taillard高速化でメイクスパンを推定して返す
 
-        Returns: list of (neighbor_orders, estimated_makespan)
+        Returns: list of (neighbor_orders, estimated_makespan, swap=(m_idx, i, q))
         """
         critical_path = self.find_critical_path(op_times, machine_orders)
         blocks = self.find_critical_blocks(critical_path, machine_orders)
@@ -542,7 +549,7 @@ class ILSSolver:
             idx_a = ops.index(u)
             idx_b = ops.index(v)
             ops[idx_a], ops[idx_b] = ops[idx_b], ops[idx_a]
-            results.append((new_orders, est_ms))
+            results.append((new_orders, est_ms, (m_idx, idx_a, idx_b)))
 
             # 末尾2つの交換
             if len(block) > 2:
@@ -554,7 +561,7 @@ class ILSSolver:
                 idx_a = ops.index(u)
                 idx_b = ops.index(v)
                 ops[idx_a], ops[idx_b] = ops[idx_b], ops[idx_a]
-                results.append((new_orders, est_ms))
+                results.append((new_orders, est_ms, (m_idx, idx_a, idx_b)))
 
         return results
 
@@ -623,21 +630,27 @@ class ILSSolver:
                 if not neighbors_with_ms:
                     break
 
-                # 合成スコアの下界でスクリーニング
-                # Taillard推定MS(下界) + 正確な安定性 → score_lb ≤ 実際のscore
-                candidates = [n for n, est_ms in neighbors_with_ms
-                              if self._score_lower_bound(est_ms, n) <= current_score]
+                # 安定性は現在解からの差分で O(1) 計算（N5近傍は単発swap）。
+                # use_taillard は not active_schedule を含意するので差分は常に妥当。
+                cur_stab = self.compute_stability(current)
 
-                if not candidates:
+                # 合成スコア下界でスクリーニング（推定MS(下界) + 正確な安定性）。
+                # (neighbor, n_stab) を保持し、通過後のフル評価でも安定性を再注入する。
+                screened = []
+                for neighbor, est_ms, swap in neighbors_with_ms:
+                    n_stab = cur_stab + self._stab_swap_delta(current, *swap)
+                    if self._score_lower_bound(est_ms, neighbor, stability=n_stab) <= current_score:
+                        screened.append((neighbor, n_stab))
+
+                if not screened:
                     # 全近傍の score_lb > current_score → actual_score も全て悪い → 局所最適
                     break
-                neighbors = candidates
 
                 if strategy == 'best':
                     best_neighbor = None
                     best_score = current_score
-                    for neighbor in neighbors:
-                        score = self.evaluate(neighbor)
+                    for neighbor, n_stab in screened:
+                        score = self.evaluate(neighbor, stability=n_stab)
                         eval_count += 1
                         if score < best_score:
                             best_score = score
@@ -648,10 +661,10 @@ class ILSSolver:
                     current_score = best_score
 
                 elif strategy == 'first':
-                    random.shuffle(neighbors)
+                    random.shuffle(screened)
                     improved = False
-                    for neighbor in neighbors:
-                        score = self.evaluate(neighbor)
+                    for neighbor, n_stab in screened:
+                        score = self.evaluate(neighbor, stability=n_stab)
                         eval_count += 1
                         if score < current_score:
                             current = neighbor
@@ -779,9 +792,72 @@ class ILSSolver:
                     count += 1
         return count
 
+    def _init_pos_map(self, m):
+        """機械 m の初期順序における job_id → 位置 の辞書（初回のみ構築しキャッシュ）。"""
+        cache = getattr(self, '_init_pos_cache', None)
+        if cache is None:
+            cache = {}
+            self._init_pos_cache = cache
+        if m not in cache:
+            cache[m] = {op[0]: idx for idx, op in enumerate(self.initial_machine_orders[m])}
+        return cache[m]
+
+    def _stab_swap_delta(self, S, m, i, q):
+        """S の機械 m で位置 i,q を入れ替えたときの安定性(順位偏差)変化量を O(1) で返す。
+
+        安定性は機械ごとに分離され、入れ替えで動くのは位置 i,q の2ジョブの項だけなので、
+        全体の差分 = この2項の変化に等しい。compute_stability(cand) を全計算する代わりに
+        compute_stability(S) + この差分 で厳密に同じ値が得られる（semi-active 前提）。
+        """
+        beta = evaluation.STABILITY_RANK_WEIGHT_BETA
+        ipos = self._init_pos_map(m)
+        a = S[m][i][0]   # 位置 i のジョブ（入れ替えで q へ移る）
+        b = S[m][q][0]   # 位置 q のジョブ（入れ替えで i へ移る）
+
+        def term(job, pos):  # |初期位置 - 現在位置| / (現在位置+1)^β
+            return abs(ipos[job] - pos) / (pos + 1) ** beta
+
+        return (term(a, q) + term(b, i)) - (term(a, i) + term(b, q))
+
+    def _escape_infeasible(self, S, S_ref):
+        """全 direct-swap が単体 infeasible で詰まったとき、2手の組合せで突破する。
+
+        S_ref 方向の swap A（単体では infeasible でも可）を当てた状態から、さらに
+        S_ref 方向の swap B を当てた合成結果のうち、feasible かつ不一致数が減るものの
+        中でスコア最良を返す。見つからなければ (None, inf)。
+        feasible な端点しか採らない（infeasible 空間には居座らない）。不一致数の
+        厳密減少を要求するので進行が保証される。該当手は稀（プローブ: la36_small 0/50）
+        なので O(diffs^2) の探索コストは平均性能にほぼ影響しない。
+        """
+        base_diffs = self._count_diffs(S, S_ref)
+        best_S, best_score = None, float('inf')
+
+        def _swaps_toward_ref(state):
+            mv = []
+            for m, cur in state.items():
+                ref = S_ref.get(m, cur)
+                for i in range(min(len(cur), len(ref))):
+                    if cur[i] != ref[i] and ref[i] in cur:
+                        mv.append((m, i, cur.index(ref[i])))
+            return mv
+
+        for (mA, iA, qA) in _swaps_toward_ref(S):
+            S_A = self._copy_orders(S)
+            S_A[mA][iA], S_A[mA][qA] = S_A[mA][qA], S_A[mA][iA]
+            for (mB, iB, qB) in _swaps_toward_ref(S_A):
+                S_AB = self._copy_orders(S_A)
+                S_AB[mB][iB], S_AB[mB][qB] = S_AB[mB][qB], S_AB[mB][iB]
+                if self._count_diffs(S_AB, S_ref) >= base_diffs:
+                    continue
+                score = self.evaluate(S_AB)   # infeasible は inf → 採用されない
+                if score < best_score:
+                    best_score, best_S = score, S_AB
+        return best_S, best_score
+
     def path_relinking(self, S_cur, S_ref, L_max=None,
                        ls_strategy=None, trace=False,
-                       return_intermediate=False, step_strategy='best'):
+                       return_intermediate=False, step_strategy='best',
+                       escape_infeasible=False):
         """Direct-swap型 Path Relinking
 
         S_cur (initiating solution) から S_ref (guiding solution) へ向かう経路を
@@ -812,6 +888,19 @@ class ILSSolver:
                   - memetic: False (デフォルト)。集団が多様で個体ごとに改善中間解が存在する
                     ことが多く、その場合 S_best がその中間解になる。始点除外は不要で、
                     むしろ遠い中間解への LS で大幅に遅くなるため使わない。
+            step_strategy: 各ステップでの swap 選択則。
+                'best' (デフォルト): 全候補を評価し最良 swap を採る。
+                'first': 現在解を改善する最初の実行可能 swap を即採用、なければ最良。
+                ※ 実験(2026-06-03, la36_delay148): 'first'(FI) は 'best'(BI) と
+                  ほぼ同品質(HV/score 差 negligible)だが計算時間は短縮しない（むしろ
+                  やや遅い）。S_p 方向は改善 swap が乏しく FI も実質全候補スキャンになり、
+                  非greedy 着地でキック後 LS も重くなるため。時短目的で FI を使わないこと。
+            escape_infeasible: True なら、ある手で全 direct-swap が infeasible でも
+                2手 direct-swap の組合せで feasible かつ S_ref に近づく状態を探して
+                経路を継続する（_escape_infeasible）。見つからなければ従来どおり打ち切り。
+                ※ プローブ(2026-06-03, la36_small): end_all_infeasible は 0/50 と
+                  ほとんど発生しない。稀なので突破コスト(O(diffs^2)/該当手)は平均性能に
+                  ほぼ響かない。memetic で有効化、ILS では既定 False（既存挙動を保持）。
 
         Returns:
             S_best: 経路上で見つかった最良解（return_intermediate=True なら最良中間解）
@@ -844,6 +933,7 @@ class ILSSolver:
         while True:
             # 不一致位置から全 direct-swap 候補を生成
             candidates = []
+            cand_swaps = []      # 各候補の (machine, i, q) スワップ（安定性差分計算用）
             candidate_info = []  # trace用
             for m, cur_ops in S.items():
                 ref_ops = S_ref.get(m, cur_ops)
@@ -858,6 +948,7 @@ class ILSSolver:
                         cand = self._copy_orders(S)
                         cand[m][i], cand[m][q] = cand[m][q], cand[m][i]
                         candidates.append(cand)
+                        cand_swaps.append((m, i, q))
                         if trace:
                             candidate_info.append({'machine': m, 'pos': i, 'swap_with': q})
 
@@ -883,11 +974,21 @@ class ILSSolver:
             if step_strategy == 'first':
                 random.shuffle(scan_order)  # 改善 swap の選択をばらつかせ多様性を出す
 
+            # 安定性は親 S からの差分で O(1) 計算（semi-active のみ妥当。active は
+            # デコードで順序が変わるため差分不可 → フル評価にフォールバック）
+            use_delta = not self.active_schedule
+            S_stab = self.compute_stability(S) if use_delta else None
+
             sel_cand = None
             sel_score = float('inf')
             for idx in scan_order:
                 cand = candidates[idx]
-                score = self.evaluate(cand)
+                if use_delta:
+                    m_, i_, q_ = cand_swaps[idx]
+                    cand_stab = S_stab + self._stab_swap_delta(S, m_, i_, q_)
+                    score = self.evaluate(cand, stability=cand_stab)
+                else:
+                    score = self.evaluate(cand)
                 if score == float('inf'):
                     n_infeasible += 1
                 else:
@@ -903,18 +1004,22 @@ class ILSSolver:
             if sel_cand is None:                     # 'best'、または FI で改善候補なし
                 sel_cand, sel_score = best_cand, best_cand_score
 
-            if sel_cand is None:                     # 全候補 infeasible → 経路終了
+            if sel_cand is None and escape_infeasible:
+                # 全 direct-swap が単体 infeasible → 2手先読みで突破を試みる（稀）
+                sel_cand, sel_score = self._escape_infeasible(S, S_ref)
+
+            if sel_cand is None:                     # 突破も不可 → 経路終了
                 if trace:
                     trace_log.append({
                         'step': step + 1, 'type': 'end_all_infeasible',
                         'n_candidates': len(candidates),
                         'n_infeasible': n_infeasible,
+                        'diffs_to_ref': self._count_diffs(S, S_ref),
                     })
                 break
 
             S = sel_cand
             cur_score = sel_score
-            cand_ms, cand_st = self.evaluate_pareto(S)
             reached_ref = all(S.get(m) == S_ref.get(m) for m in S_ref)
 
             # 経路上の最もマシな中間解を追跡（始点・終点を除外、出発点より悪くても記録）
@@ -931,6 +1036,8 @@ class ILSSolver:
             step += 1
 
             if trace:
+                # ms/st の分解は trace ログ専用（選択は sel_score で行うため本番は不要）
+                cand_ms, cand_st = self.evaluate_pareto(S)
                 finite_scores = [s for s in cand_scores if s < float('inf')]
                 entry = {
                     'step': step, 'type': 'step',
