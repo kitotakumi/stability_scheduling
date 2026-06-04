@@ -124,11 +124,11 @@ $\hat{\cdot}$ は min-max 正規化後の値。
 
 Path Relinking（PR）は Glover ら [5] によって提案された手法であり、2 つの高品質解の間の軌跡上に有望解が存在するという仮説に基づく。PR はこれまで GA、Memetic Algorithm、GRASP、ILS など様々な手法とハイブリッド化されてきており [5]、スケジューリング問題では特に Scatter Search との組み合わせが代表的な適用形態として知られている [6][7]。JSP でも Tabu Search と PR を組み合わせた TS/PR が高い競争力を示している [6]。
 
-本研究における PR の**設計思想**: 「現在の局所最適解（initiating solution）」から「外乱前の初期スケジュール $S_p$（guiding solution）」に向けて、解間の差分（不一致位置）を direct swap で縮めながら経路上の最良解を探索する。
+本研究における PR の**設計思想**: 「現在の局所最適解（initiating solution）」から「外乱前の初期スケジュール $S_p$（guiding solution）」に向けて、解間の差分（不一致位置）を direct swap で縮めながら経路を辿り、経路上の最良解を中間解として返す。$S_p$ を guiding solution とすることで、PR は「高品質局所最適解を初期スケジュールの構造に引き寄せる」操作として機能し、安定性を明示的に減少させながら MS を可能な限り維持できる中間解を探す。
 
 $$\text{Initiating: } S_{\text{cur}} \longrightarrow \text{Guiding: } S_p$$
 
-各ステップで $S_p$ の位置 $i$ に存在すべきジョブを現在解の対応位置と swap（direct swap）し、経路上の全中間解を評価して最良解を返す。$S_p$ を guiding solution とすることで、PR は「高品質局所最適解を初期スケジュールの構造に引き寄せる」操作として機能し、安定性を明示的に減少させながら MS を可能な限り維持できる中間解を探す。
+**ムーブ選択**: 各ステップでは、$S_p$ との不一致位置に対応する direct swap のうち、**実行可能なものを 1 つランダムに選んで適用する**（TS/PR [6] の relinking 手順に準拠）。各ステップで全候補を評価して最良 swap を選ぶ方式（best selection）も実装可能だが、これは 1 回の PR あたりの解評価回数が不一致数 $d$ に対して $O(d^2)$ となり、外乱が大きく $d$ が大きい本問題では計算時間が支配的になる。ランダム選択は評価回数を $O(d)$ に抑え、予備実験（la36_large, $n=10$）で **best selection の約 3〜13 倍高速**であった。経路が貪欲でなくなるため解品質はわずかに低下しうるが、予備実験では Pareto 覆域（HV）に統計的有意差は認められず（Wilcoxon $p=0.72$）、安定性重視ゾーンの覆域も同等であった。以上より本研究では **ランダム選択を既定** とし、best selection はパラメータ掃引における比較対象として併用する。direct swap は JSP では閉路（実行不可能解）を生じうるため、候補は実行可能性を検証したうえで選択する。
 
 ![direct swap の動作](seminar/direct_swap_focused.svg)
 

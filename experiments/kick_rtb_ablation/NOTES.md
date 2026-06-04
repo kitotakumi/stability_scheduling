@@ -55,10 +55,16 @@ reschedule 範囲に比例する。
   - 検証: PR 1962ケース / N5 77ケースで差分が厳密一致、local_search('best') が非taillard
     フル版と完全一致することも確認（出力不変）。
 
-### 残るボトルネックと次の本命
+### decode 回数問題の解決：random-walk relinking（採用済み）
 プロファイル(la36_large): evaluate の **約73% は build_gantt（デコード）**。安定性は最適化済み
-なので、これ以上の時短は **decode の「回数」を減らす**のが本筋:
-- **A2: Taillard 下界で候補を枝刈り**（多くの候補をデコードせず捨てる）← O(diffs²) を崩せる本命。
-  ただし任意 transposition 用の正しい下界が難所・要検証。
-- **D1: 未改変個体で PR スキップ**（呼び出し回数減）← 簡単・低リスクの部分策。
-- FI と infeasible 突破は時短の本筋ではない（前者は不発、後者は稀イベントの堅牢化）。
+なので残りは **decode の「回数」を減らす**問題で、これは **PR の各ステップで全候補を評価して
+最良を選ぶ (best-selection) のをやめる**ことで解決した。
+
+- **random-walk relinking を採用（既定）**: 各ステップで実行可能な direct swap を 1 つランダムに
+  選ぶ（TS/PR, Peng et al. 2015 [本文 [6]] 流）。decode が **O(diffs²)→O(diffs)** に激減。
+  pilot(la36_large, ngen=100, n=10): best-selection に対し **約3〜13倍高速**、UEA HV は
+  **有意差なし(Wilcoxon p=0.72)**・高安定ゾーン同等。→ memetic・ILS とも既定を 'random' に切替
+  （`step_strategy`/`pr_step_strategy` の既定='random'）。best-selection は `'best'` で sweep 比較用に残す。
+- これにより **A2（Taillard下界の枝刈り）/ D1（未改変個体スキップ）は不要**。Taillard 推定は N5
+  隣接 swap 専用で任意 transposition には使えず実装困難だったが、random-walk で目的を達成。
+- FI（first-improvement）は時短にならず不採用（§1）。infeasible 突破は稀イベントの堅牢化（別目的）。

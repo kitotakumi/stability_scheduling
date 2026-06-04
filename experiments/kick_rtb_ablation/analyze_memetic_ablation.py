@@ -23,13 +23,13 @@ from analyze_ablation import (
     per_trial_uea_hv, paired, med_iqr, fmt_stat,
 )
 
-METHOD_ORDER = ['memetic_ls', 'memetic_pr', 'memetic_pr_fi']
+METHOD_ORDER = ['memetic_ls', 'memetic_pr', 'memetic_pr_fi', 'memetic_pr_rand']
 
 # (A, B): A が B より良いを対立仮説に
 PAIRS = [
     ('memetic_pr', 'memetic_ls'),          # BI-PR は memetic 単体より良い？
-    ('memetic_pr_fi', 'memetic_ls'),       # FI-PR は memetic 単体より良い？
-    ('memetic_pr_fi', 'memetic_pr'),       # FI-PR は BI-PR と比べてどうか
+    ('memetic_pr_rand', 'memetic_ls'),     # random-PR は memetic 単体より良い？
+    ('memetic_pr_rand', 'memetic_pr'),     # random-PR は BI-PR と比べてどうか（品質維持の確認）
 ]
 
 

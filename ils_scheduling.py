@@ -856,7 +856,7 @@ class ILSSolver:
 
     def path_relinking(self, S_cur, S_ref, L_max=None,
                        ls_strategy=None, trace=False,
-                       return_intermediate=False, step_strategy='best',
+                       return_intermediate=False, step_strategy='random',
                        escape_infeasible=False):
         """Direct-swap型 Path Relinking
 
@@ -889,12 +889,17 @@ class ILSSolver:
                     ことが多く、その場合 S_best がその中間解になる。始点除外は不要で、
                     むしろ遠い中間解への LS で大幅に遅くなるため使わない。
             step_strategy: 各ステップでの swap 選択則。
-                'best' (デフォルト): 全候補を評価し最良 swap を採る。
+                'best': 全候補を評価し最良 swap を採る（パラメータ掃引での比較用）。
                 'first': 現在解を改善する最初の実行可能 swap を即採用、なければ最良。
                 ※ 実験(2026-06-03, la36_delay148): 'first'(FI) は 'best'(BI) と
                   ほぼ同品質(HV/score 差 negligible)だが計算時間は短縮しない（むしろ
                   やや遅い）。S_p 方向は改善 swap が乏しく FI も実質全候補スキャンになり、
                   非greedy 着地でキック後 LS も重くなるため。時短目的で FI を使わないこと。
+                'random' (既定): S_ref 方向の実行可能 swap を1つランダムに採用（ランダム順で
+                  最初の実行可能候補で打ち切り＝約1 decode/手）。各手で全候補を評価しないため
+                  decode が O(diffs^2)→O(diffs) に激減（TS/PR (Peng et al. 2015) の relinking
+                  設計に準拠）。pilot(la36_large, n=10)で best と HV 有意差なし(p=0.72)・高安定
+                  ゾーン同等・約3〜13倍高速を確認したため既定に採用。経路は非greedy。
             escape_infeasible: True なら、ある手で全 direct-swap が infeasible でも
                 2手 direct-swap の組合せで feasible かつ S_ref に近づく状態を探して
                 経路を継続する（_escape_infeasible）。見つからなければ従来どおり打ち切り。
@@ -971,8 +976,8 @@ class ILSSolver:
             cand_scores = []
 
             scan_order = list(range(len(candidates)))
-            if step_strategy == 'first':
-                random.shuffle(scan_order)  # 改善 swap の選択をばらつかせ多様性を出す
+            if step_strategy in ('first', 'random'):
+                random.shuffle(scan_order)  # swap 選択をばらつかせる（first:改善探索 / random:TS-PR流）
 
             # 安定性は親 S からの差分で O(1) 計算（semi-active のみ妥当。active は
             # デコードで順序が変わるため差分不可 → フル評価にフォールバック）
@@ -999,6 +1004,9 @@ class ILSSolver:
                     best_cand = cand
                 if step_strategy == 'first' and score < cur_score:
                     sel_cand, sel_score = cand, score  # 改善する最初の候補で打ち切り
+                    break
+                if step_strategy == 'random' and score < float('inf'):
+                    sel_cand, sel_score = cand, score  # 最初の実行可能 swap を採用（TS-PR流ランダム）
                     break
 
             if sel_cand is None:                     # 'best'、または FI で改善候補なし

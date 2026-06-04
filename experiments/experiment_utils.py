@@ -139,7 +139,7 @@ def run_ils(weights, seed, perturb_method, max_iterations, norm_params=None,
 
 def run_memetic(weights, seed, ngen, norm_params=None, problem_name=None, scenario_name=None,
                 kick_mode='none', kick_prob=0.3, repair_strength=2,
-                track_population=False, ls_strategy='best', pr_step_strategy='best'):
+                track_population=False, ls_strategy='best', pr_step_strategy='random'):
     """Memetic GA (GA × N5 LS × kick) の実行"""
     import sys as _sys
     import os as _os

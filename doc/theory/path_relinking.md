@@ -140,13 +140,21 @@ PR のもう1つの設計軸は、「作った候補の中から何を選ぶか�
 - **Pareto 非劣候補から選択**[https://www.sciencedirect.com/science/article/pii/S0305054821001441]
 - **decomposition-based**[https://www.sciencedirect.com/science/article/pii/S0305054821001441]
 
-### 本研究との対応
-あなたの研究はすでに
-- 安定性 `D`
-- メイクスパン `MS`
-- 重み `λ`
-- min-max 正規化  
-を使う設計になっているので、**PR の候補選択も aggregation combined（重み付き和）で統一するのが最も自然**。
+### 本研究との対応（実装上の決定）
+当初は安定性 `D`・`MS`・重み `λ`・min-max 正規化の設計に合わせ、PR の候補選択も
+**aggregation combined（重み付き和での最良選択, best-selection）** で統一するのが自然と考え、
+まずこれを実装した。
+
+しかし best-selection は各ステップで全候補（≈不一致数 `d`）をフル評価して最良 swap を選ぶため、
+1 PR あたりの解評価が `O(d²)` となり、外乱が大きく `d` が大きいケースで計算時間が支配的になった。
+そこで TS/PR (Peng et al. 2015 [本文 [6]]) に倣い、**各ステップで実行可能な direct swap を 1 つ
+ランダムに選ぶ random-walk 方式** を採用した（評価は最初の実行可能候補で打ち切り＝`O(d)`）。
+
+pilot（la36_large, ngen=100, n=10）:
+- 計算時間: random は best-selection の **約 3〜13 倍高速**（`O(d²)→O(d)`）。
+- 品質: UEA HV に統計的有意差なし（Wilcoxon `p=0.72`, Cliff's δ small）、安定性重視ゾーンの
+  覆域も同等。中央値で random が ~3% 低いが非有意。
+→ **random 選択を既定に採用**（memetic・ILS とも）。best-selection はパラメータ掃引での比較対象として併用。
 
 ---
 

@@ -42,7 +42,7 @@ class MemeticGASolver:
                  cx="hirano", mut="inversion", sel="Tournament",
                  cxpb=0.85, mutpb=0.1, pop_size=50,
                  kick_mode='repair', kick_prob=0.5,
-                 repair_strength=4, ls_strategy='best', pr_step_strategy='best'):
+                 repair_strength=4, ls_strategy='best', pr_step_strategy='random'):
         self.jm_table = jm_table
         self.fixed_gantt = fixed_gantt
         self.reschedule_time = reschedule_time

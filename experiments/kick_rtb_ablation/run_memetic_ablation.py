@@ -32,6 +32,7 @@ METHODS = {
     'memetic_ls': dict(kick_mode='none', pr_step_strategy='best', label='Memetic-LS'),
     'memetic_pr': dict(kick_mode='pr', pr_step_strategy='best', label='Memetic+PR(BI)'),
     'memetic_pr_fi': dict(kick_mode='pr', pr_step_strategy='first', label='Memetic+PR(FI)'),
+    'memetic_pr_rand': dict(kick_mode='pr', pr_step_strategy='random', label='Memetic+PR(rand)'),
 }
 DEFAULT_METHODS = list(METHODS.keys())
 
