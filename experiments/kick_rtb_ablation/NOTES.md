@@ -68,3 +68,12 @@ reschedule 範囲に比例する。
 - これにより **A2（Taillard下界の枝刈り）/ D1（未改変個体スキップ）は不要**。Taillard 推定は N5
   隣接 swap 専用で任意 transposition には使えず実装困難だったが、random-walk で目的を達成。
 - FI（first-improvement）は時短にならず不採用（§1）。infeasible 突破は稀イベントの堅牢化（別目的）。
+
+### 検討したが不採用（random-walk 確定後, la36_large ngen=100 n=10）
+- **始点・終点除外 (return_intermediate=True) を memetic に**: UEA HV 有意差なし(p=0.50)、
+  かつ **include(既定 False)より ~28% 遅い**（exclude は始点より悪い中間解を返しうる→キック後 LS が
+  重い／include は no-op キックが多く LS がほぼタダ）。高安定ゾーンも include 寄り。→ **include 維持**。
+- **top-3 LS（スカラー上位3点を各LSして最良採用, pr_ls_top_k=3）**: UEA HV は random(1点LS)比
+  有意差なし(p=0.50, 点推定 +3〜4%)・高安定ゾーン同等、かつ **約2倍遅い**。→ **不採用、k=1 維持**。
+- まとめ: random/best/include/exclude/top-3 は互いに HV 有意差なし。**random k=1 + include が
+  「同品質で最速」** なので既定として確定。広域確認（他問題・重み・ngen=500）は本 sweep で回収予定。
