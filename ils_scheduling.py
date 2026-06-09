@@ -719,7 +719,13 @@ class ILSSolver:
                 'insert' = 操作を抜き取り別の位置に挿入
                 'repair' = 初期解方向への direct swap を strength 回適用 (P-1: 安定性修復型)
         strength: 操作の回数 (大きいほど強い摂動)
+
+        note: 'repair' は各手で実行可能性をチェックして確定させるため、swap/insert 用の
+              20 回リトライループには乗せず専用ハンドラ _perturb_repair に委譲する。
         """
+        if method == 'repair':
+            return self._perturb_repair(machine_orders, strength)
+
         for _ in range(20):  # 実行可能解が見つかるまでリトライ
             new_orders = self._copy_orders(machine_orders)
 
@@ -748,37 +754,52 @@ class ILSSolver:
                     j = random.randrange(len(ops) + 1)
                     ops.insert(j, op)
 
-            elif method == 'repair':
-                # 初期解との不一致位置からランダムに選び、その位置を初期解に
-                # 一致させる direct swap を strength 回適用。
-                # 不一致がない場合は N5 ランダムswap にフォールバック。
-                for _ in range(strength):
-                    mismatches = []
-                    for m, cur_ops in new_orders.items():
-                        ref_ops = self.initial_machine_orders.get(m, cur_ops)
-                        for i in range(min(len(cur_ops), len(ref_ops))):
-                            if cur_ops[i] != ref_ops[i]:
-                                target_op = ref_ops[i]
-                                if target_op in cur_ops:
-                                    mismatches.append((m, i, target_op))
-                    if mismatches:
-                        m, i, target_op = random.choice(mismatches)
-                        cur_ops = new_orders[m]
-                        q = cur_ops.index(target_op)
-                        cur_ops[i], cur_ops[q] = cur_ops[q], cur_ops[i]
-                    else:
-                        op_times = self.build_gantt(new_orders)
-                        if op_times is None:
-                            break
-                        neighbors = self.generate_n5_neighbors(new_orders, op_times)
-                        if not neighbors:
-                            break
-                        new_orders = random.choice(neighbors)
-
             if self.build_gantt(new_orders) is not None:
                 return new_orders
 
         return machine_orders  # フォールバック
+
+    def _perturb_repair(self, machine_orders, strength):
+        """初期解方向への direct swap を最大 strength 手適用する repair 摂動。
+
+        各手で初期解との不一致位置 (cur_ops[i] != ref_ops[i]) を全列挙し、その位置を
+        初期解に一致させる swap を 1 つ採用する。候補をランダム順に全列挙して「最初に
+        実行可能になる swap」を選ぶため、固定リトライ回数 (旧実装の 20 回) には依存しない。
+
+        終了条件:
+          - 不一致が尽きた (初期解に到達) → それ以上の引き戻しは無いので終了。
+          - 現状態から実行可能な引き戻し swap が 1 つも無い → 終了。
+        いずれの場合も戻り値は実行可能。引き戻し量は最大 strength 手だが、diff は採用swap
+        ごとに 1〜2 減るため strength より早く 0 に到達して終了することがある。
+        """
+        new_orders = self._copy_orders(machine_orders)
+        for _ in range(strength):
+            # 初期解との不一致位置を全列挙 (毎手やり直す: 直前の swap で順序が変わるため)
+            mismatches = []
+            for m, cur_ops in new_orders.items():
+                ref_ops = self.initial_machine_orders.get(m, cur_ops)
+                for i in range(min(len(cur_ops), len(ref_ops))):
+                    if cur_ops[i] != ref_ops[i]:
+                        target_op = ref_ops[i]
+                        if target_op in cur_ops:
+                            mismatches.append((m, i, target_op))
+            if not mismatches:
+                break  # 初期解に到達済み: 引き戻し対象が無いので終了 (N5 へは逃がさない)
+            # 候補をランダム順に走査し、実行可能になる最初の swap を採用する。
+            # 実行不可な候補は元に戻して次へ (= 全候補を尽くすまで列挙)。
+            random.shuffle(mismatches)
+            applied = False
+            for m, i, target_op in mismatches:
+                cur_ops = new_orders[m]
+                q = cur_ops.index(target_op)
+                cur_ops[i], cur_ops[q] = cur_ops[q], cur_ops[i]
+                if self.build_gantt(new_orders) is not None:
+                    applied = True
+                    break
+                cur_ops[i], cur_ops[q] = cur_ops[q], cur_ops[i]  # 実行不可なので戻す
+            if not applied:
+                break  # この状態からは実行可能な引き戻し swap が無い → 終了
+        return new_orders
 
     # ========== Path Relinking ==========
 
