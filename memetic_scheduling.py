@@ -35,14 +35,16 @@ class MemeticGASolver:
     kick_prob : float
         キックを各個体に確率的に適用する確率。
     repair_strength : int
-        kick_mode='repair' 時の direct swap 回数の上限。適用ごとに [1, repair_strength] で一様サンプリングする。
+        kick_mode='repair' 時の direct swap 回数を [1, cap] で一様サンプリングする際の cap の天井。
+        cap は基本「経路長（improved→初期解の不一致数）」。repair_strength<=0（デフォルト）なら
+        cap=経路長（フル）、>0 なら cap=min(経路長, repair_strength)（深さを制限）。
     """
 
     def __init__(self, jm_table, fixed_gantt, reschedule_gantt, reschedule_time, weights,
                  cx="hirano", mut="inversion", sel="Tournament",
                  cxpb=0.85, mutpb=0.1, pop_size=50,
                  kick_mode='repair', kick_prob=0.5,
-                 repair_strength=4, ls_strategy='best', pr_step_strategy='random'):
+                 repair_strength=0, ls_strategy='best', pr_step_strategy='random'):
         self.jm_table = jm_table
         self.fixed_gantt = fixed_gantt
         self.reschedule_time = reschedule_time
@@ -141,7 +143,12 @@ class MemeticGASolver:
         kick_applied = False
         if self.kick_mode != 'none' and random.random() < self.kick_prob:
             if self.kick_mode == 'repair':
-                kicked = self._ils.perturb(improved, 'repair', random.randint(1, self.repair_strength))
+                # 経路長（improved→初期解の不一致数）を上限に repair 強度をランダムサンプリング。
+                # repair_strength<=0 なら cap=経路長（フル）、>0 なら cap=min(経路長, repair_strength)。
+                n_diff = self._ils._count_diffs(improved, self._ils.initial_machine_orders)
+                cap = n_diff if self.repair_strength <= 0 else min(n_diff, self.repair_strength)
+                cap = max(1, cap)
+                kicked = self._ils.perturb(improved, 'repair', random.randint(1, cap))
             else:  # 'pr'
                 # 集団ベースの memetic では path_relinking はデフォルト
                 # (return_intermediate=False = 始点 S_best を返す) のままで良い。

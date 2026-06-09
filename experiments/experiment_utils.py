@@ -102,11 +102,11 @@ def run_ga(weights, seed, ngen, norm_params=None, problem_name=None, scenario_na
 
 def run_ils(weights, seed, perturb_method, max_iterations, norm_params=None,
             active_schedule=False, taillard_acceleration=True,
-            path_relink_mode=False, relink_trigger=200,
-            repair_mode=False, repair_trigger=50, repair_strength=2,
+            path_relink_mode=False, relink_trigger=50,
+            repair_mode=False, repair_trigger=50, repair_strength=0,
             strategy='best',
             initial_strength=2, max_strength=5,
-            patience=None,
+            patience=None, kick_trigger_first=None,
             problem_name=None, scenario_name=None):
     jm_table, fixed_gantt, reschedule_gantt, reschedule_time = get_problem(
         problem_name, scenario_name)
@@ -122,7 +122,8 @@ def run_ils(weights, seed, perturb_method, max_iterations, norm_params=None,
         path_relink_mode=path_relink_mode, relink_trigger=relink_trigger,
         repair_mode=repair_mode, repair_trigger=repair_trigger,
         repair_strength=repair_strength,
-        strategy=strategy, patience=patience)
+        strategy=strategy, patience=patience,
+        kick_trigger_first=kick_trigger_first)
     ms, st = solver.evaluate_pareto(best_orders)
     # ILS は semi-active decoding なので initial_machine_orders の stability は定義上 0。
     # baseline = (init_ms, 0.0)
@@ -138,7 +139,7 @@ def run_ils(weights, seed, perturb_method, max_iterations, norm_params=None,
 
 
 def run_memetic(weights, seed, ngen, norm_params=None, problem_name=None, scenario_name=None,
-                kick_mode='none', kick_prob=0.3, repair_strength=2,
+                kick_mode='none', kick_prob=0.3, repair_strength=0,
                 track_population=False, ls_strategy='best', pr_step_strategy='random'):
     """Memetic GA (GA × N5 LS × kick) の実行"""
     import sys as _sys

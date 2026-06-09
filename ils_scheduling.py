@@ -1201,8 +1201,8 @@ class ILSSolver:
     def run(self, max_iterations=3000, strategy='best', perturb_method='swap',
             initial_strength=2, max_strength=5, verbose=True,
             path_relink_mode=False, relink_trigger=50,
-            repair_mode=False, repair_trigger=50, repair_strength=2,
-            patience=None):
+            repair_mode=False, repair_trigger=50, repair_strength=0,
+            patience=None, kick_trigger_first=None):
         """
         ILSメインループ
 
@@ -1223,7 +1223,15 @@ class ILSSolver:
                          摂動（初期解方向への direct swap）を1回キックとして発動。
                          P-1 (Mini-PR kick)。他モードとは独立して動作する。
             repair_trigger: repair キックを発動する無改善反復数
-            repair_strength: repair 1回あたりの direct swap 回数
+            repair_strength: repair 鋸歯エスカレーションの上限 depth（cap）の天井。kick 回数で
+                             depth = 1,2,..,cap,1,2,.. と循環し、初期解方向の front を浅→深と掃く
+                             （best 改善で depth=1 にリセット）。cap は基本「経路長（current→初期解
+                             の不一致数）」。repair_strength<=0 なら cap=経路長（フル掃引）、
+                             repair_strength>0 なら cap=min(経路長, repair_strength)（深さを制限）。
+            kick_trigger_first: 適応トリガーの初回キック閾値。None なら従来の flat トリガー
+                                （全キックが relink_trigger/repair_trigger）。値を指定すると、
+                                最初の1回だけこの閾値（大きめ＝ILS を収束まで深ぼらせる）、
+                                以降は relink_trigger/repair_trigger（小さめ＝密にキック）で発動。
 
         ※ PR/repair キック後の current 更新方針は実験により確定済み（下記キック処理を参照）:
           単一軌道の ILS では、キック後に current を best に戻す (return-to-best) のが正解。
@@ -1276,6 +1284,8 @@ class ILSSolver:
         strength = initial_strength
         no_improve_count = 0
         patience_count = 0
+        repair_kick_count = 0  # repair 鋸歯エスカレーション用（best 改善でリセット）
+        kicks_fired = 0        # 適応トリガー用（初回キックだけ閾値が違う）
         total_ls_steps = ls_steps
 
         for i in range(max_iterations):
@@ -1285,10 +1295,17 @@ class ILSSolver:
             # 摂動結果には常に通常 LS をかけてから受理判定する。
             accepted = False
             kick_ms, kick_st = None, None
-            if (path_relink_mode and no_improve_count >= relink_trigger):
+            # 適応トリガー: 初回キックは kick_trigger_first（ILS を収束まで深ぼらせてから発動）、
+            # 以降は relink_trigger/repair_trigger（収束後に密にキックして安定性側を掃く）。
+            # kick_trigger_first=None なら従来の flat トリガー。
+            _first_kick = (kick_trigger_first is not None and kicks_fired == 0)
+            _pr_trig = kick_trigger_first if _first_kick else relink_trigger
+            _rp_trig = kick_trigger_first if _first_kick else repair_trigger
+            if (path_relink_mode and no_improve_count >= _pr_trig):
                 current_method = 'path_relink'
                 iter_strength = None
                 no_improve_count = 0
+                kicks_fired += 1
                 # ILS では return_intermediate=True で「始点・終点を除外した経路上最良の
                 # 中間解」を返させる。単一軌道の探索では current は強い局所最適なので、
                 # デフォルト (始点 S_best を返す) だと初期解方向の経路が単調悪化して始点を
@@ -1303,14 +1320,27 @@ class ILSSolver:
                 kick_ms, kick_st = self.evaluate_pareto(perturbed)
                 if verbose:
                     print(f"  Iter {i+1}: PR発動")
-            elif (repair_mode and no_improve_count >= repair_trigger):
+            elif (repair_mode and no_improve_count >= _rp_trig):
                 current_method = 'repair'
-                iter_strength = repair_strength
+                kicks_fired += 1
+                # repair 強度を kick 回数で鋸歯エスカレーション。上限 depth（cap）は
+                # 「current から初期解までの距離 = 経路長（不一致位置数）」にして、初期解方向の
+                # front を浅→深（=完全反転=初期解）まで系統的に掃く。cap を超えたら depth=1 に戻る。
+                # best 改善で repair_kick_count をリセット。repair は毎回 random.choice で直す
+                # 不一致が変わるので、同じ depth でも別の点を撒ける（何周も掃けば front が密になる）。
+                # repair_strength>0 はフル経路が高コスト/無駄な場合の depth 天井（cap=min(経路長,
+                # repair_strength)）。repair_strength<=0 なら cap=経路長そのもの。
+                n_diff = self._count_diffs(current, self.initial_machine_orders)
+                cap = n_diff if repair_strength <= 0 else min(n_diff, repair_strength)
+                cap = max(1, cap)
+                cur_repair_depth = (repair_kick_count % cap) + 1
+                repair_kick_count += 1
+                iter_strength = cur_repair_depth
                 no_improve_count = 0
-                perturbed = self.perturb(current, 'repair', repair_strength)
+                perturbed = self.perturb(current, 'repair', cur_repair_depth)
                 kick_ms, kick_st = self.evaluate_pareto(perturbed)
                 if verbose:
-                    print(f"  Iter {i+1}: repair発動")
+                    print(f"  Iter {i+1}: repair発動 (depth={cur_repair_depth}/{cap})")
             else:
                 current_method = perturb_method
                 iter_strength = strength
@@ -1338,6 +1368,7 @@ class ILSSolver:
                 accepted = True
                 strength = initial_strength
                 no_improve_count = 0
+                repair_kick_count = 0  # 改善したら repair 鋸歯を depth=1 から再掃引
                 if verbose:
                     print(f"  Iter {i+1}: 改善! Makespan={ls_ms}, Stability={ls_st:.2f}, "
                           f"Score={best_score:.4f} (method={current_method}, strength={strength})")
@@ -1351,16 +1382,28 @@ class ILSSolver:
                 #    (2026-06-02 実証)。
                 current = self._copy_orders(best)
                 accepted = False
-                strength = initial_strength
+                # 注: insert 摂動強度 strength はここでリセットしない。
+                # キック発火は無改善の継続であり、insert の鋸歯サイクルとは独立に
+                # 連続させる。旧実装はここで initial_strength に戻していたが、これは
+                # 「キックが入ると insert 強度スケジュールが浅にリセットされる」という
+                # 交絡（キックの有無で baseline と探索コストが変わる）だったため除去
+                # （2026-06-09）。strength のリセットは best 改善時のみ。
                 if verbose:
                     print(f"  Iter {i+1}: {current_method} RTB "
                           f"Makespan={ls_ms}, Stability={ls_st:.2f}, "
                           f"Score={ls_score:.4f} (best={best_score:.4f})")
             else:
-                # (3) 棄却
+                # (3) 棄却: insert 摂動強度を鋸歯（巡回）でエスカレーション。
+                # 3 反復ごとに +1 し、max_strength に達したら initial_strength へ折り返す
+                # （= VNS の shaking と同型。max に張り付かせず浅→深を周回する）。
+                # best 改善で initial_strength にリセット（improvement 分岐）。
+                # ※ 旧実装は min(strength+1, max_strength) で max に単調張り付きしていた。
+                #   停滞が続くと毎反復 strength=max の insert+LS となり、ランダムリスタート的に
+                #   重く非効率だったため、折り返し（巡回）に変更（2026-06-09）。
                 no_improve_count += 1
                 if no_improve_count % 3 == 0:
-                    strength = min(strength + 1, max_strength)
+                    strength = (initial_strength if strength >= max_strength
+                                else strength + 1)
 
             if best_iteration == i + 1:
                 patience_count = 0
