@@ -101,11 +101,14 @@ METHODS = {
     },
 }
 
-DEFAULT_METHODS = ['ga', 'ils_baseline', 'ils_repair', 'ils_pr']
+DEFAULT_METHODS = ['ga', 'ils_baseline', 'ils_repair', 'ils_pr',
+                   'memetic_ls', 'memetic_repair', 'memetic_pr']
 
+# [0.0, 1.0]（安定性単独）は除外: D=0 の自明解（RSR そのもの）に張り付くだけで
+# 手法間比較の情報がない（2026-06-13 ユーザー判断）。
 DEFAULT_WEIGHTS = [
     [1.0, 0.0], [0.9, 0.1], [0.8, 0.2], [0.7, 0.3], [0.6, 0.4],
-    [0.5, 0.5], [0.4, 0.6], [0.3, 0.7], [0.2, 0.8], [0.1, 0.9], [0.0, 1.0],
+    [0.5, 0.5], [0.4, 0.6], [0.3, 0.7], [0.2, 0.8], [0.1, 0.9],
 ]
 
 DEFAULT_PROBLEM_SETS = [
@@ -156,11 +159,14 @@ def _extract_uea_points(history, kind):
     time-to-target を、点の順序や評価回数からの近似に頼らず正確に再構成できる。
 
     Returns:
-        (points, times) — points: [[ms, st], ...], times: [cpu_time, ...]
-        両者は同じ長さでインデックスがアラインしている。
+        (points, times, d_hist)
+        — points: [[ms, st], ...], times: [cpu_time, ...]（同じ長さでアライン）
+        — d_hist: {D値(int): 訪問回数} の頻度ヒストグラム。dedup **前** の全訪問点で
+          数える（dedup はユニーク点しか残さず頻度が消えるため）。「ILS は S_p 近傍に
+          探索を集中する」(H1) の頻度分布証拠に使う。順列偏差 D は整数なので桁は小さい。
     """
     if not history:
-        return [], []
+        return [], [], {}
     pts = []
     times = []
     # UEA 記録ポリシー（2026-06-12 統一）: 「LS 開始点（摂動・キック出力・交叉/突変直後の
@@ -189,6 +195,13 @@ def _extract_uea_points(history, kind):
                 if ms is not None and st is not None and np.isfinite(ms) and np.isfinite(st):
                     pts.append([float(ms), float(st)]); times.append(tv)
 
+    # D 訪問頻度ヒストグラム（dedup 前に計算: dedup 後はユニーク点だけで頻度が消える）
+    d_hist = {}
+    if pts:
+        d_vals = np.rint(np.asarray(pts, dtype=float)[:, 1]).astype(int)
+        uvals_d, counts_d = np.unique(d_vals, return_counts=True)
+        d_hist = {int(v): int(c) for v, c in zip(uvals_d, counts_d)}
+
     # 保存時 dedup: (ms,st) ごとに最早 cpu_time のみ残す。HV / HV(t) / 領域HV は重複点に
     # 不変なので全分析で結果は同一。memetic は全世代×全個体で同一(ms,st)が大量に出る
     # （MS・順列偏差は整数なので異なる点は数百〜千種）ため点数が ~99% 減り、保存サイズ・
@@ -201,7 +214,7 @@ def _extract_uea_points(history, kind):
         uvals, uidx = np.unique(arr, axis=0, return_index=True)  # 各(ms,st)の最早時刻
         pts = uvals.tolist()
         times = tarr[uidx].tolist()
-    return pts, times
+    return pts, times, d_hist
 
 
 def _slim_anytime(history, kind):
@@ -286,8 +299,23 @@ def _run_one_task(task):
 
         history = r['history']
         kind = 'ga' if cfg['kind'] == 'memetic' else cfg['kind']
-        uea_points, uea_points_t = _extract_uea_points(history, kind)
+        uea_points, uea_points_t, d_visit_hist = _extract_uea_points(history, kind)
         slim_history = _slim_anytime(history, kind)
+
+        # 機構統計 (research_document.md 投稿前ToDo: PR経路長・改善発見率の図示用)。
+        # per-call の平行配列で保存（集約は分析側）。pr_*: (d0, steps, improved)、
+        # repair_*: (発動時経路長, 適用depth)。GA/キックなし手法は空配列。
+        pr_stats = r.get('pr_stats') or []
+        repair_stats = r.get('repair_stats') or []
+        mech_stats = {
+            'n_pr_calls': len(pr_stats),
+            'pr_d0':       [int(s[0]) for s in pr_stats],
+            'pr_steps':    [int(s[1]) for s in pr_stats],
+            'pr_improved': [int(s[2]) for s in pr_stats],
+            'n_repair_calls': len(repair_stats),
+            'repair_path_len': [int(s[0]) for s in repair_stats],
+            'repair_depth':    [int(s[1]) for s in repair_stats],
+        }
 
         save_data = {
             'method': method_key,
@@ -307,6 +335,8 @@ def _run_one_task(task):
             'history': slim_history,
             'uea_points': uea_points,
             'uea_points_t': uea_points_t,  # uea_points と同長: 各点の訪問 cpu_time
+            'd_visit_hist': {str(k): v for k, v in sorted(d_visit_hist.items())},
+            'mech_stats': mech_stats,
         }
 
         _os.makedirs(_os.path.dirname(out_path), exist_ok=True)
@@ -344,7 +374,7 @@ def main():
         help=f'手法 (デフォルト: {DEFAULT_METHODS})')
     parser.add_argument(
         '--weights', nargs='+', type=str, default=None,
-        help='重み (例: "1.0,0 0.9,0.1"). デフォルト: 0.1刻み11点')
+        help='重み (例: "1.0,0 0.9,0.1"). デフォルト: 0.1刻み10点 ([1.0,0.0]〜[0.1,0.9])')
     parser.add_argument(
         '--n-trials', type=int, default=DEFAULT_N_TRIALS,
         help=f'試行回数 (デフォルト: {DEFAULT_N_TRIALS})')
@@ -413,6 +443,8 @@ def main():
     config = {
         'problems': [list(p) for p in problem_sets],
         'methods': args.methods,
+        # raw の自己記述性のため手法定義を凍結保存（コード側 METHODS を後で変えても追える）
+        'method_configs': {m: METHODS[m] for m in args.methods},
         'weights': weights_list,
         'n_trials': args.n_trials,
         'ils_max_iter': args.ils_max_iter,

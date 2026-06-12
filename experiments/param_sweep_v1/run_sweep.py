@@ -212,7 +212,7 @@ def _run_one_task(task):
             ekind = 'ils'
 
         history = r['history']
-        uea_points, uea_points_t = _ext(history, ekind)
+        uea_points, uea_points_t, _d_hist = _ext(history, ekind)  # d_hist は sweep では未使用
         slim_history = _slim(history, ekind)
 
         save_data = {
