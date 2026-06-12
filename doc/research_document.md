@@ -21,7 +21,7 @@
 
 ### 1.1 外乱と再スケジューリング
 
-製造業の生産現場では、作業遅延や機械故障などの外乱が頻繁に発生し、当初のスケジュールを実行困難にさせる。外乱への対応アプローチは大きく 2 種類に分類される。**静的アプローチ**（事前耐性設計）は外乱の発生を見越し、ロバストなスケジュールをあらかじめ構築する。一方、**動的アプローチ**（事後再スケジューリング）は外乱の発生後にスケジュールを修正する。本研究では後者のうち、外乱発生後に実行中のスケジュールを実行可能な形へと修正する**予測リアクティブ再スケジューリング**を対象とする。
+製造業の生産現場では、作業遅延や機械故障などの外乱が頻繁に発生し、当初のスケジュールを実行困難にさせる。外乱への対応アプローチは大きく 2 種類に分類される。**静的アプローチ**（事前耐性設計）は外乱の発生を見越し、ロバストなスケジュールをあらかじめ構築する。一方、**動的アプローチ**（事後再スケジューリング）は外乱の発生後にスケジュールを修正する。本研究では後者のうち、外乱発生後に実行中のスケジュールを実行可能な形へと修正する**予測リアクティブ再スケジューリング** [12][13] を対象とする。
 
 外乱には作業遅延・機械故障・緊急ジョブ挿入など複数の種類が存在するが、本研究では**作業遅延**に着目する。作業遅延は元の機械割り当てを維持したまま処理順序の調整で対処可能であり、「修正スケジュールを $S_p$ の近傍に保つ」という本研究の問題前提が最も明確に成立する外乱タイプである。機械故障のように機械割り当て自体を変更する必要がある外乱は解空間の構造が異なり別途の定式化を要するため、今後の課題とする。
 
@@ -43,13 +43,19 @@
 
 ### 2.1 動的 JSSP と安定性
 
-ジョブショップスケジューリング問題（JSSP）は NP 困難問題であり、メタヒューリスティクスが主流の解法である [1]。動的環境における再スケジューリングの重要性は広く認識されており、Rangsaritratsamee ら [3] は GA に局所探索を組み込んだハイブリッド GA を提案して効率性と安定性の同時考慮を試みた。Pfeiffer ら [2] は GA ベースの解法とシミュレーション評価を通じて安定性の重要性を指摘した。Zhang ら [4] は開始時刻偏差を安定性評価関数として用いた GA と Tabu Search のハイブリッド手法を提案している。
+ジョブショップスケジューリング問題（JSSP）は NP 困難問題であり、メタヒューリスティクスが主流の解法である [1]。動的環境における再スケジューリングは、戦略・方策・手法を整理した分類フレームワーク [12] や動的スケジューリングのサーベイ [13] が示す通り、一貫して活発な研究領域である。
 
-しかしこれらの先行研究には以下の共通した課題がある。
+効率と安定性の同時考慮は、Wu ら [14] が単一機械の再スケジューリングにおいて両者を評価基準として定式化したのが先駆けである。JSSP では Rangsaritratsamee ら [3] が GA に局所探索を組み込んだハイブリッド GA により効率性と安定性の同時最適化を試み、Pfeiffer ら [2] は GA ベースの解法とシミュレーション評価を通じて安定性の重要性を指摘した。Fattahi & Fallahi [18] は genetic local search による効率・安定性の重み付き同時最適化を、Zhang ら [4] は開始時刻偏差を安定性評価関数として用いた GA と Tabu Search のハイブリッド手法を提案している。フローショップでは Katragjini ら [19] が複数種の外乱下での再スケジューリングを Iterated Greedy と weighted sum で扱った。近年もファジィ FJSP への人工蜂コロニーの適用 [20]、深層強化学習による「元スケジュールからの偏差を抑える修復方策」の学習 [21] など、効率と安定性の同時考慮は再スケジューリング研究の中心的課題であり続けている。
 
-**集団ベース手法への偏重**: 既存研究は GA を基軸とした集団ベース手法を中心としている。再スケジューリングには外乱前の高品質スケジュールが初期解として既に存在するという特殊性があるが、この性質を活かせる単一解ベース手法の探索は十分でない。
+一方、安定性の確保を**機構**として担う系譜も存在する。match-up scheduling [15] は外乱後の部分スケジュールを将来のある時点で元スケジュールに合流させる修復戦略であり、AOR（affected operations rescheduling）[16] は外乱の影響が波及する作業のみを再スケジュールの対象とする。Zakaria & Petrovic [17] は GA の染色体表現と探索範囲を match-up 区間に限定することで安定性を確保した。これらに共通するのは、安定性を**再スケジュール範囲の限定、すなわち探索空間の制限**によって構造的に保証するアプローチだという点である。
 
-**安定性確保機構の欠如**: 安定性は評価指標として存在するものの、安定性確保を目的とした専用の探索機構を提案・分析した研究は存在しない。いずれも基本的なアルゴリズムの適用にとどまっており、安定性を積極的に向上させる機構設計が行われていない。
+<!-- TODO: C&IE in-press (2026) "Impact of optimization scope on solution quality and stability in dynamic flexible job shop rescheduling" を精読。範囲限定型の最新例（optimization scope の4階層形式化・Greedy Trap）として引用検討。問題意識が最も近い競合 -->
+
+以上を踏まえると、既存研究には以下の課題が残されている。
+
+**問題特性とアルゴリズム構造の適合性分析の欠如**: 既存研究の解法は GA を基軸とした集団ベース手法が中心である [2][3][4][18][20]。フローショップでの Iterated Greedy の適用例 [19] はあるものの、再スケジューリングには「外乱前の高品質スケジュールが初期解として既に存在する」という特殊性があり、この性質と単一解ベース探索の適合性を JSSP で正面から分析した研究はない。
+
+**探索演算子としての安定性確保機構の欠如**: 既存の安定性指向機構 [15][16][17] はいずれも探索空間の制限として実現されている。範囲の限定は安定性を構造的に保証する一方、制限の外側に存在しうる「効率と安定性のより良いトレードオフ解」には原理的に到達できない。これに対し、全解空間を探索するメタヒューリスティクスの内部に**安定性方向への誘導を探索演算子として組み込む**設計、およびその効果がホストアルゴリズムの構造にどう依存するかの分析は、我々の知る限り行われていない。
 
 **評価方法論の不足**: 既存研究の大半は単一の重み設定でのスカラー値、MS、安定性を個別に報告するのみであり、探索性能を多角的に評価・考察した研究がほとんど存在しない。
 
@@ -58,8 +64,15 @@
 以上の課題を踏まえ、本研究は以下の 3 点に取り組む。
 
 1. **再スケジューリング特性とアルゴリズム適合性の検証**: 高品質な初期解が存在し、かつその初期解からの変更量を最小化したいという問題特性を踏まえ、単一解ベースと集団ベースの各手法の挙動を実験的に比較する
-2. **安定性確保機構（PR・repair）の提案**: 両機構を単一解ベース（ILS）と集団ベース（Memetic）の双方に組み込み、ベースアルゴリズムの構造との相互作用を分析する
+2. **安定性確保機構（PR・repair）の探索演算子としての提案**: 探索空間を制限する従来の範囲限定型 [15][16][17] と異なり、安定性方向への誘導を全空間探索型メタヒューリスティクスの探索演算子として設計する。両機構を単一解ベース（ILS）と集団ベース（Memetic）の双方に組み込み、ベースアルゴリズムの構造との相互作用を分析する
 3. **探索性能の多角的な評価方法論の提案**: 速度・重み別品質・Pareto 覆域の 3 軸からなる評価フレームワークを構築し、詳細な性能比較を行う
+
+これら 3 つの取り組みの背後には、次の 2 つの仮説がある。
+
+- **H1（適合性仮説）**: 再スケジューリングには高品質な初期解 $S_p$ が存在し、求める修正解は $S_p$ の近傍に分布する。元解からの連続変形で探索を進める単一解ベース手法（ILS）は、この近傍を取りこぼしなく**充填的に**探索できるため、問題特性と構造的に相性が良い。一方、交叉で解構造を大きく組み替える集団ベース手法（GA）は広域探索に向かう反面、$S_p$ 近傍（高安定領域）の充填が粗くなりやすい。
+- **H2（補完仮説）**: PR・repair は解を $S_p$ 方向へ誘導する探索演算子である。したがってこれらの機構は、集団ベース手法が構造的に苦手とする「$S_p$ 近傍の充填」をちょうど補完するはずである。逆に ILS は H1 の通りこの領域を自力で充填できるため、同じ機構を追加しても伸びしろは相対的に小さい。
+
+この 2 仮説から、「**同一の安定性確保機構であっても、その効果はホストアルゴリズムの探索構造に依存して非対称に現れる**」という本研究の中心的予測が導かれる。3 章で各手法と機構の設計を述べ、4 章でこの予測を実験的に検証する。
 
 ---
 
@@ -69,13 +82,24 @@
 
 $n$ ジョブ、$m$ 機械の JSSP において外乱（作業遅延）が発生した後、元スケジュール $S_p$ に対して修正スケジュール $S_q$ を求める。
 
+**再スケジューリングの力学（外乱注入・凍結・解空間）**:
+
+1. **元スケジュール $S_p$**: 静的 JSSP に対してメタヒューリスティクスで求めた高品質な active スケジュール。全手法に共通の入力として与える。
+2. **外乱**: 固定イベントとしての単一の作業遅延。指定した作業の処理完了が遅延量 $\delta$ だけ延びる。
+3. **right-shift 修復（RSR）**: 機械上の処理順序を $S_p$ のまま保持し、遅延の影響を受ける作業を時間軸上で後方へずらして実行可能性を回復したスケジュール $S_{RSR}$ を得る。これが「順序を一切変更しない」場合のベースラインである。
+4. **再スケジューリング時刻 $t_r$**: right-shift 後の遅延作業の完了時刻の最大値（= 遅延が解消する時刻）。
+5. **凍結と最適化対象の分割**: $S_{RSR}$ 上で開始時刻が $t_r$ より前の作業は $t_r$ 時点で既に開始済みであるため**凍結**（変更不可）し、開始時刻が $t_r$ 以降の作業を**最適化対象**とする。遅延作業の直後工程は開始時刻がちょうど $t_r$ となるため最適化対象に含まれる（外乱の直撃を受けた、最も再配置の価値が高い工程を凍結しないための境界設計）。
+6. **解空間**: JSSP であるため機械割当は固定であり、決定変数は**最適化対象作業の機械ごとの処理順序**のみである。解は凍結部分をプレフィクスとして GT 法 [23] で active スケジュールにデコードされ、各作業の開始時刻は $t_r$ 以降かつ技術的順序・機械容量制約を満たす。
+
+なお、$S_{RSR}$ のメイクスパンと順序再最適化後に到達可能な最小メイクスパンとの差を **headroom** と呼ぶ。headroom は「順序の並べ替えに残された改善余地」であり、外乱シナリオの実効的な難易度（手法間の差が現れうる幅）を規定する。
+
 **安定性指標**:
 
 再スケジューリングにおける安定性は、元スケジュール $S_p$ からの逸脱量として定義されるのが一般的である [2][3]。逸脱量の測り方には大きく、(i) 各作業の**開始時刻の偏差**と (ii) 機械上の**処理順序（順列）の偏差**の二系統が存在する。本研究では後者、すなわち機械ごとのジョブ処理順位の偏差を安定性指標として採用する。
 
 $$D(S_p, S_q) = \sum_{i \in M} \sum_{j \in J} \left| r_{i,j}^p - r_{i,j}^q \right|$$
 
-$r_{i,j}^p$、$r_{i,j}^q$ はそれぞれ $S_p$、$S_q$ における機械 $i$ でのジョブ $j$ の処理順位である。
+$r_{i,j}^p$、$r_{i,j}^q$ はそれぞれ $S_p$、$S_q$ における機械 $i$ でのジョブ $j$ の処理順位である。$D$ は最適化対象作業の上で測る（凍結部は定義上両者で一致する）。また right-shift は機械上の処理順序を変えないため、$S_p$ と $S_{RSR}$ の順列は同一であり、$D$ の基準としては等価である（実装上は $S_{RSR}$ を基準にとる）。したがって $D = 0$ の解は $S_{RSR}$、すなわち順序を一切変更しない right-shift 解そのものに対応する。
 
 開始時刻偏差ではなく順列偏差を採用する理由は、効率性指標（MS）との独立性にある。開始時刻偏差は「時間」の量であり、MS を短縮する（作業を時間的に前へ詰める）操作がそのまま各作業の開始時刻を動かすため、MS と部分的に相関してしまう。これに対し順列偏差は機械上の処理順序という組合せ的な量を測るため、時間軸上の量である MS とは異なる側面を捉え、両目的間の独立性（直交性）が高い。これにより MS–安定性の二目的トレードオフがより明確に現れ、Pareto 覆域に基づく評価が意味を持ちやすい。加えて、本研究の探索機構（PR・repair の direct swap、N5 近傍）はいずれも順列上の操作であり、探索が動く空間と安定性を測る空間が一致する点でも整合的である。
 
@@ -93,16 +117,19 @@ $\hat{\cdot}$ は min-max 正規化後の値。
 
 ### 3.2 ILS 採用の根拠
 
-再スケジューリング問題の重要な特殊性として、**外乱前の高品質スケジュール $S_p$ が初期解として既に存在し、かつ修正後のスケジュールはその $S_p$ からの変更量をできるだけ抑えることが求められる**点が挙げられる。最適解は $S_p$ の近傍に存在する可能性が高く、この「強い事前情報と近傍バイアス」を活かした探索設計が有効と考えられる。この観点から集団ベース手法（GA）と単一解ベース手法（ILS）を比較する。
+再スケジューリング問題の重要な特殊性として、**外乱前の高品質スケジュール $S_p$ が初期解として既に存在し、かつ修正後のスケジュールはその $S_p$ からの変更量をできるだけ抑えることが求められる**点が挙げられる。最適解は $S_p$ の近傍に存在する可能性が高く、この「強い事前情報と近傍バイアス」を活かした探索設計が有効と考えられる（仮説 H1）。この観点から集団ベース手法（GA）と単一解ベース手法（ILS）を比較する。
 
 | 観点 | GA | ILS |
 |---|---|---|
 | 状態 | 集団 (population) | 1 本の `current` 解 |
 | 主操作 | 交叉 + 突然変異 | 摂動 + 局所探索 |
 | 構造の保存 | 交叉で 2 親を切り貼り → 破壊的 | 元解からの連続変形 → 構造を保持 |
+| $S_p$ 近傍の探索 | 子が近傍から飛びやすく充填が粗い | 近傍を連続変形で充填的に探索 |
 | 摂動強度の制御 | 交叉率は集団全体に効く（読みにくい） | 摂動強度 = $S_p$ からの距離を直接決めるレバー |
 
-単一解ベース手法の中でも本研究が **ILS（Iterated Local Search）** を採用する理由は以下の通りである。
+すなわち ILS は、$S_p$ を起点とする連続変形の軌道で近傍を取りこぼしなく敷き詰めるように探索できる。これに対し GA の交叉は 2 親の構造を切り貼りする破壊的操作であり、生成される子は $S_p$ 近傍から飛びやすい。集団の多様性維持も解を広域に分散させる方向へ働くため、本問題で最も価値の高い $S_p$ 近傍（高安定領域）の充填はどうしても粗くなる。これが H1 の具体的な根拠である。
+
+単一解ベース手法の中でも本研究が **ILS（Iterated Local Search）** [22] を採用する理由は以下の通りである。
 
 - **深掘りと脱出の分離**: 局所探索（深掘り）と摂動（脱出）が明確に分離されており、各操作の役割分析が容易
 - **摂動強度の直接制御**: 摂動規模の制御が明示的に可能であり、$S_p$ からの距離（安定性）を直接調整できる
@@ -124,7 +151,7 @@ $\hat{\cdot}$ は min-max 正規化後の値。
 
 ### 3.4 Path Relinking
 
-Path Relinking（PR）は Glover ら [5] によって提案された手法であり、2 つの高品質解の間の軌跡上に有望解が存在するという仮説に基づく。PR はこれまで GA、Memetic Algorithm、GRASP、ILS など様々な手法とハイブリッド化されてきており [5]、スケジューリング問題では特に Scatter Search との組み合わせが代表的な適用形態として知られている [6][7]。JSP でも Tabu Search と PR を組み合わせた TS/PR が高い競争力を示している [6]。
+Path Relinking（PR）は Glover ら [5] によって提案された手法であり、2 つの高品質解の間の軌跡上に有望解が存在するという仮説に基づく。PR はこれまで GA、Memetic Algorithm、GRASP、ILS など様々な手法とハイブリッド化されてきており [5]、スケジューリング問題では特に Scatter Search との組み合わせが代表的な適用形態として知られている [5][7]。JSP でも Tabu Search と PR を組み合わせた TS/PR が高い競争力を示している [6]。
 
 本研究における PR の**設計思想**: 「現在の局所最適解（initiating solution）」から「外乱前の初期スケジュール $S_p$（guiding solution）」に向けて、解間の差分（不一致位置）を direct swap で縮めながら経路を辿り、経路上の最良解を中間解として返す。$S_p$ を guiding solution とすることで、PR は「高品質局所最適解を初期スケジュールの構造に引き寄せる」操作として機能し、安定性を明示的に減少させながら MS を可能な限り維持できる中間解を探す。
 
@@ -149,9 +176,11 @@ repair の適用回数（depth = $S_p$ へ向かう swap 回数）も insert 摂
 
 ### 3.6 Memetic への機構適用と仮説
 
-PR と repair を ILS に加えるのみならず、**Memetic（GA + N5 局所探索）** にも組み込む。その仮説的根拠を以下に示す。
+PR と repair を ILS に加えるのみならず、**Memetic（GA + N5 局所探索）** にも組み込む。その狙いは仮説 H2（補完仮説）の検証である。
 
-ILS+N5 との組み合わせでは PR が利用できる「余地」が相対的に小さいと予想される。N5 局所探索は MS を最適化する過程でクリティカルパス外の順序も含めて間接的に固定し、解から「MS を壊さずに安定性を改善できる余地（冗長性）」を除去する傾向がある。PR が経路上の中間解から改善を拾うにはこの余地が必要であるため、ILS+N5 の解は冗長性が比較的少なく、PR が開拓できる安定性側フロントの幅が狭まると考えられる。加えて ILS は単一解ベースであるため、探索中の解が $S_p$ 近傍に留まりがちで PR の経路自体が短くなる。したがって PR・repair の効果は ILS でも現れるものの、集約 HV への寄与は Memetic より小さいと予想される（効果の有無ではなく程度の差を検証する）。
+H1 で述べた通り、集団ベース探索は $S_p$ 近傍（高安定領域）の充填が構造的に粗い。一方 PR・repair はいずれも「解を $S_p$ 方向へ引き寄せる」演算子であり、集団が薄くしか覆えない高安定領域を直接充填する。つまり PR・repair は、集団ベース探索の弱点を**ちょうど打ち消す向き**に働く機構であり、Memetic との組み合わせで最も大きな効果を発揮するはずである。逆に ILS は $S_p$ 近傍を自力で充填済みのため、同じ機構を追加しても新たに開拓できる領域は小さい。
+
+この予測は、解の性質のレベルでは次のように説明できる。ILS+N5 との組み合わせでは PR が利用できる「余地」が相対的に小さいと予想される。N5 局所探索は MS を最適化する過程でクリティカルパス外の順序も含めて間接的に固定し、解から「MS を壊さずに安定性を改善できる余地（冗長性）」を除去する傾向がある。PR が経路上の中間解から改善を拾うにはこの余地が必要であるため、ILS+N5 の解は冗長性が比較的少なく、PR が開拓できる安定性側フロントの幅が狭まると考えられる。加えて ILS は単一解ベースであるため、探索中の解が $S_p$ 近傍に留まりがちで PR の経路自体が短くなる。したがって PR・repair の効果は ILS でも現れるものの、集約 HV への寄与は Memetic より小さいと予想される（効果の有無ではなく程度の差を検証する）。
 
 一方、GA の集団ベース探索は $S_p$ から遠い位置にある多様な解を維持する。GA が生成する解には N5 ほど厳密な MS 最適化が施されていないため冗長性が残りやすく、PR が「MS を維持しつつ安定性を改善できる中間解」を発見しやすい。そこから $S_p$ に向かって PR で経路を引くと、改善可能性のある中間解が多く発見できる。
 
@@ -184,7 +213,7 @@ GA :  個体① (S_p から遠い) ──長い経路──▶ S_p  （中間解
 
 ただし単一の重み設定でのスカラー値比較のみでは、重み選択に依存して結論が変わるため探索性能の全体像を捉えることが難しい。そこで本研究では、重み $\lambda$ を複数点で掃引して得られた解を統合する **weighted sum scalarization sweep** を行い、Pareto 覆域の観点から総合的な探索性能を比較する。重み付き和には非凸 Pareto front の凹部に到達できないという凸限界が存在するが [8]、本研究の目的は真の Pareto front を導出することではなく、同一のスカラー法のもとで各手法の性能を横並びに検証することである。この目的においては凸限界は本質的な問題とならない。
 
-以下の多角的な評価指標で探索性能を比較する。評価フレームワークには **Unbounded External Archive (UEA) scenario** [9] を採用し、探索過程で訪問した全非劣解を保存することで最終解のみに依存する運依存性を排除する。
+以下の多角的な評価指標で探索性能を比較する。評価フレームワークには **Unbounded External Archive (UEA) scenario** [9] を採用し、探索過程で訪問した全非劣解を保存することで最終解のみに依存する運依存性を排除する。Pareto 覆域の定量化には hypervolume（HV）[24] を、手法間の支配関係の直接測定には C-metric（coverage）[24] を用いる。
 
 | 評価指標 | 役割 | 対応する主張 |
 |---|---|---|
@@ -210,10 +239,11 @@ GA :  個体① (S_p から遠い) ──長い経路──▶ S_p  （中間解
 | Trial 数 | 10（パイロット）→ 30（本実験予定） |
 | ILS 反復数上限 | 800（自然収束まで） |
 | GA 世代数・集団サイズ | 500 世代、50 個体（自然収束まで） |
+| 符号化・遺伝的操作 | operation-based 表現 [25]（重複あり順列、GT 法 [23] で active スケジュールにデコード）。交叉: PPX（Precedence Preservation Crossover、各親の相対順序を保持し実行可能性を保証）[11]、突然変異: 逆位、選択: トーナメント。交叉は全 GA 系手法で共通に固定し、本研究の独立変数ではない |
 | 評価フレームワーク | UEA scenario |
 | 正規化方式 | min-max（問題・外乱ごと共通パラメータ）。GT 法ランダムサンプリング（200 点）で $\min_{eff}$・$\max_{eff}$（P90 値）・$\max_{stab}$ を事前推定し、全アルゴリズム共通の固定パラメータとして使用。実験開始前に一度だけ計算してキャッシュし再利用する。 |
 
-> **UEA からの初期解除外**: 全手法は $S_p$ を共通の出発点として与えられている（ILS は $S_p$ を初期解として探索を開始し、GA・Memetic は $S_p$ を初期集団に含める）。$S_p$（$D=0$ の共通固定点）は探索が発見した解ではなく全手法に無償で与えた入力であるため、これを UEA に含めると全手法に同一の下駄を履かせることになり、手法間の差が圧縮されて探索構造の比較が困難になる。このため $D=0$ の 1 点のみを除外して評価する。
+> **UEA からの初期解除外**: 全手法は $S_p$ を共通の出発点として与えられている（ILS は $S_p$ を初期解として探索を開始し、GA・Memetic は $S_p$ を初期集団に含める）。この出発点（$D=0$ の共通固定点。3.1 節の $S_{RSR}$ に対応）は探索が発見した解ではなく全手法に無償で与えた入力であるため、これを UEA に含めると全手法に同一の下駄を履かせることになり、手法間の差が圧縮されて探索構造の比較が困難になる。このため $D=0$ の 1 点のみを除外して評価する。
 
 **実験設計の方針**: 外乱を確率的に発生させるシミュレーション型の評価手法も先行研究に存在するが [2]、本研究では外乱シナリオを固定した精密比較を採用する。本研究の貢献の核心は探索構造の分析と PR・repair とベースアルゴリズムの相互作用の解明にあり、これらは個別外乱シナリオにおける手法挙動のミクロ分析によって初めて明らかにできる。シミュレーション型はマクロな平均性能は得られるものの因果帰属が困難となり、本研究の分析目的と整合しない。このため外乱シナリオを固定し、再現性と因果分析の精度を優先した。
 
@@ -318,7 +348,7 @@ la21 では ILS+repair = 2361、Memetic+repair = 2359（差 2）と事実上同�
 
 #### 限界
 
-- la36 で ILS の改善成功率が 0.5〜0.6 に留まる。大規模問題（15×15）では ILS が局所最適に深くはまる trial が多く、探索安定性に改善の余地がある。
+- la36 で ILS の改善成功率が 0.5〜0.6 に留まる（**パイロット 10 trial 時点の観察であり、本実験で改めて判断する**）。現状の値をそのまま読むなら、大規模問題（15×15）では ILS が局所最適に深くはまる trial が多く、単一解探索の頑健性に限界が現れている。H1 が主張するのは $S_p$ 近傍の充填効率でありこの観察と矛盾はしないが、H1 の有効範囲（問題規模）を画する限界として正直に報告する。
 - 低安定性（高 D）領域では Memetic 系が ILS 系を上回る。安定性重視の実運用では ILS 系が適切な選択肢となる可能性がある。
 - 本稿の結果は 10 trial のパイロットに基づく。統計的有意性の確認には 30 trial が必要。
 
@@ -346,16 +376,57 @@ la21 では ILS+repair = 2361、Memetic+repair = 2359（差 2）と事実上同�
 
 [3] Rangsaritratsamee, R., Ferrell Jr, W. G., & Kurz, M. B. (2004). Dynamic rescheduling that simultaneously considers efficiency and stability. *Computers & Industrial Engineering*, 46(1), 1–15.
 
-[4] Zhang, R., et al. (2004). [GA と Tabu Search を用いた再スケジューリング手法]. ※文献情報要確認
+[4] Zhang, L., Gao, L., & Li, X. (2013). A hybrid genetic algorithm and tabu search for a multi-objective dynamic job shop scheduling problem. *International Journal of Production Research*, 51(12), 3516–3531.
 
 [5] Glover, F., Laguna, M., & Martí, R. (2000). Fundamentals of scatter search and path relinking. *Control and Cybernetics*, 29(3), 653–684.
 
 [6] Peng, B., Lü, Z., & Cheng, T. C. E. (2015). A tabu search/path relinking algorithm to solve the job shop scheduling problem. *Computers & Operations Research*, 53, 154–164.
 
-[7] [FJSP レビュー論文]. ※文献情報要確認（Scatter Search + PR を代表手法として位置づけているレビュー）
+[7] González, M. A., Vela, C. R., & Varela, R. (2015). Scatter search with path relinking for the flexible job shop scheduling problem. *European Journal of Operational Research*, 245(1), 35–45.
 
-[8] Marler, R. T., & Arora, J. S. (2010). The weighted sum method for multi-objective optimization: new insights. *Structural and Multidisciplinary Optimization*, 41(6), 853–882.
+[8] Marler, R. T., & Arora, J. S. (2010). The weighted sum method for multi-objective optimization: new insights. *Structural and Multidisciplinary Optimization*, 41(6), 853–862.
 
-[9] Ishibuchi, H., Pang, L. M., & Shang, K. (2020). A new framework of evolutionary multi-objective algorithms with an unbounded external archive. *Proceedings of ECAI 2020*.
+[9] Ishibuchi, H., Pang, L. M., & Shang, K. (2020). A new framework of evolutionary multi-objective algorithms with an unbounded external archive. In *Proceedings of the 24th European Conference on Artificial Intelligence (ECAI 2020)*, IOS Press, pp. 283–290.
 
 [10] Mladenović, N., & Hansen, P. (1997). Variable neighborhood search. *Computers & Operations Research*, 24(11), 1097–1100.
+
+[11] Bierwirth, C., Mattfeld, D. C., & Kopfer, H. (1996). On permutation representations for scheduling problems. In *Parallel Problem Solving from Nature — PPSN IV*, LNCS 1141, pp. 310–318. Springer.
+
+[12] Vieira, G. E., Herrmann, J. W., & Lin, E. (2003). Rescheduling manufacturing systems: a framework of strategies, policies, and methods. *Journal of Scheduling*, 6(1), 35–58.
+
+[13] Ouelhadj, D., & Petrovic, S. (2009). A survey of dynamic scheduling in manufacturing systems. *Journal of Scheduling*, 12(4), 417–431.
+
+[14] Wu, S. D., Storer, R. H., & Chang, P.-C. (1993). One-machine rescheduling heuristics with efficiency and stability as criteria. *Computers & Operations Research*, 20(1), 1–14.
+
+[15] Bean, J. C., Birge, J. R., Mittenthal, J., & Noon, C. E. (1991). Matchup scheduling with multiple resources, release dates and disruptions. *Operations Research*, 39(3), 470–483.
+
+[16] Abumaizar, R. J., & Svestka, J. A. (1997). Rescheduling job shops under random disruptions. *International Journal of Production Research*, 35(7), 2065–2082.
+
+[17] Zakaria, Z., & Petrovic, S. (2012). Genetic algorithms for match-up rescheduling of the flexible manufacturing systems. *Computers & Industrial Engineering*, 62(2), 670–686.
+
+[18] Fattahi, P., & Fallahi, A. (2010). Dynamic scheduling in flexible job shop systems by considering simultaneously efficiency and stability. *CIRP Journal of Manufacturing Science and Technology*, 2(2), 114–123.
+
+[19] Katragjini, K., Vallada, E., & Ruiz, R. (2013). Flow shop rescheduling under different types of disruption. *International Journal of Production Research*, 51(3), 780–797.
+
+[20] Gao, K. Z., Suganthan, P. N., Pan, Q.-K., Tasgetiren, M. F., & Sadollah, A. (2016). Artificial bee colony algorithm for scheduling and rescheduling fuzzy flexible job shop problem with new job insertion. *Knowledge-Based Systems*, 109, 1–16.
+
+[21] Lv, L., Fan, J., Zhang, C., & Shen, W. (2025). Schedule repair for flexible job shops under machine breakdowns by deep reinforcement learning. *Computers & Industrial Engineering*, Article 111256.
+
+[22] Lourenço, H. R., Martin, O. C., & Stützle, T. (2019). Iterated local search: framework and applications. In Gendreau, M., & Potvin, J.-Y. (eds.), *Handbook of Metaheuristics*, 3rd ed., pp. 129–168. Springer.
+
+[23] Giffler, B., & Thompson, G. L. (1960). Algorithms for solving production-scheduling problems. *Operations Research*, 8(4), 487–503.
+
+[24] Zitzler, E., & Thiele, L. (1999). Multiobjective evolutionary algorithms: a comparative case study and the strength Pareto approach. *IEEE Transactions on Evolutionary Computation*, 3(4), 257–271.
+
+[25] Bierwirth, C. (1995). A generalized permutation approach to job shop scheduling with genetic algorithms. *OR Spektrum*, 17(2–3), 87–92.
+
+---
+
+## 投稿前 ToDo（draft 用メモ・最終稿では削除）
+
+- [ ] **headroom 測定の組み込み（問題依存性の理論化）**: `tools/measure_headroom.py` で問題×シナリオごとの headroom（baseline が未充填の到達可能高安定領域）を測定・報告し、「PR・repair の効果量は headroom に比例する」をモデレータ変数として §4.5 の考察に組み込む。ILS 側の機構寄与が la21 でゼロ・mt10 で有意となる問題依存性の説明を、「小さい」から「headroom で予測できる」へ格上げする。
+- [ ] **探索 D 分布＋PR 経路長ログ（機構レベルの証拠）**: 本実験で (i) 各手法の訪問解（history）の D 値分布図 —「ILS は $S_p$ 近傍に探索を集中し、GA/Memetic は遠方に分散する」の直接証拠（H1）、(ii) PR の経路長 $d$ と経路上の改善発見率 — §3.6 の冗長性・経路長議論の直接測定（H2）— を記録・図示する。
+- [ ] **la36 掃引完走後の 3 決定と §3.4 整合**: ① pr_step_strategy（la21 掃引では Memetic+PR で best が有意勝ち＝§3.4 の「random 既定・p=0.72」と矛盾）、② pr_ls_top_k（la21 では 3 が品質・速度両取りだが天井飽和の疑い）、③ GA の mutpb（0.2 が良い傾向）。la36 掃引の結果で既定値を確定し、§3.4 を書き直す。
+- [ ] §4.2〜4.5・結論を本実験（15 trial × 4 問題）の結果で差し替え。結果の節を H1/H2 に対応づける（4.2→H1、4.3/4.4→H2）。la36 の ILS 改善成功率（現状 0.5〜0.6）もここで再判断。
+- [ ] **検討中**: Memetic+random-kick 対照（同強度・ランダム方向キック）の追加 — Memetic+PR/repair の利得が「$S_p$ 方向への誘導」によるものか「収束集団への多様化一般」によるものかを分離する内的妥当性の防御。採否未定。
+- [ ] C&IE in-press (2026)「Impact of optimization scope on …」の精読と引用判断（§2.1 の TODO コメント参照）。

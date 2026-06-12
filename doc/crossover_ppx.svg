@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 880 410" role="img">
+<title>PPX（Precedence Preservation Crossover）の動作</title>
+<desc>operation-based符号化での PPX 交叉の動作例。二値テンプレートに従い、指された親の未使用先頭遺伝子を取り、その値を両親から消す。各親の相対順序を保持するため子は常に実行可能。</desc>
+<style>
+  .bg { fill: #f8f7f4; }
+  .title { font-family: sans-serif; font-size: 18px; font-weight: 600; fill: #2c2c2a; }
+  .sub { font-family: sans-serif; font-size: 12px; fill: #73726c; }
+  .head { font-family: sans-serif; font-size: 13px; font-weight: 600; fill: #2c2c2a; }
+  .cap { font-family: sans-serif; font-size: 12px; fill: #4a4843; }
+  .rl { font-family: sans-serif; font-size: 11.5px; font-weight: 600; fill: #73726c; }
+  .gene { font-family: sans-serif; font-size: 14px; font-weight: 600; fill: #ffffff; }
+  .tmpl { font-family: sans-serif; font-size: 11.5px; font-weight: 600; fill: #ffffff; }
+  .srctag { font-family: sans-serif; font-size: 10px; font-weight: 600; }
+  .tr { font-family: monospace; font-size: 12px; fill: #4a4843; }
+  .trh { font-family: monospace; font-size: 12px; font-weight: 700; fill: #2c2c2a; }
+  .arr { stroke: #73726c; stroke-width: 1.5; fill: none; }
+  .j0 { fill: #6c63c7; } .s0 { fill: #6c63c7; }
+  .j1 { fill: #3a9d92; } .s1 { fill: #3a9d92; }
+  .j2 { fill: #cf7d4e; } .s2 { fill: #cf7d4e; }
+  .src1 { fill: #566077; } .src1t { fill: #566077; }
+  .src2 { fill: #8a93a3; } .src2t { fill: #6f7681; }
+  .ok-bg { fill: rgba(58,157,146,0.15); }
+  .ok-tx { font-family: sans-serif; font-size: 12.5px; font-weight: 600; fill: #2f7d74; }
+  @media (prefers-color-scheme: dark) {
+    .bg { fill: #1a1a18; }
+    .title { fill: #e6e3d8; } .sub, .rl { fill: #9c9a92; }
+    .head { fill: #d8d5c8; } .cap, .tr { fill: #b8b5aa; } .trh { fill: #d8d5c8; }
+    .j0,.s0 { fill: #8b82e0; } .j1,.s1 { fill: #45b3a6; } .j2,.s2 { fill: #df9466; }
+    .src1 { fill: #6a7287; } .src1t { fill: #8e98ad; }
+    .src2 { fill: #9aa0a8; } .src2t { fill: #9aa0a8; }
+    .ok-tx { fill: #5bbdb0; }
+  }
+</style>
+
+<rect class="bg" x="0" y="0" width="880" height="410"/>
+<text x="28" y="30" class="title">PPX（Precedence Preservation Crossover）の動作</text>
+<text x="28" y="52" class="sub">operation-based 表現（重複あり順列）。各親の相対順序を保持 → 子は常に実行可能</text>
+
+<!-- ===== 左：遺伝子列 ===== -->
+<!-- Parent1 -->
+<g transform="translate(0,74)">
+  <text class="rl" x="100" y="20" text-anchor="end">親1</text>
+  <rect class="j0" x="110" y="0" width="34" height="30" rx="4"/><text class="gene" x="127" y="20" text-anchor="middle">0</text>
+  <rect class="j1" x="150" y="0" width="34" height="30" rx="4"/><text class="gene" x="167" y="20" text-anchor="middle">1</text>
+  <rect class="j2" x="190" y="0" width="34" height="30" rx="4"/><text class="gene" x="207" y="20" text-anchor="middle">2</text>
+  <rect class="j0" x="230" y="0" width="34" height="30" rx="4"/><text class="gene" x="247" y="20" text-anchor="middle">0</text>
+  <rect class="j1" x="270" y="0" width="34" height="30" rx="4"/><text class="gene" x="287" y="20" text-anchor="middle">1</text>
+  <rect class="j2" x="310" y="0" width="34" height="30" rx="4"/><text class="gene" x="327" y="20" text-anchor="middle">2</text>
+</g>
+<!-- Parent2 -->
+<g transform="translate(0,112)">
+  <text class="rl" x="100" y="20" text-anchor="end">親2</text>
+  <rect class="j2" x="110" y="0" width="34" height="30" rx="4"/><text class="gene" x="127" y="20" text-anchor="middle">2</text>
+  <rect class="j1" x="150" y="0" width="34" height="30" rx="4"/><text class="gene" x="167" y="20" text-anchor="middle">1</text>
+  <rect class="j0" x="190" y="0" width="34" height="30" rx="4"/><text class="gene" x="207" y="20" text-anchor="middle">0</text>
+  <rect class="j2" x="230" y="0" width="34" height="30" rx="4"/><text class="gene" x="247" y="20" text-anchor="middle">2</text>
+  <rect class="j1" x="270" y="0" width="34" height="30" rx="4"/><text class="gene" x="287" y="20" text-anchor="middle">1</text>
+  <rect class="j0" x="310" y="0" width="34" height="30" rx="4"/><text class="gene" x="327" y="20" text-anchor="middle">0</text>
+</g>
+<!-- Template -->
+<g transform="translate(0,160)">
+  <text class="rl" x="100" y="20" text-anchor="end">テンプレート</text>
+  <rect class="src1" x="110" y="0" width="34" height="30" rx="4"/><text class="tmpl" x="127" y="20" text-anchor="middle">P1</text>
+  <rect class="src1" x="150" y="0" width="34" height="30" rx="4"/><text class="tmpl" x="167" y="20" text-anchor="middle">P1</text>
+  <rect class="src2" x="190" y="0" width="34" height="30" rx="4"/><text class="tmpl" x="207" y="20" text-anchor="middle">P2</text>
+  <rect class="src1" x="230" y="0" width="34" height="30" rx="4"/><text class="tmpl" x="247" y="20" text-anchor="middle">P1</text>
+  <rect class="src2" x="270" y="0" width="34" height="30" rx="4"/><text class="tmpl" x="287" y="20" text-anchor="middle">P2</text>
+  <rect class="src2" x="310" y="0" width="34" height="30" rx="4"/><text class="tmpl" x="327" y="20" text-anchor="middle">P2</text>
+</g>
+<text class="sub" x="350" y="184" font-size="11">← 各ステップで取り出す親</text>
+
+<!-- arrow -->
+<path class="arr" d="M227 200 V224" marker-end="url(#ah)"/>
+
+<!-- Child -->
+<g transform="translate(0,230)">
+  <text class="rl" x="100" y="20" text-anchor="end">子</text>
+  <rect class="j0" x="110" y="0" width="34" height="30" rx="4"/><text class="gene" x="127" y="20" text-anchor="middle">0</text>
+  <rect class="j1" x="150" y="0" width="34" height="30" rx="4"/><text class="gene" x="167" y="20" text-anchor="middle">1</text>
+  <rect class="j2" x="190" y="0" width="34" height="30" rx="4"/><text class="gene" x="207" y="20" text-anchor="middle">2</text>
+  <rect class="j0" x="230" y="0" width="34" height="30" rx="4"/><text class="gene" x="247" y="20" text-anchor="middle">0</text>
+  <rect class="j2" x="270" y="0" width="34" height="30" rx="4"/><text class="gene" x="287" y="20" text-anchor="middle">2</text>
+  <rect class="j1" x="310" y="0" width="34" height="30" rx="4"/><text class="gene" x="327" y="20" text-anchor="middle">1</text>
+  <text class="srctag src1t" x="127" y="44" text-anchor="middle">P1</text>
+  <text class="srctag src1t" x="167" y="44" text-anchor="middle">P1</text>
+  <text class="srctag src2t" x="207" y="44" text-anchor="middle">P2</text>
+  <text class="srctag src1t" x="247" y="44" text-anchor="middle">P1</text>
+  <text class="srctag src2t" x="287" y="44" text-anchor="middle">P2</text>
+  <text class="srctag src2t" x="327" y="44" text-anchor="middle">P2</text>
+</g>
+
+<rect class="ok-bg" x="100" y="300" width="244" height="26" rx="6"/>
+<text class="ok-tx" x="112" y="318">✓ 各親の本数を保存 → 必ず実行可能</text>
+
+<!-- ===== 右：しくみ＋ステップ実行 ===== -->
+<text class="head" x="400" y="92">しくみ</text>
+<text class="cap" x="400" y="112">① 長さ n の二値テンプレートを乱生成。</text>
+<text class="cap" x="400" y="130">② 各ステップで指された親の「未使用の先頭」を取る。</text>
+<text class="cap" x="400" y="148">③ 取った値を両親から 1 つずつ消す。</text>
+<text class="cap" x="400" y="166">④ n 回繰り返す。新たな先行関係を作らない。</text>
+
+<text class="head" x="400" y="200">ステップ実行</text>
+<text class="trh" x="400" y="222">step  取る  値   子（生成中）</text>
+<text class="tr"  x="400" y="244">  1    P1    0    0</text>
+<text class="tr"  x="400" y="264">  2    P1    1    0 1</text>
+<text class="tr"  x="400" y="284">  3    P2    2    0 1 2</text>
+<text class="tr"  x="400" y="304">  4    P1    0    0 1 2 0</text>
+<text class="tr"  x="400" y="324">  5    P2    2    0 1 2 0 2</text>
+<text class="tr"  x="400" y="344">  6    P2    1    0 1 2 0 2 1</text>
+
+<defs>
+  <marker id="ah" markerWidth="9" markerHeight="9" refX="4.5" refY="7" orient="auto">
+    <path d="M1 1 L4.5 7 L8 1" fill="none" stroke="#73726c" stroke-width="1.5"/>
+  </marker>
+</defs>
+</svg>
