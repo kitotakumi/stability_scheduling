@@ -1,6 +1,7 @@
 {
   "permissions": {
     "allow": [
+      "WebFetch",
       "PowerShell",
       "Bash",
       "Edit",
