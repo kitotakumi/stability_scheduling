@@ -176,7 +176,8 @@ def weighted_objective(makespan, stability, weights, norm_params):
 # ========== 共通正規化パラメータ推定 ==========
 
 def estimate_normalization_params(jm_table, fixed_gantt, reschedule_time,
-                                  delayed_gantt, base_gene, n_samples=200):
+                                  delayed_gantt, base_gene, n_samples=200,
+                                  seed=None):
     """GT法ランダムサンプリングによる正規化パラメータ推定（GA/ILS共通）
 
     ランダムな遺伝子（ジョブ順列）を生成し、GT法（アクティブスケジュール）で
@@ -189,10 +190,15 @@ def estimate_normalization_params(jm_table, fixed_gantt, reschedule_time,
         delayed_gantt: 遅延ガントチャート（安定性計算の基準）
         base_gene: シャッフル元のジョブ順列（リスケ対象操作の遺伝子表現）
         n_samples: ランダムサンプル数
+        seed: サンプリング用乱数シード。norm_params はスカラー化に入るため、
+            値が変わると全手法の探索軌道が変わる。実験では固定シードで
+            問題×シナリオごとに決定的な値を得る（グローバル乱数は汚染しない）。
+            None なら従来通りグローバル乱数（非決定的）。
 
     Returns:
         dict: {'min_eff', 'max_eff', 'max_stab'}
     """
+    rng = random.Random(seed) if seed is not None else random
     eff_samples = []
     stab_samples = []
 
@@ -205,7 +211,7 @@ def estimate_normalization_params(jm_table, fixed_gantt, reschedule_time,
     # Phase 1: GT法ランダムサンプリング
     for _ in range(n_samples):
         shuffled = list(base_gene)
-        random.shuffle(shuffled)
+        rng.shuffle(shuffled)
         gantt = gantt_chart_operation.get_gantt_reactive(
             jm_table, shuffled, fixed_gantt, reschedule_time)
         ms = compute_makespan_from_gantt(gantt)
@@ -218,7 +224,7 @@ def estimate_normalization_params(jm_table, fixed_gantt, reschedule_time,
     eff_with_genes = []
     gene_copy = list(base_gene)
     for _ in range(n_samples):
-        random.shuffle(gene_copy)
+        rng.shuffle(gene_copy)
         gantt = gantt_chart_operation.get_gantt_reactive(
             jm_table, gene_copy, fixed_gantt, reschedule_time)
         ms = compute_makespan_from_gantt(gantt)
@@ -231,8 +237,8 @@ def estimate_normalization_params(jm_table, fixed_gantt, reschedule_time,
         for _ in range(5):
             g = list(gene)
             # 2-3箇所をスワップ
-            for _ in range(random.randint(2, 3)):
-                i, j = random.sample(range(len(g)), 2)
+            for _ in range(rng.randint(2, 3)):
+                i, j = rng.sample(range(len(g)), 2)
                 g[i], g[j] = g[j], g[i]
             gantt = gantt_chart_operation.get_gantt_reactive(
                 jm_table, g, fixed_gantt, reschedule_time)
