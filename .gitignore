@@ -8,8 +8,9 @@ __pycache__/
 # experiments/ 配下の結果データは git 管理外。
 # 再現は各 run_*.py スクリプトから可能。
 experiments/*/results/
+experiments/archive/**/results/
 
-# achirve/ （過去の archive）は除外せず残す
+# archive/ のコード・ログは除外せず残す（旧結果データのみ上記で除外）
 
 # IDE
 .vscode/
