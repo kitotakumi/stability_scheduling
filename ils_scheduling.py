@@ -878,7 +878,7 @@ class ILSSolver:
     def path_relinking(self, S_cur, S_ref, L_max=None,
                        ls_strategy=None, trace=False,
                        return_intermediate=False, step_strategy='random',
-                       escape_infeasible=False):
+                       escape_infeasible=False, ls_top_k=1):
         """Direct-swap型 Path Relinking
 
         S_cur (initiating solution) から S_ref (guiding solution) へ向かう経路を
@@ -927,6 +927,11 @@ class ILSSolver:
                 ※ プローブ(2026-06-03, la36_small): end_all_infeasible は 0/50 と
                   ほとんど発生しない。稀なので突破コスト(O(diffs^2)/該当手)は平均性能に
                   ほぼ響かない。memetic で有効化、ILS では既定 False（既存挙動を保持）。
+            ls_top_k: 経路上の中間解のうちスコア上位 k 個に local_search を掛け、その中の
+                最良を返す PR variant（パラメータ掃引での有意差確認用）。1（既定）は従来動作
+                （単一の最良中間解 or 始点ゲート）。>1 のときは ls_strategy（'best' 推奨）が
+                必要で、return_intermediate/始点ゲートを無視し top-k LS の最良を直接返す
+                （キックとして始点より悪くても返す）。コストは k 倍の LS なので等予算で比較する。
 
         Returns:
             S_best: 経路上で見つかった最良解（return_intermediate=True なら最良中間解）
@@ -936,6 +941,7 @@ class ILSSolver:
         S = self._copy_orders(S_cur)
         F_best = self.evaluate(S)
         S_best = self._copy_orders(S)
+        F_init_score = F_best  # 機構統計用: 始点スコア（経路上改善の判定基準）
 
         # 初期状態の記録
         cur_ms, cur_st = self.evaluate_pareto(S)
@@ -954,6 +960,10 @@ class ILSSolver:
         step = 0
         S_best_intermediate = None
         best_intermediate_score = float('inf')
+        path_intermediates = []  # top-k LS 用: (score, S_copy) を全中間解で蓄積（始点・終点除外）
+        # 記録用 stash を毎呼び出しでリセット（top-k 時のみ生の最良中間解で上書きされる。
+        # 呼び出し元はこれを UEA 記録に使う＝k=1 と k>1 の記録対称性を保つ）
+        self._pr_last_raw = None
         cur_score = F_best  # 現在の経路点のスコア（FI の「改善」判定の基準）
 
         while True:
@@ -1056,6 +1066,9 @@ class ILSSolver:
             if not reached_ref and sel_score < best_intermediate_score:
                 best_intermediate_score = sel_score
                 S_best_intermediate = self._copy_orders(S)
+            # top-k LS 用: 全中間解を蓄積（実行可能なもののみ。終点は除外）
+            if ls_top_k and ls_top_k > 1 and not reached_ref and sel_score < float('inf'):
+                path_intermediates.append((sel_score, self._copy_orders(S)))
 
             improved = sel_score < F_best
             if improved:
@@ -1087,19 +1100,48 @@ class ILSSolver:
             if reached_ref:
                 break
 
-        # PR+LS: 経路上の最もマシな中間解にLSをかけてMS回復を試みる
-        if ls_strategy is not None and S_best_intermediate is not None:
-            ls_result, ls_score, _ = self.local_search(
-                S_best_intermediate, ls_strategy)
-            if ls_score < F_best:
-                S_best = self._copy_orders(ls_result)
-                F_best = ls_score
+        # 機構統計 (per-call): 経路長 d0・実際に歩いた手数・経路上で始点より良い解が
+        # 見つかったか（LS 適用前の生の経路で判定）。値はすべて計算済みの転記で追加
+        # decode なし。呼び出し元（実験ハーネス）が回収して保存する。
+        if not hasattr(self, 'pr_call_stats'):
+            self.pr_call_stats = []
+        self.pr_call_stats.append(
+            (initial_diffs, step, 1 if F_best < F_init_score else 0))
 
-        # return_intermediate: 始点ではなく経路上最良の中間解を返す（ls_strategy 未使用時のみ）
-        ret_S, ret_F = S_best, F_best
-        if (return_intermediate and ls_strategy is None
-                and S_best_intermediate is not None):
-            ret_S, ret_F = S_best_intermediate, best_intermediate_score
+        # top-k LS variant: 経路上スコア上位 k 個の中間解に LS をかけ、最良を直接返す
+        # （キックとして始点ゲートしない。ls_strategy が必要）。
+        ls_topk_done = False
+        if (ls_strategy is not None and ls_top_k and ls_top_k > 1
+                and path_intermediates):
+            # 監査用: k=1 variant が返す「生の最良中間解」の評価値を stash
+            # （top-k は LS 済み解を返すため、生中間解が UEA に乗らない非対称の検証に使う）
+            self._pr_last_raw = (self.evaluate_pareto(S_best_intermediate)
+                                 if S_best_intermediate is not None else None)
+            import heapq
+            topk = heapq.nsmallest(ls_top_k, path_intermediates, key=lambda x: x[0])
+            best_S_ls, best_F_ls = None, float('inf')
+            for _, S_int in topk:
+                ls_res, ls_sc, _ = self.local_search(S_int, ls_strategy)
+                if ls_sc < best_F_ls:
+                    best_F_ls, best_S_ls = ls_sc, self._copy_orders(ls_res)
+            if best_S_ls is not None:
+                ret_S, ret_F = best_S_ls, best_F_ls
+                ls_topk_done = True
+
+        if not ls_topk_done:
+            # PR+LS: 経路上の最もマシな中間解にLSをかけてMS回復を試みる
+            if ls_strategy is not None and S_best_intermediate is not None:
+                ls_result, ls_score, _ = self.local_search(
+                    S_best_intermediate, ls_strategy)
+                if ls_score < F_best:
+                    S_best = self._copy_orders(ls_result)
+                    F_best = ls_score
+
+            # return_intermediate: 始点ではなく経路上最良の中間解を返す（ls_strategy 未使用時のみ）
+            ret_S, ret_F = S_best, F_best
+            if (return_intermediate and ls_strategy is None
+                    and S_best_intermediate is not None):
+                ret_S, ret_F = S_best_intermediate, best_intermediate_score
 
         if trace:
             best_ms, best_st = self.evaluate_pareto(ret_S)
@@ -1202,9 +1244,16 @@ class ILSSolver:
             initial_strength=2, max_strength=5, verbose=True,
             path_relink_mode=False, relink_trigger=50,
             repair_mode=False, repair_trigger=50, repair_strength=0,
-            patience=None, kick_trigger_first=None):
+            patience=None, kick_trigger_first=None,
+            pr_step_strategy='random', pr_ls_top_k=1,
+            record_perturb=True):
         """
         ILSメインループ
+
+        UEA 記録ポリシー: 「LS 開始点（insert 摂動・キック出力＝LS前）＋ LS 終点」を
+        記録する（record_perturb=True 既定）。操作内部のプローブ評価（LS 近傍・PR 経路点）
+        は記録しない。キック出力だけ記録して摂動出力を落とすと、キック機構側にだけ
+        LS 前の高安定点が計上される非対称が生じるため（2026-06-12 監査で実証）。
 
         best（全体最良解）と current（探索出発点）を分離し、停滞時には
         currentを悪化方向にも移動させて多様化を図る。
@@ -1295,6 +1344,7 @@ class ILSSolver:
             # 摂動結果には常に通常 LS をかけてから受理判定する。
             accepted = False
             kick_ms, kick_st = None, None
+            kick_raw_ms, kick_raw_st = None, None
             # 適応トリガー: 初回キックは kick_trigger_first（ILS を収束まで深ぼらせてから発動）、
             # 以降は relink_trigger/repair_trigger（収束後に密にキックして安定性側を掃く）。
             # kick_trigger_first=None なら従来の flat トリガー。
@@ -1314,9 +1364,20 @@ class ILSSolver:
                 # （memetic は集団が多様なためデフォルトのままで機能する。memetic_scheduling
                 #   側のコメント参照。なお ILS では修正しても baseline 超えはせず、PR-toward-
                 #   initial は単一軌道では構造的に限定的、というのが 2026-06-02 の結論。）
-                perturbed, _ = self.path_relinking(
-                    current, self.initial_machine_orders,
-                    return_intermediate=True)
+                if pr_ls_top_k and pr_ls_top_k > 1:
+                    # top-k LS variant: 経路上上位 k 中間解に LS をかけ最良を返す
+                    perturbed, _ = self.path_relinking(
+                        current, self.initial_machine_orders,
+                        ls_strategy='best', step_strategy=pr_step_strategy,
+                        ls_top_k=pr_ls_top_k)
+                    # 監査用: k=1 が kick 点として記録する「生の最良中間解」を top-k でも
+                    # 別フィールドに記録する（k=1/k>1 の UEA 記録の対称性検証のため）。
+                    if self._pr_last_raw is not None:
+                        kick_raw_ms, kick_raw_st = self._pr_last_raw
+                else:
+                    perturbed, _ = self.path_relinking(
+                        current, self.initial_machine_orders,
+                        return_intermediate=True, step_strategy=pr_step_strategy)
                 kick_ms, kick_st = self.evaluate_pareto(perturbed)
                 if verbose:
                     print(f"  Iter {i+1}: PR発動")
@@ -1337,6 +1398,10 @@ class ILSSolver:
                 repair_kick_count += 1
                 iter_strength = cur_repair_depth
                 no_improve_count = 0
+                # 機構統計 (per-call): 発動時の経路長（不一致数）と適用 depth を記録
+                if not hasattr(self, 'repair_call_stats'):
+                    self.repair_call_stats = []
+                self.repair_call_stats.append((n_diff, cur_repair_depth))
                 perturbed = self.perturb(current, 'repair', cur_repair_depth)
                 kick_ms, kick_st = self.evaluate_pareto(perturbed)
                 if verbose:
@@ -1345,6 +1410,16 @@ class ILSSolver:
                 current_method = perturb_method
                 iter_strength = strength
                 perturbed = self.perturb(current, perturb_method, strength)
+
+            # 監査用: 摂動直後（LS 前）の解の評価値を記録（record_perturb=True 時のみ）。
+            # kick 反復は kick_ms/kick_st と同一なので再評価しない。記録ポリシーの
+            # 対称性検証（kick 出力は記録されるが insert 摂動出力は記録されない）に使う。
+            perturb_ms = perturb_st = None
+            if record_perturb:
+                if kick_ms is not None:
+                    perturb_ms, perturb_st = kick_ms, kick_st
+                else:
+                    perturb_ms, perturb_st = self.evaluate_pareto(perturbed)
 
             # --- LS フェーズ（摂動方式によらず常に実行）---
             ls_result, ls_score, ls_steps = self.local_search(perturbed, strategy)
@@ -1425,6 +1500,10 @@ class ILSSolver:
                 'strength': iter_strength,
                 'kick_makespan': kick_ms,
                 'kick_stability': kick_st,
+                'kick_raw_makespan': kick_raw_ms,
+                'kick_raw_stability': kick_raw_st,
+                'perturb_makespan': perturb_ms,
+                'perturb_stability': perturb_st,
             })
 
             if patience is not None and patience_count >= patience:

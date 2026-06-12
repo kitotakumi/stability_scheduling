@@ -41,10 +41,11 @@ class MemeticGASolver:
     """
 
     def __init__(self, jm_table, fixed_gantt, reschedule_gantt, reschedule_time, weights,
-                 cx="hirano", mut="inversion", sel="Tournament",
+                 cx="ppx", mut="inversion", sel="Tournament",
                  cxpb=0.85, mutpb=0.1, pop_size=50,
                  kick_mode='repair', kick_prob=0.5,
-                 repair_strength=0, ls_strategy='best', pr_step_strategy='random'):
+                 repair_strength=0, ls_strategy='best', pr_step_strategy='random',
+                 pr_ls_top_k=3):  # 既定: PRキックは top-k=3（2026-06-12確定, param_sweep_v1/RESULTS.md §1。kick_mode='pr'時のみ作用）
         self.jm_table = jm_table
         self.fixed_gantt = fixed_gantt
         self.reschedule_time = reschedule_time
@@ -57,6 +58,7 @@ class MemeticGASolver:
         self.repair_strength = repair_strength
         self.ls_strategy = ls_strategy
         self.pr_step_strategy = pr_step_strategy
+        self.pr_ls_top_k = pr_ls_top_k
 
         # GA: crossover / mutation / selection の toolbox と original_individual を借りる
         self._ga = GASolver(
@@ -133,13 +135,20 @@ class MemeticGASolver:
 
         machine_orders = self._gene_to_machine_orders(ind)
 
+        # UEA 記録ポリシー: LS 開始点（交叉/突変直後・LS 前）も記録する。kick_point
+        # （LS 前のキック出力）だけ記録すると、キック手法にだけ LS 前の点が計上される
+        # 非対称が生じるため（2026-06-12 監査）。skip_first_ls の個体は前世代の記録済み
+        # 局所最適解そのものなので記録しない。
+        ind.prels_point = None
         if not skip_first_ls:
+            ind.prels_point = self._ils.evaluate_pareto(machine_orders)
             improved, _, _ = self._ils.local_search(machine_orders, strategy=self.ls_strategy)
         else:
             improved = machine_orders  # 前世代のLS済み局所最適解なのでそのまま使う
 
         # kick: repair または path relinking を確率的に適用し、結果は無条件採用
         ind.kick_point = None
+        ind.kick_raw_point = None
         kick_applied = False
         if self.kick_mode != 'none' and random.random() < self.kick_prob:
             if self.kick_mode == 'repair':
@@ -148,7 +157,12 @@ class MemeticGASolver:
                 n_diff = self._ils._count_diffs(improved, self._ils.initial_machine_orders)
                 cap = n_diff if self.repair_strength <= 0 else min(n_diff, self.repair_strength)
                 cap = max(1, cap)
-                kicked = self._ils.perturb(improved, 'repair', random.randint(1, cap))
+                depth = random.randint(1, cap)
+                # 機構統計 (per-call): 発動時の経路長（不一致数）と適用 depth を記録
+                if not hasattr(self._ils, 'repair_call_stats'):
+                    self._ils.repair_call_stats = []
+                self._ils.repair_call_stats.append((n_diff, depth))
+                kicked = self._ils.perturb(improved, 'repair', depth)
             else:  # 'pr'
                 # 集団ベースの memetic では path_relinking はデフォルト
                 # (return_intermediate=False = 始点 S_best を返す) のままで良い。
@@ -158,10 +172,20 @@ class MemeticGASolver:
                 # → memetic+PR は no-op ではなく Pareto 域を広げる有効なキックになる。
                 # (実験: 2026-06-02, memetic+PR は memetic-LS に HV で有意勝ち。
                 #  始点・終点除外しても結果は変わらず、むしろ大幅減速するため不採用。)
-                kicked, _ = self._ils.path_relinking(
-                    improved, self._ils.initial_machine_orders,
-                    ls_strategy=None, step_strategy=self.pr_step_strategy,
-                    escape_infeasible=True)
+                if self.pr_ls_top_k and self.pr_ls_top_k > 1:
+                    # top-k LS variant: 経路上上位 k 中間解に LS をかけ最良を返す
+                    kicked, _ = self._ils.path_relinking(
+                        improved, self._ils.initial_machine_orders,
+                        ls_strategy='best', step_strategy=self.pr_step_strategy,
+                        escape_infeasible=True, ls_top_k=self.pr_ls_top_k)
+                    # k=1 が kick_point として記録する「生の最良中間解」を top-k でも記録
+                    # （記録対称性。path_relinking が stash した評価値を回収）
+                    ind.kick_raw_point = self._ils._pr_last_raw
+                else:
+                    kicked, _ = self._ils.path_relinking(
+                        improved, self._ils.initial_machine_orders,
+                        ls_strategy=None, step_strategy=self.pr_step_strategy,
+                        escape_infeasible=True)
             kick_ms, kick_st = self._ils.evaluate_pareto(kicked)
             ind.kick_point = (kick_ms, kick_st)
             improved, _, _ = self._ils.local_search(kicked, strategy=self.ls_strategy)
@@ -225,6 +249,18 @@ class MemeticGASolver:
                     [ind.kick_point[0], ind.kick_point[1]]
                     for ind in offspring
                     if getattr(ind, 'kick_point', None) is not None
+                ]
+                # LS 開始点（交叉/突変直後・LS 前）と top-k 時の生最良中間解。
+                # UEA 記録の対称性のため（memetic_ls にも prels_points が入る）
+                entry['prels_points'] = [
+                    [ind.prels_point[0], ind.prels_point[1]]
+                    for ind in offspring
+                    if getattr(ind, 'prels_point', None) is not None
+                ]
+                entry['kick_raw_points'] = [
+                    [ind.kick_raw_point[0], ind.kick_raw_point[1]]
+                    for ind in offspring
+                    if getattr(ind, 'kick_raw_point', None) is not None
                 ]
             history.append(entry)
 
