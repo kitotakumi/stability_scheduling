@@ -21,7 +21,7 @@ class GASolver:
     """遺伝的アルゴリズムによるジョブショップ再スケジューリングソルバー"""
 
     def __init__(self, jm_table, fixed_gantt, reschedule_time, weights,
-                 cx="hirano", mut="inversion", sel="Tournament",
+                 cx="ppx", mut="inversion", sel="Tournament",
                  cxpb=0.85, mutpb=0.1, pop_size=50):
         self.jm_table = jm_table
         self.fixed_gantt = fixed_gantt

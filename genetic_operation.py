@@ -143,6 +143,62 @@ def crossover_pmx(parent1, parent2):
     return parent1, parent2
 
 
+def crossover_ppx(ind1, ind2):
+    """PPX（Precedence Preservation Crossover）
+
+    operation-based encoding（ジョブ番号の重複あり順列）向けの交叉。
+    二値テンプレートに従って 2 親を左から 1 個ずつマージし、取り出した
+    遺伝子の値は両親から 1 つずつ除去する。各親の相対順序（先行関係）を
+    完全に保持するため、生成される子は常に実行可能。crossover_hirano
+    （平野 1995）と同じ順序保存系だが、PPX はより標準的で引用が容易。
+
+    Ref: Bierwirth, Mattfeld & Kopfer (1996), "On permutation representations
+    for scheduling problems", PPSN IV, LNCS 1141, pp. 310-318.
+    """
+    child1 = _ppx_offspring(ind1, ind2)
+    child2 = _ppx_offspring(ind1, ind2)
+    ind1[:] = child1
+    ind2[:] = child2
+    return ind1, ind2
+
+
+def _ppx_offspring(parent1, parent2):
+    """PPX で 1 個体を生成する（O(n)）。
+
+    各ステップで二値テンプレート（コイン投げ）が指す親の「未使用の先頭」遺伝子を
+    取り、その値を相手側からも 1 つ消費する。相手側の消費は遅延スキップで表現し
+    （その値の次の出現位置に達したら読み飛ばす）、毎回の線形探索（list.remove）を
+    避ける。両親は常に同一多重集合の順列なので生成物の本数は親と一致＝必ず実行可能。
+    list.remove を使う素朴版 O(n^2) と同一 RNG で完全に同じ子を返す。
+    """
+    p1, p2 = parent1, parent2  # 親は変更しない（直接インデックス参照）
+    n = len(p1)
+    i1 = i2 = 0
+    skip1 = {}  # 相手に消されたため p1 側で読み飛ばすべき値 -> 残り個数
+    skip2 = {}
+    child = array.array(parent1.typecode)
+    for _ in range(n):
+        if random.random() < 0.5:
+            v = p1[i1]
+            while skip1.get(v, 0):  # 既に相手経由で消費済みの出現を飛ばす
+                skip1[v] -= 1
+                i1 += 1
+                v = p1[i1]
+            i1 += 1
+            child.append(v)
+            skip2[v] = skip2.get(v, 0) + 1  # 相手(p2)から 1 つ消す（遅延）
+        else:
+            v = p2[i2]
+            while skip2.get(v, 0):
+                skip2[v] -= 1
+                i2 += 1
+                v = p2[i2]
+            i2 += 1
+            child.append(v)
+            skip1[v] = skip1.get(v, 0) + 1
+    return child
+
+
 # ========== 突然変異 ==========
 
 def mutation_inversion(ind):
@@ -192,7 +248,12 @@ def initialize(jm_table, cx, mut, sel, original_individual, fixed_gantt,
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
     # 交叉
-    cx_func = crossover_hirano if cx == "hirano" else crossover_pmx
+    if cx == "ppx":
+        cx_func = crossover_ppx
+    elif cx == "hirano":
+        cx_func = crossover_hirano
+    else:
+        cx_func = crossover_pmx
     toolbox.register("crossover", cx_func)
     # 突然変異
     mut_func = mutation_inversion if mut == "inversion" else mutation_hirano
