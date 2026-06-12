@@ -819,6 +819,16 @@ def _worker_trial_ttt(args):
     if len(pts_xy) == 0:
         return empty
 
+    # 高速化: (ms,st) で重複除去し最早時刻のみ残す。HV(t) は重複点に不変なので結果は
+    # 厳密に同じだが、memetic（全世代×全個体で同一(ms,st)が大量）では点数が桁で減り、
+    # 以降の prefix HV（二分探索 ~17 回）が劇的に速くなる。
+    if len(pts_xy) > 1:
+        o0 = np.argsort(ptimes, kind='stable')
+        pts_xy, ptimes = pts_xy[o0], ptimes[o0]
+        uvals, uidx = np.unique(pts_xy, axis=0, return_index=True)
+        pts_xy = uvals               # value-sorted（下で時刻再ソートするので問題なし）
+        ptimes = ptimes[uidx]        # 各ユニーク (ms,st) の最早時刻
+
     order = np.argsort(ptimes, kind='stable')
     pts_s = pts_xy[order]
     t_s = ptimes[order]
@@ -828,13 +838,14 @@ def _worker_trial_ttt(args):
         def hv_prefix(k):
             if k <= 0:
                 return 0.0
-            return float(hypervolume(pareto_front(pts_s[:k]), ref))
+            return float(hypervolume(pts_s[:k], ref))  # hypervolume が内部で PF（二重PF排除）
     else:
         r_lo, r_hi, r_hi_inc = region
 
         def hv_prefix(k):
             if k <= 0:
                 return 0.0
+            # 領域 HV は「全 PF を band に制限」の意味なので PF を先に取る（既存定義と一致）
             return float(region_hv(pareto_front(pts_s[:k]), r_lo, r_hi, ref[0],
                                    hi_inclusive=r_hi_inc)[0])
 
@@ -1240,14 +1251,14 @@ def plot_union_hv_boxplot(union_hv_by_method, methods, title, outpath):
 # ========== プロット: B-2b 領域別 HV bar ==========
 
 def plot_region_hv_bars(region_hvs, methods, thresholds, title, outpath):
-    """low/mid/high stab の領域別 HV bar chart。
+    """高/中/低安定性（D 小→大）の 3 分割領域別 HV bar chart。
     region_hvs: {method: {region_name: hv}}
     """
-    regions = ['low_stab', 'mid_stab', 'high_stab']
+    regions = ['high_stability', 'mid_stability', 'low_stability']
     region_labels = [
-        f'low_stab\n[0, {thresholds["P33"]:.3f}]',
-        f'mid_stab\n({thresholds["P33"]:.3f}, {thresholds["P67"]:.3f}]',
-        f'high_stab\n({thresholds["P67"]:.3f}, {thresholds["stab_max"]:.3f}]',
+        f'高安定性（D≤P33）\n[0, {thresholds["P33"]:.3f}]',
+        f'中安定性\n({thresholds["P33"]:.3f}, {thresholds["P67"]:.3f}]',
+        f'低安定性（D>P67）\n({thresholds["P67"]:.3f}, {thresholds["stab_max"]:.3f}]',
     ]
     n_groups = len(regions)
     n_methods = len(methods)
@@ -1687,9 +1698,9 @@ def format_region_hv_table(region_hvs, region_hv_counts, methods, thresholds):
     """領域別 HV の数値テキスト。region_hv_counts: {method: {region: n_points}}"""
     p33, p67, st_max = thresholds['P33'], thresholds['P67'], thresholds['stab_max']
     regions = [
-        ('low_stab',  0.0,  p33,  f'[0,       {p33:.4f}]'),
-        ('mid_stab',  p33,  p67,  f'({p33:.4f}, {p67:.4f}]'),
-        ('high_stab', p67,  st_max, f'({p67:.4f}, {st_max:.4f}]'),
+        ('high_stability', 0.0,  p33,    f'[0,       {p33:.4f}]  高安定性（D≤P33）'),
+        ('mid_stability',  p33,  p67,    f'({p33:.4f}, {p67:.4f}]  中安定性'),
+        ('low_stability',  p67,  st_max, f'({p67:.4f}, {st_max:.4f}]  低安定性（D>P67）'),
     ]
     lines = [
         'Region-restricted HV (各手法の全訪問点から領域内 Pareto → HV)',
@@ -2385,10 +2396,11 @@ def analyze_problem(prob_key, method_data, out_dir, problems_filter=None,
     # ===== B-2b: 領域別 HV =====
     print('  B-2b: 領域別 HV...')
     p33, p50, p67, st_max = thresholds['P33'], thresholds['P50'], thresholds['P67'], thresholds['stab_max']
+    # 命名は 2 分割と同じ安定性ベース（D 小 = 高安定性）。
     regions_3split = {
-        'low_stab':  (0.0,  p33),
-        'mid_stab':  (p33,  p67),
-        'high_stab': (p67,  global_ref[1]),
+        'high_stability': (0.0,  p33),
+        'mid_stability':  (p33,  p67),
+        'low_stability':  (p67,  global_ref[1]),
     }
     regions_2split = {
         'high_stability': (0.0, p50),

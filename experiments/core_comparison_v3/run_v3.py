@@ -2,7 +2,8 @@
 """
 core_comparison_v3: コア比較実験 v3 実行スクリプト
 
-4手法 (GA, ILS-baseline, ILS+repair, ILS+PR) × 11重み × 4問題 × n試行。
+7手法 (GA, ILS-baseline, ILS+repair, ILS+PR, Memetic-LS, Memetic+repair, Memetic+PR)
+× 10重み × 6問題セット × n試行。
 1ファイル=1run で保存し、途中停止・再開・部分実行に対応。
 
 === 使い方 ===
@@ -12,7 +13,7 @@ core_comparison_v3: コア比較実験 v3 実行スクリプト
   # 重みを分割して同じ output-dir に統合
   python run_v3.py --weights "1.0,0 0.9,0.1 0.8,0.2 0.7,0.3 0.6,0.4" \\
       --output-dir results/main --n-jobs 4
-  python run_v3.py --weights "0.5,0.5 0.4,0.6 0.3,0.7 0.2,0.8 0.1,0.9 0.0,1.0" \\
+  python run_v3.py --weights "0.5,0.5 0.4,0.6 0.3,0.7 0.2,0.8 0.1,0.9" \\
       --output-dir results/main --n-jobs 4
 
   # 本番（30試行）
@@ -95,6 +96,7 @@ METHODS = {
         'kind': 'memetic',
         'kick_mode': 'pr',
         'kick_prob': 0.3,
+        'pr_ls_top_k': 3,  # 2026-06-12 確定: top_k=3 を Memetic+PR の既定に（param_sweep_v1/RESULTS.md §1）
         'label': 'Memetic+PR',
     },
 }
@@ -161,32 +163,44 @@ def _extract_uea_points(history, kind):
         return [], []
     pts = []
     times = []
+    # UEA 記録ポリシー（2026-06-12 統一）: 「LS 開始点（摂動・キック出力・交叉/突変直後の
+    # 子）＋ LS 終点 ＋ 集団個体」を全手法で記録する。キック出力だけ記録すると、キック
+    # 機構側にだけ LS 前の高安定点が計上される非対称が生じるため。
+    # GA/memetic: pop_points(LS後個体) + kick_points(LS前キック出力) +
+    #             prels_points(LS前の子) + kick_raw_points(top-k時の生最良中間解)
+    # ILS: ls_*(LS後) + kick_*(キック出力) + perturb_*(摂動直後) + kick_raw_*(top-k時の生)
     if kind == 'ga':
         for h in history:
             t = h.get('cpu_time')
             tv = round(float(t), 4) if t is not None else 0.0
-            for pt in h.get('pop_points', []):
-                if len(pt) >= 2:
-                    ms, st = float(pt[0]), float(pt[1])
-                    if np.isfinite(ms) and np.isfinite(st):
-                        pts.append([ms, st]); times.append(tv)
-            for pt in h.get('kick_points', []):
-                if len(pt) >= 2:
-                    ms, st = float(pt[0]), float(pt[1])
-                    if np.isfinite(ms) and np.isfinite(st):
-                        pts.append([ms, st]); times.append(tv)
+            for key in ('pop_points', 'kick_points', 'prels_points', 'kick_raw_points'):
+                for pt in h.get(key, []):
+                    if len(pt) >= 2:
+                        ms, st = float(pt[0]), float(pt[1])
+                        if np.isfinite(ms) and np.isfinite(st):
+                            pts.append([ms, st]); times.append(tv)
     else:
         for h in history:
             t = h.get('cpu_time')
             tv = round(float(t), 4) if t is not None else 0.0
-            ms = h.get('ls_makespan')
-            st = h.get('ls_stability')
-            if ms is not None and st is not None and np.isfinite(ms) and np.isfinite(st):
-                pts.append([float(ms), float(st)]); times.append(tv)
-            kick_ms = h.get('kick_makespan')
-            kick_st = h.get('kick_stability')
-            if kick_ms is not None and kick_st is not None and np.isfinite(kick_ms) and np.isfinite(kick_st):
-                pts.append([float(kick_ms), float(kick_st)]); times.append(tv)
+            for prefix in ('ls', 'kick', 'perturb', 'kick_raw'):
+                ms = h.get(f'{prefix}_makespan')
+                st = h.get(f'{prefix}_stability')
+                if ms is not None and st is not None and np.isfinite(ms) and np.isfinite(st):
+                    pts.append([float(ms), float(st)]); times.append(tv)
+
+    # 保存時 dedup: (ms,st) ごとに最早 cpu_time のみ残す。HV / HV(t) / 領域HV は重複点に
+    # 不変なので全分析で結果は同一。memetic は全世代×全個体で同一(ms,st)が大量に出る
+    # （MS・順列偏差は整数なので異なる点は数百〜千種）ため点数が ~99% 減り、保存サイズ・
+    # ロード・解析（特に anytime/TTT）が桁で速くなる。
+    if len(pts) > 1:
+        arr = np.asarray(pts, dtype=float)
+        tarr = np.asarray(times, dtype=float)
+        o = np.argsort(tarr, kind='stable')          # 時刻昇順
+        arr, tarr = arr[o], tarr[o]
+        uvals, uidx = np.unique(arr, axis=0, return_index=True)  # 各(ms,st)の最早時刻
+        pts = uvals.tolist()
+        times = tarr[uidx].tolist()
     return pts, times
 
 
@@ -254,6 +268,7 @@ def _run_one_task(task):
                 kick_mode=cfg.get('kick_mode', 'none'),
                 kick_prob=cfg.get('kick_prob', 0.5),
                 repair_strength=cfg.get('repair_strength', 0),  # 0 = 経路長フル（天井なし）
+                pr_ls_top_k=cfg.get('pr_ls_top_k', 1),
                 track_population=True)
             kind = 'ga'  # pop_points 形式は GA と同じ
         else:

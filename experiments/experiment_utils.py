@@ -57,6 +57,14 @@ def get_problem(problem_name=None, scenario_name=None):
     return jm_table, fixed_gantt, reschedule_gantt, reschedule_time
 
 
+# norm_params 推定の固定シード。norm_params はスカラー化の正規化に入るため、実行ごとに
+# 値が変わると全手法の探索軌道が変わり、バッチをまたいだ再現・比較が壊れる（2026-06-11 に
+# mt10 で max_eff=1288/1284/1276 と毎回別値になることを確認）。固定により同一問題×シナリオ
+# は常に同一 norm_params となる。※過去バッチは各 results/<out>/norm_params.json の値が正で、
+# resume 時はそちらが再利用される（このシードの影響を受けない）。
+NORM_PARAMS_SEED = 20260611
+
+
 def compute_shared_norm_params(problem_name=None, scenario_name=None):
     """GT法ランダムサンプリングで共通正規化パラメータを推定"""
     jm_table, fixed_gantt, reschedule_gantt, reschedule_time = get_problem(
@@ -67,7 +75,7 @@ def compute_shared_norm_params(problem_name=None, scenario_name=None):
     base_gene = gantt_chart_operation.get_gene(rescheduled_rsr_gantt)
     norm_params = evaluation.estimate_normalization_params(
         jm_table, fixed_gantt, reschedule_time,
-        delayed_gantt, base_gene, n_samples=200)
+        delayed_gantt, base_gene, n_samples=200, seed=NORM_PARAMS_SEED)
     print(f"共通正規化パラメータ: {norm_params}")
     return norm_params
 
@@ -82,12 +90,14 @@ def get_initial_makespan(problem_name=None, scenario_name=None):
 # ========== 個別実行関数 (並列用) ==========
 
 def run_ga(weights, seed, ngen, norm_params=None, problem_name=None, scenario_name=None,
-           track_population=False):
+           track_population=False, pop_size=None, cxpb=0.85, mutpb=0.1):
     jm_table, fixed_gantt, reschedule_gantt, reschedule_time = get_problem(
         problem_name, scenario_name)
     random.seed(seed)
     solver = ga_scheduling.GASolver(
-        jm_table, fixed_gantt, reschedule_time, weights, pop_size=GA_POP_SIZE)
+        jm_table, fixed_gantt, reschedule_time, weights,
+        pop_size=(pop_size if pop_size is not None else GA_POP_SIZE),
+        cxpb=cxpb, mutpb=mutpb)
     _, ms, st, conv_info, history = solver.run(
         ngen=ngen, verbose=False, norm_params=norm_params,
         track_population=track_population)
@@ -107,6 +117,8 @@ def run_ils(weights, seed, perturb_method, max_iterations, norm_params=None,
             strategy='best',
             initial_strength=2, max_strength=5,
             patience=None, kick_trigger_first=None,
+            pr_step_strategy='random', pr_ls_top_k=1,
+            record_perturb=True,
             problem_name=None, scenario_name=None):
     jm_table, fixed_gantt, reschedule_gantt, reschedule_time = get_problem(
         problem_name, scenario_name)
@@ -123,7 +135,9 @@ def run_ils(weights, seed, perturb_method, max_iterations, norm_params=None,
         repair_mode=repair_mode, repair_trigger=repair_trigger,
         repair_strength=repair_strength,
         strategy=strategy, patience=patience,
-        kick_trigger_first=kick_trigger_first)
+        kick_trigger_first=kick_trigger_first,
+        pr_step_strategy=pr_step_strategy, pr_ls_top_k=pr_ls_top_k,
+        record_perturb=record_perturb)
     ms, st = solver.evaluate_pareto(best_orders)
     # ILS は semi-active decoding なので initial_machine_orders の stability は定義上 0。
     # baseline = (init_ms, 0.0)
@@ -135,12 +149,16 @@ def run_ils(weights, seed, perturb_method, max_iterations, norm_params=None,
         {'min_eff': solver.min_eff, 'max_eff': solver.max_eff, 'max_stab': solver.max_stab})
     return {'makespan': ms, 'stability': st, 'convergence': conv_info,
             'history': history, 'baseline': baseline,
-            'baseline_score': baseline_score}
+            'baseline_score': baseline_score,
+            # 機構統計: PR per-call (d0, steps, improved) / repair per-call (path_len, depth)
+            'pr_stats': getattr(solver, 'pr_call_stats', []),
+            'repair_stats': getattr(solver, 'repair_call_stats', [])}
 
 
 def run_memetic(weights, seed, ngen, norm_params=None, problem_name=None, scenario_name=None,
                 kick_mode='none', kick_prob=0.3, repair_strength=0,
-                track_population=False, ls_strategy='best', pr_step_strategy='random'):
+                track_population=False, ls_strategy='best', pr_step_strategy='random',
+                pr_ls_top_k=3, pop_size=None, cxpb=0.85, mutpb=0.1):  # 既定 top-k=3（memetic呼び出し時, RESULTS.md §1）
     """Memetic GA (GA × N5 LS × kick) の実行"""
     import sys as _sys
     import os as _os
@@ -152,9 +170,11 @@ def run_memetic(weights, seed, ngen, norm_params=None, problem_name=None, scenar
     random.seed(seed)
     solver = MemeticGASolver(
         jm_table, fixed_gantt, reschedule_gantt, reschedule_time, weights,
-        pop_size=GA_POP_SIZE, kick_mode=kick_mode, kick_prob=kick_prob,
+        pop_size=(pop_size if pop_size is not None else GA_POP_SIZE),
+        cxpb=cxpb, mutpb=mutpb,
+        kick_mode=kick_mode, kick_prob=kick_prob,
         repair_strength=repair_strength, ls_strategy=ls_strategy,
-        pr_step_strategy=pr_step_strategy)
+        pr_step_strategy=pr_step_strategy, pr_ls_top_k=pr_ls_top_k)
     _, ms, st, conv_info, history = solver.run(
         ngen=ngen, verbose=False, norm_params=norm_params,
         track_population=track_population)
@@ -164,7 +184,10 @@ def run_memetic(weights, seed, ngen, norm_params=None, problem_name=None, scenar
     baseline_rsr = [solver.baseline_ms, solver.baseline_st]
     return {'makespan': ms, 'stability': st, 'convergence': conv_info,
             'history': history, 'baseline': baseline, 'baseline_rsr': baseline_rsr,
-            'baseline_score': solver.baseline_active_score}
+            'baseline_score': solver.baseline_active_score,
+            # 機構統計は内部 ILS solver に蓄積される（PR/repair とも _ils 経由で発動）
+            'pr_stats': getattr(solver._ils, 'pr_call_stats', []),
+            'repair_stats': getattr(solver._ils, 'repair_call_stats', [])}
 
 
 # ========== 可視化ユーティリティ ==========
