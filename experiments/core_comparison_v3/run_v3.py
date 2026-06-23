@@ -99,6 +99,13 @@ METHODS = {
         'pr_ls_top_k': 3,  # 2026-06-12 確定: top_k=3 を Memetic+PR の既定に（param_sweep_v1/RESULTS.md §1）
         'label': 'Memetic+PR',
     },
+    'memetic_random': {
+        'kind': 'memetic',
+        'kick_mode': 'random',
+        'kick_prob': 0.3,         # repair と同条件（発火確率を揃える）
+        'repair_strength': 0,     # 0 = 経路長フル: depth ∈ [1, 経路長]（repair と同じ強度分布）
+        'label': 'Memetic+random',  # 内的妥当性の対照（同強度・ランダム方向）
+    },
 }
 
 DEFAULT_METHODS = ['ga', 'ils_baseline', 'ils_repair', 'ils_pr',
@@ -113,14 +120,16 @@ DEFAULT_WEIGHTS = [
 
 DEFAULT_PROBLEM_SETS = [
     # 一般性（中間位置・非縮退）
-    ('mt10', 'mt10_delay60'),
-    ('la21', 'la21_delay147'),
-    ('la40', 'la40_delay148'),
-    # la36 位置軸（難易度 大小）
-    ('la36', 'la36_large'),   # 大（遠い, pos0.17, headroom62）
-    ('la36', 'la36_small'),   # 小（近傍, pos0.72, headroom29）
-    # 大規模 showcase
-    ('ta21', 'ta21_delay97'),
+    ('mt10', 'mt10_delay60'),     # リスケ率72%
+    ('la21', 'la21_delay147'),    # リスケ率35%
+    ('la40', 'la40_delay148'),    # リスケ率32%
+    # la36 リスケ率ラダー（同一 S_p でリスケ率だけ 27/54/73% に振る統制ラダー, doc §6.2）
+    ('la36', 'la36_small'),       # 小 27%（pos0.59, headroom~33）改訂版・要再走
+    ('la36', 'la36_middle'),      # 中 54%（pos0.37, headroom~26）新規・遷移帯
+    ('la36', 'la36_large'),       # 大 73%（pos0.17, headroom62）
+    # ta21 de-ceiling ペア（同一 S_p で 32%→82%, ceiling-test, doc §4）
+    ('ta21', 'ta21_delay97'),     # 大規模・低リスケ率32%
+    ('ta21', 'ta21_high'),        # 大規模・高リスケ率82% ceiling-test 新規
 ]
 
 DEFAULT_N_TRIALS = 10

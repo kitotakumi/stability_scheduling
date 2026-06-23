@@ -801,6 +801,37 @@ class ILSSolver:
                 break  # この状態からは実行可能な引き戻し swap が無い → 終了
         return new_orders
 
+    def _perturb_random_swap(self, machine_orders, strength):
+        """ランダム方向への direct swap を最大 strength 手適用する内的妥当性の対照キック。
+
+        repair（初期解 S_p 方向への direct swap）と「操作（機械上の2位置 direct swap）」
+        も「強度（適用手数）」も揃え、方向だけをランダム化したもの。各手で長さ 2 以上の
+        機械を 1 つ選び、その上の 2 位置をランダムに入れ替える。実行可能なら確定、不可なら
+        元に戻して別候補を試す（最大 strength*20 試行）。
+
+        目的: Memetic+repair/PR の利得が「S_p 方向への誘導（安定性誘導）」由来か、
+        「収束集団への一般的な多様化」由来かを分離する。同強度・ランダム方向のこの対照が
+        repair/PR と同等の利得を出すなら多様化一般の効果、出さないなら S_p 誘導の効果。
+        """
+        new_orders = self._copy_orders(machine_orders)
+        machines = [m for m in new_orders if len(new_orders[m]) >= 2]
+        if not machines:
+            return new_orders
+        applied = 0
+        attempts = 0
+        max_attempts = max(1, strength) * 20
+        while applied < strength and attempts < max_attempts:
+            attempts += 1
+            m = random.choice(machines)
+            ops = new_orders[m]
+            i, q = random.sample(range(len(ops)), 2)
+            ops[i], ops[q] = ops[q], ops[i]
+            if self.build_gantt(new_orders) is not None:
+                applied += 1
+            else:
+                ops[i], ops[q] = ops[q], ops[i]  # 実行不可なので戻す
+        return new_orders
+
     # ========== Path Relinking ==========
 
     def _count_diffs(self, S, S_ref):

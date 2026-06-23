@@ -32,6 +32,8 @@ class MemeticGASolver:
         'none'   : LS のみ (キックなし)
         'repair' : LS → repair → LS
         'pr'     : LS → path relinking → LS
+        'random' : LS → ランダム方向 direct swap → LS（repair の強度を揃えた方向ランダム
+                   対照。利得が S_p 誘導由来か一般的多様化由来かを分離する内的妥当性の対照）
     kick_prob : float
         キックを各個体に確率的に適用する確率。
     repair_strength : int
@@ -163,6 +165,19 @@ class MemeticGASolver:
                     self._ils.repair_call_stats = []
                 self._ils.repair_call_stats.append((n_diff, depth))
                 kicked = self._ils.perturb(improved, 'repair', depth)
+            elif self.kick_mode == 'random':
+                # 内的妥当性の対照: repair と同じ強度分布（depth ∈ [1, cap], cap=経路長）で
+                # 方向だけランダム化した direct swap を適用する。depth のサンプリングは repair
+                # と完全一致させ、機構統計も同じ repair_call_stats に積む（強度分布の一致を
+                # 監査できるようにする）。「S_p 誘導 vs 一般的多様化」の分離が目的。
+                n_diff = self._ils._count_diffs(improved, self._ils.initial_machine_orders)
+                cap = n_diff if self.repair_strength <= 0 else min(n_diff, self.repair_strength)
+                cap = max(1, cap)
+                depth = random.randint(1, cap)
+                if not hasattr(self._ils, 'repair_call_stats'):
+                    self._ils.repair_call_stats = []
+                self._ils.repair_call_stats.append((n_diff, depth))
+                kicked = self._ils._perturb_random_swap(improved, depth)
             else:  # 'pr'
                 # 集団ベースの memetic では path_relinking はデフォルト
                 # (return_intermediate=False = 始点 S_best を返す) のままで良い。

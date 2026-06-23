@@ -1,6 +1,6 @@
 {
     "problem": "la36",
-    "description": "la36 位置軸 小(近傍寄り) pos~0.59. M5/Job9 start=933(pos=0.59) 98遅延(PT*1.0). rt=1129, reschedule_ops=60 (27% of 225ops), RSR=1650, init_MS=1580, headroom~33. (旧13%版=縮退気味から27%へ改訂, 2026-06-19)",
+    "description": "la36 位置軸 中(遷移帯) pos~0.37. M0/Job3 start=588(pos=0.37) 83遅延(PT*1.0). rt=754, reschedule_ops=121 (54% of 225ops), RSR=1641, init_MS=1580, headroom~26. リスケ率ラダー中段(small27%/middle54%/large73%), 2026-06-19",
     "initial_gantt": [
         [
             [
@@ -1212,7 +1212,7 @@
             ],
             [
                 588,
-                671,
+                754,
                 3
             ],
             [
@@ -1597,7 +1597,7 @@
             ],
             [
                 933,
-                1129,
+                1031,
                 9
             ],
             [
