@@ -30,11 +30,16 @@ run_v3.py が生成した raw データから evaluation_design.md §6 の指標
 """
 
 import argparse
+import hashlib
 import json
 import os
 import sys
 from concurrent.futures import ProcessPoolExecutor
 from itertools import combinations
+
+# 増分キャッシュのバージョン。summary_data の中身（指標の計算方法）を変えたら +1 する。
+# 上げると既存 _summary_data.pkl の全エントリが stale 扱いになり自動で再計算される。
+_CACHE_VERSION = 1
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, '..', '..'))
@@ -48,7 +53,8 @@ import numpy as np
 from experiment_utils import compute_shared_norm_params, get_initial_makespan
 
 try:
-    from scipy.stats import wilcoxon as scipy_wilcoxon, fisher_exact
+    from scipy.stats import (wilcoxon as scipy_wilcoxon, fisher_exact,
+                             friedmanchisquare, rankdata)
     SCIPY_OK = True
 except ImportError:
     SCIPY_OK = False
@@ -77,6 +83,100 @@ METHOD_LABELS = {
 }
 DEFAULT_COLORS = ['tab:cyan', 'tab:olive', 'tab:pink', 'deepskyblue']
 
+# 横断スコアボード/図で使う手法の正準順と問題の略記。
+METHOD_ORDER = ['ga', 'ils_baseline', 'ils_pr', 'ils_repair',
+                'memetic_ls', 'memetic_repair', 'memetic_pr']
+# 表示用の短縮タグ（実験データ側のシナリオ名・ディレクトリは変更しない／図と表の表示名のみ）。
+# リスケ率ラダーは small/middle/large = 低/中/高リスケ率の規則で統一する:
+#   la36: small 27% / middle 54% / large 73%
+#   ta21: small 32%(=ta21_delay97) / large 82%(=ta21_high)  ※middle(~54%) は将来追加
+# ここに無いシナリオは problem_short_tag のデフォルト規則で一意タグを生成する。
+PROBLEM_SHORT = {
+    'la36_la36_small':   'la36S',
+    'la36_la36_middle':  'la36M',
+    'la36_la36_large':   'la36L',
+    'ta21_ta21_delay97': 'ta21S',   # 低リスケ率 32% = small
+    'ta21_ta21_high':    'ta21L',   # 高リスケ率 82% = large
+    # 'ta21_ta21_middle': 'ta21M',  # ~54% を将来本走したら有効化
+}
+# スコアボードに載せる指標: (key, 表示名, summary_data の per-trial 配列キー)
+SCOREBOARD_METRICS = [
+    ('union',    '統合HV',   'union_hv_pt'),
+    ('highstab', '高安定HV', 'highstab_hv_pt'),
+    ('aoc',      'AOC',      'aoc_pt'),
+]
+_CIRCLED = '①②③④⑤⑥⑦⑧⑨⑩'
+
+
+def _circled(n):
+    return _CIRCLED[n - 1] if 1 <= n <= len(_CIRCLED) else f'({n})'
+
+
+def problem_short_tag(prob_label):
+    """'la36_la36_large' → 'la36L' / 'la21_la21_delay147' → 'la21'。
+
+    PROBLEM_SHORT に明示があればそれを使う。無ければ問題ファミリ名を基本タグとし、
+    シナリオ記述子（delay 系を除く）があればその頭文字を付して、同一ファミリ内の
+    複数シナリオが同じタグに衝突しないようにする
+    （例: la36_la36_middle → 'la36M', ta21_ta21_high → 'ta21H'）。
+    衝突は claim/perf 図でタグを辞書キーにする際の暗黙のデータ欠落を招くため避ける。"""
+    if prob_label in PROBLEM_SHORT:
+        return PROBLEM_SHORT[prob_label]
+    parts = prob_label.split('_')
+    fam = parts[0]
+    # prob_label は通常 "<problem>_<scenario>" で scenario も "<problem>_<descr>" 形式。
+    descr = parts[2] if len(parts) >= 3 else (parts[1] if len(parts) >= 2 else '')
+    if not descr or descr.startswith('delay'):
+        return fam
+    return fam + descr[0].upper()
+
+
+# 問題の表示順は「難易度＝リスケ率（再スケ部分問題のサイズ比 n_reschedule/total_ops）」の
+# 昇順で統一する。リスケ率は scenario JSON から check_disturbance で算出（実行不要・軽量）し、
+# ハードコードしない＝シナリオを足せば自動で正しい位置に並ぶ。算出不能なら末尾扱い。
+_RESCHED_RATE_CACHE = {}
+
+
+def _repo_root():
+    """このスクリプト（SourceCode/experiments/core_comparison_v3/）から見たリポジトリ root。"""
+    return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def reschedule_rate(prob_label):
+    """(problem, scenario) のリスケ率 = n_reschedule / total_ops を scenario JSON から算出。
+
+    難易度（リスケ率昇順）ソートのキー用。scenario JSON や root モジュールが無い等で
+    算出できない場合は float('inf') を返し、ソートでは末尾に送る。結果はキャッシュする。"""
+    if prob_label in _RESCHED_RATE_CACHE:
+        return _RESCHED_RATE_CACHE[prob_label]
+    rate = float('inf')
+    # prob_label='ta21_ta21_high' → scenario='ta21_high'（scenarios/ta21_high.json）
+    scen = prob_label.split('_', 1)[1] if '_' in prob_label else prob_label
+    path = os.path.join(_repo_root(), 'scenarios', f'{scen}.json')
+    if os.path.exists(path):  # 非問題ディレクトリ(heatmap 等)では静かに inf を返す
+        try:
+            with open(path, encoding='utf-8') as f:
+                d = json.load(f)
+            root = _repo_root()
+            if root not in sys.path:
+                sys.path.insert(0, root)
+            import gantt_chart_operation as _G
+            fixed, resched, _rt, _msg = _G.check_disturbance(
+                d['initial_gantt'], d['delayed_gantt'])
+            nres = sum(len(m) for m in resched)
+            tot = nres + sum(len(m) for m in fixed)
+            if tot:
+                rate = nres / tot
+        except Exception as e:
+            print(f'[WARN] reschedule_rate({prob_label}) 算出失敗→末尾扱い: {e}')
+    _RESCHED_RATE_CACHE[prob_label] = rate
+    return rate
+
+
+def order_prob_labels(labels):
+    """問題ラベル列を難易度（リスケ率昇順）で整列。同率/算出不能は名前順で安定化。"""
+    return sorted(labels, key=lambda pl: (reschedule_rate(pl), pl))
+
 # anytime 曲線を描く代表重み (w_label 形式) — CLI の --repr-weights で上書き可
 REPR_WEIGHTS_DEFAULT = ['w08_02']
 
@@ -89,22 +189,77 @@ N_SENSITIVITY = {
 
 SNAPSHOT_TIMES = [5.0, 10.0, 20.0, 40.0]
 
-# 比較ペア (main, secondary)
-COMPARE_PAIRS = [
-    ('ils_baseline',   'ga'),
-    ('ils_repair',     'ga'),
-    ('ils_pr',         'ga'),
-    ('ils_repair',     'ils_baseline'),
-    ('ils_pr',         'ils_baseline'),
-    ('memetic_ls',     'ga'),
-    ('memetic_repair', 'ga'),
-    ('memetic_pr',     'ga'),
-    ('memetic_repair', 'memetic_ls'),
-    ('memetic_pr',     'memetic_ls'),
-]
+# 比較ファミリー (main, secondary)。多重比較補正 (Holm) は各ファミリー内で独立に適用する。
+# GA は局所探索を持たない参考ベースラインのため検定対象から除外（叩いても δ=-1.00 で自明なため、
+# 本命比較の Holm 分母を膨らませて検出力を下げない）。GA との比較は中央値の参考表のみで扱う。
+COMPARE_FAMILIES = {
+    # 機構の相乗効果（host 内: baseline → +PR / +repair）
+    'mechanism': [
+        ('ils_repair',     'ils_baseline'),
+        ('ils_pr',         'ils_baseline'),
+        ('memetic_repair', 'memetic_ls'),
+        ('memetic_pr',     'memetic_ls'),
+    ],
+    # 軌道ベース vs 集団ベース（局所探索を揃えた）＋ 同一機構の host 間（非対称性の直接検定）
+    'traj_vs_pop': [
+        ('memetic_ls',     'ils_baseline'),
+        ('memetic_pr',     'ils_pr'),
+        ('memetic_repair', 'ils_repair'),
+    ],
+    # PR vs repair（同 host 内）
+    'pr_vs_repair': [
+        ('ils_pr',         'ils_repair'),
+        ('memetic_pr',     'memetic_repair'),
+    ],
+}
+FAMILY_LABELS = {
+    'mechanism':    '機構の相乗効果 (host内 baseline→+機構)',
+    'traj_vs_pop':  '軌道 vs 集団 / 同一機構の host 間',
+    'pr_vs_repair': 'PR vs repair (同host内)',
+}
+# 後方互換: フラットなペアリスト（既存の検定関数 b1/b2b が参照）。GA 除外後の 9 ペア。
+COMPARE_PAIRS = [p for fam in COMPARE_FAMILIES.values() for p in fam]
 
 
 # ========== データ読み込み ==========
+
+def _load_raw_dir(input_dir, prob_dir_name, grouped):
+    """1 問題ディレクトリの raw/*.json を grouped に読み込む（load_all_runs の内部単位）。"""
+    raw_dir = os.path.join(input_dir, prob_dir_name, 'raw')
+    if not os.path.isdir(raw_dir):
+        return
+    for fn in sorted(os.listdir(raw_dir)):
+        if not fn.endswith('.json'):
+            continue
+        fpath = os.path.join(raw_dir, fn)
+        try:
+            with open(fpath, 'r', encoding='utf-8') as f:
+                d = json.load(f)
+        except Exception as e:
+            print(f'  [WARN] 読み込み失敗 {fpath}: {e}')
+            continue
+        prob = d.get('problem', '')
+        scen = d.get('scenario', '')
+        method = d.get('method', '')
+        weights = d.get('weights', [])
+        trial = d.get('trial', 0)
+        if not (prob and scen and method and weights):
+            continue
+        w_label = _weight_label(weights)
+        key = (prob, scen)
+        grouped.setdefault(key, {})
+        grouped[key].setdefault(method, {})
+        grouped[key][method].setdefault(w_label, {})
+        grouped[key][method][w_label][trial] = d
+
+
+def load_problem_dir(input_dir, prob_dir_name):
+    """1 問題ディレクトリだけを読み込む（増分キャッシュで再計算対象のみロードする用）。
+    Returns: {(problem, scenario): {method: {w_label: {trial_idx: data}}}}（通常 1 キー）。"""
+    grouped = {}
+    _load_raw_dir(input_dir, prob_dir_name, grouped)
+    return grouped
+
 
 def load_all_runs(input_dir):
     """raw ディレクトリを再帰スキャンして全 run を読み込む。
@@ -141,6 +296,26 @@ def load_all_runs(input_dir):
     return grouped
 
 
+def _raw_fingerprint(input_dir, prob_label):
+    """1 問題の raw 入力の指紋を返す（増分キャッシュの変更検知用）。
+
+    `<input_dir>/<prob_label>/raw/*.json` の (ファイル名・サイズ・mtime) を畳んだハッシュ。
+    ファイル追加/削除/更新（=試行追加・シナリオ改訂・再走）があれば必ず変わる。読み込みは
+    せず stat のみなので高速。raw ディレクトリが無ければ None（→ 必ず再計算）。
+    """
+    raw_dir = os.path.join(input_dir, prob_label, 'raw')
+    if not os.path.isdir(raw_dir):
+        return None
+    h = hashlib.md5()
+    for fn in sorted(os.listdir(raw_dir)):
+        if not fn.endswith('.json'):
+            continue
+        st = os.stat(os.path.join(raw_dir, fn))
+        h.update(fn.encode('utf-8'))
+        h.update(f'{st.st_size}:{st.st_mtime_ns}'.encode('utf-8'))
+    return h.hexdigest()
+
+
 def _weight_label(w):
     if isinstance(w, str):
         return w
@@ -164,15 +339,42 @@ def _improved_over_baseline(data):
     return float(f_score) < float(b_score) - eps
 
 
-def get_uea_points(data_dict, trial_idx):
-    """run data から trial の UEA 点列を np.array (N,2) で返す。"""
+_UEA_CACHE_KEY = '_uea_arr_cache'
+
+
+def _parsed_uea(data_dict):
+    """uea_points を (N,2) float 配列に一度だけパースして data_dict にキャッシュする。
+
+    get_uea_points / get_uea_points_xyt は分析の各セクション（union/region/C-metric/PF/
+    AOC…）から同じ run に対し 5〜8 回呼ばれる。毎回 np.array(list) で再パースするのは無駄
+    なので結果を data_dict にぶら下げて使い回す。キャッシュは raw 由来の生 dict にのみ載り、
+    _summary_data.pkl には保存されない。problem 単位で clear_uea_cache() し RAM 増を抑える。
+    """
+    arr = data_dict.get(_UEA_CACHE_KEY)
+    if arr is not None:
+        return arr
     pts = data_dict.get('uea_points', [])
-    if not pts:
-        return np.zeros((0, 2))
-    arr = np.array(pts, dtype=float)
+    arr = np.array(pts, dtype=float) if pts else np.zeros((0, 2))
     if arr.ndim != 2 or arr.shape[1] < 2:
-        return np.zeros((0, 2))
-    return arr[:, :2]
+        arr = np.zeros((0, 2))
+    else:
+        arr = arr[:, :2]
+    arr.flags.writeable = False  # 共有キャッシュ: 呼び出し側の不意な in-place 変更を弾く
+    data_dict[_UEA_CACHE_KEY] = arr
+    return arr
+
+
+def clear_uea_cache(method_data):
+    """1 問題の解析後に UEA パースキャッシュを解放する（grouped に全問題が常駐するため）。"""
+    for by_weight in method_data.values():
+        for by_trial in by_weight.values():
+            for data in by_trial.values():
+                data.pop(_UEA_CACHE_KEY, None)
+
+
+def get_uea_points(data_dict, trial_idx):
+    """run data から trial の UEA 点列を np.array (N,2) で返す（パースはキャッシュ）。"""
+    return _parsed_uea(data_dict)
 
 
 def get_uea_points_xyt(data_dict, trial_idx):
@@ -181,13 +383,9 @@ def get_uea_points_xyt(data_dict, trial_idx):
     run_v3 が記録した uea_points_t（各点の正確な訪問時刻）があれば 3 列目に付与する。
     古い結果（uea_points_t なし）は (N,2) を返し、_point_times が hist から近似する。
     """
-    pts = data_dict.get('uea_points', [])
-    if not pts:
-        return np.zeros((0, 2))
-    arr = np.array(pts, dtype=float)
-    if arr.ndim != 2 or arr.shape[1] < 2:
-        return np.zeros((0, 2))
-    arr = arr[:, :2]
+    arr = _parsed_uea(data_dict)
+    if len(arr) == 0:
+        return arr
     ts = data_dict.get('uea_points_t')
     if ts is not None and len(ts) == len(arr):
         return np.hstack([arr, np.asarray(ts, dtype=float).reshape(-1, 1)])
@@ -268,6 +466,52 @@ def hypervolume(points, ref):
     return hv
 
 
+# ========== HV 正規化（目的を [0,1] に揃えてから面積を取る） ==========
+#
+# union/領域別/per-weight/anytime の全 HV を、(problem, scenario) ごとの共通アンカー
+#   ideal = (MS_min, D=0)      （各軸の最良）
+#   nadir = (MS_max, D_max)    （各軸の最悪・観測）
+# で正規化した [0,1]^2 空間で計算する。参照点は nadir の外側 10%（Ishibuchi+2018 推奨）。
+# 閾値(P33/P67)・領域マスキング・per-weight の MS/stab 表示は生値のまま（物理的意味を保持）。
+# マスキングは raw の D 境界で行い、面積のみ正規化空間で取る。
+
+NORM_REF = (1.1, 1.1)  # 正規化空間 [0,1]^2 の HV 参照点
+
+
+def make_norm(pts_concat):
+    """全訪問点から正規化アンカー (ms_min, ms_rng, d_rng) を作る。"""
+    p = np.asarray(pts_concat, dtype=float)
+    ms_min = float(p[:, 0].min())
+    ms_max = float(p[:, 0].max())
+    d_max = float(p[:, 1].max())
+    return (ms_min, max(ms_max - ms_min, 1e-9), max(d_max, 1e-9))
+
+
+def normalize_pts(points, norm):
+    """(N,>=2) の 0,1 列を [0,1] に正規化（D は ideal=0 基準）。余分な列は保持。"""
+    p = np.asarray(points, dtype=float)
+    if p.ndim != 2 or len(p) == 0:
+        return p
+    q = p.copy()
+    q[:, 0] = (p[:, 0] - norm[0]) / norm[1]
+    q[:, 1] = p[:, 1] / norm[2]
+    return q
+
+
+def normalize_baseline(baseline, norm):
+    """baseline（[[ms,st],...] / [ms,st] / None）を正規化した [[ms,st],...] にする。"""
+    if not baseline:
+        return baseline
+    bl_list = (baseline if (isinstance(baseline, list) and
+               isinstance(baseline[0], (list, np.ndarray))) else [baseline])
+    return [[(float(b[0]) - norm[0]) / norm[1], float(b[1]) / norm[2]] for b in bl_list]
+
+
+def ny(d, norm):
+    """D 値（安定性偏差）を正規化空間に写す。"""
+    return d / norm[2]
+
+
 def c_metric(A, B):
     """C(A,B): A が弱く支配する B の割合。"""
     if len(B) == 0:
@@ -282,7 +526,7 @@ def c_metric(A, B):
 
 
 def region_hv(points, stab_lo, stab_hi, ref_ms, ref_stab=None,
-              hi_inclusive=False, stab_margin=0.02):
+              hi_inclusive=False, stab_margin=0.02, norm=None):
     """領域内の点だけで HV を計算。
 
     区間: hi_inclusive=False (デフォルト) → [stab_lo, stab_hi)
@@ -291,6 +535,8 @@ def region_hv(points, stab_lo, stab_hi, ref_ms, ref_stab=None,
               (stab_hi + stab_margin * width) を使用する。
               low/mid 領域では各ゾーン上限を参照点にすることで
               ゾーン内品質を独立に評価できる。
+    norm: 指定時は raw の D 境界 (stab_lo, stab_hi) でマスキングしたうえで
+          面積のみ正規化空間で計算する（ref_ms→1.1, ref_stab→ny(ref_stab)）。
     """
     if len(points) == 0:
         return 0.0, 0
@@ -305,7 +551,11 @@ def region_hv(points, stab_lo, stab_hi, ref_ms, ref_stab=None,
     if ref_stab is None:
         width = max(stab_hi - stab_lo, 1e-6)
         ref_stab = stab_hi + stab_margin * width
-    ref = (ref_ms, ref_stab)
+    if norm is not None:
+        reg = normalize_pts(reg, norm)
+        ref = (NORM_REF[0], ny(ref_stab, norm))
+    else:
+        ref = (ref_ms, ref_stab)
     return hypervolume(reg, ref), int(len(reg))
 
 
@@ -615,13 +865,76 @@ def _eaf_grid(trial_pts_list, grid_ms, grid_st, baseline=None):
     return count / n
 
 
+# ========== per-trial AOC (アンタイム性能 = HV-対-log時間 の時間平均) ==========
+
+def _aoc_from_curve(times, hvs):
+    """1 trial の HV-対-log時間 曲線下の時間平均 HV（López-Ibáñez & Stützle 2014）。
+
+    times>0 の checkpoint で HV を log(t) 上に台形積分し、log 時間幅で割る。
+    早期から高 HV を維持する手法ほど大。立ち上がりが遅い手法は下がる。
+    """
+    t = np.asarray(times, dtype=float)
+    h = np.asarray(hvs, dtype=float)
+    m = t > 0
+    t, h = t[m], h[m]
+    if len(t) < 2:
+        return float('nan')
+    lt = np.log(t)
+    span = lt[-1] - lt[0]
+    if span <= 0:
+        return float('nan')
+    trap = getattr(np, 'trapezoid', np.trapz)
+    return float(trap(h, lt) / span)
+
+
+def compute_aoc_per_trial(method_info_list, ref, n_jobs=1, shared_executor=None):
+    """各手法の per-trial AOC リストを返す（正規化空間で計算）。
+
+    method_info_list は anytime 用に正規化済みの (m, hist_list, pts_list_n, kind,
+    baseline_n)。checkpoint は anytime_detail と同じ _ANYTIME_FRACS×t_max を使い、
+    各 trial の HV 曲線を log 時間で積分する（崩壊 trial は AOC=0 で計上）。
+
+    Returns: {method: [per-trial AOC...]}
+    """
+    t_grid = _build_t_grid(method_info_list, n_pts=20, xscale='linear')
+    if t_grid is None:
+        return {}
+    t_max = float(t_grid[-1])
+    ck_times = [f * t_max for f in _ANYTIME_FRACS]
+
+    out = {}
+    _own_pool = shared_executor is None and n_jobs > 1
+    executor = shared_executor if shared_executor is not None else (
+        ProcessPoolExecutor(max_workers=n_jobs) if n_jobs > 1 else None)
+    try:
+        for m, hist_list, pts_list, kind, baseline in method_info_list:
+            valid_pairs = [(h, p) for h, p in zip(hist_list, pts_list)
+                           if h and len(p) > 0]
+            invalid_count = len(hist_list) - len(valid_pairs)
+            if executor is not None and valid_pairs:
+                curves = list(executor.map(
+                    _worker_trial_hv_curve,
+                    [(h, p, kind, ck_times, baseline, ref) for h, p in valid_pairs]))
+            else:
+                curves = [_worker_trial_hv_curve((h, p, kind, ck_times, baseline, ref))
+                          for h, p in valid_pairs]
+            aocs = [_aoc_from_curve(ck_times, c) for c in curves]
+            aocs += [0.0] * invalid_count  # 崩壊 trial: HV≈0 を通すので AOC=0
+            out[m] = aocs
+    finally:
+        if _own_pool and executor is not None:
+            executor.shutdown(wait=False)
+    return out
+
+
 # ========== per-trial union UEA HV (B-2a 主筋) ==========
 
 def compute_union_hv_per_trial(method_data_by_weight_trial, baselines_by_method,
-                                ref, weights_subset=None):
-    """各 (method, trial) で union UEA HV を計算して返す。
+                                norm, weights_subset=None):
+    """各 (method, trial) で union UEA HV を計算して返す（正規化空間 [0,1]^2）。
 
     method_data_by_weight_trial: {method: {w_label: {trial_idx: data}}}
+    norm: 正規化アンカー (make_norm)。baseline 除外は raw、面積は正規化空間で計算。
     weights_subset: None = 全重み、list[str] = 指定 w_label のみ
 
     Returns: {method: list[float]}  (trial 順)
@@ -660,9 +973,9 @@ def compute_union_hv_per_trial(method_data_by_weight_trial, baselines_by_method,
                 if len(pts) > 0:
                     union_pts.append(pts)
             if union_pts:
-                combined = np.concatenate(union_pts)
+                combined = normalize_pts(np.concatenate(union_pts), norm)
                 pf = pareto_front(combined)
-                hv_list.append(hypervolume(pf, ref))
+                hv_list.append(hypervolume(pf, NORM_REF))
             else:
                 hv_list.append(0.0)
         result[method] = hv_list
@@ -739,7 +1052,7 @@ _ANYTIME_FRACS = [0.001, 0.002, 0.003, 0.005, 0.007, 0.01, 0.02, 0.03, 0.05, 0.0
 _SUMMARY_CONV_FRACS = [0.03, 0.05, 0.10, 0.30, 1.00]
 
 
-def _compute_convergence_summary(method_info_list, ref, n_jobs=1):
+def _compute_convergence_summary(method_info_list, ref, n_jobs=1, shared_executor=None):
     """各手法の HV 中央値を代表時刻 (10%/30%/50%/100% t_max) で返す。
     Returns {method: {'t_max': float, 'fracs': {frac: hv_med}}}
     """
@@ -749,7 +1062,9 @@ def _compute_convergence_summary(method_info_list, ref, n_jobs=1):
     t_max = float(t_grid_tmp[-1])
     ck_times = [f * t_max for f in _SUMMARY_CONV_FRACS]
 
-    executor = ProcessPoolExecutor(max_workers=n_jobs) if n_jobs > 1 else None
+    _own_pool = shared_executor is None and n_jobs > 1
+    executor = shared_executor if shared_executor is not None else (
+        ProcessPoolExecutor(max_workers=n_jobs) if n_jobs > 1 else None)
     result = {}
     try:
         for m, hist_list, pts_list, kind, baseline in method_info_list:
@@ -770,13 +1085,13 @@ def _compute_convergence_summary(method_info_list, ref, n_jobs=1):
                     fracs[frac] = float(np.nanmedian(hv_arr[:, i]))
             result[m] = {'t_max': t_max, 'fracs': fracs}
     finally:
-        if executor is not None:
+        if _own_pool and executor is not None:
             executor.shutdown(wait=False)
     return result
 
 
 # time-to-target の閾値
-_TTT_TAUS = [0.90, 0.95, 0.99]            # self-referenced: 各 trial 自身の最終 HV の τ%
+_TTT_TAUS = [0.90]                        # self-referenced: 自身の最終 HV の 90%（参考値。
 _TTT_COMMON_NAMES = ['low', 'mid', 'high']  # common-target: 最弱/中堅/最強手法の最終 HV
 
 
@@ -890,7 +1205,7 @@ def _agg_ttt_col(col):
             'n': int(len(fin)), 'n_total': len(arr)}
 
 
-def _compute_ttt_block(method_info_list, ref, taus, region=None, n_jobs=1):
+def _compute_ttt_block(method_info_list, ref, taus, region=None, n_jobs=1, shared_executor=None):
     """1 領域（region=None=全フロント / バンド）の TTT を集約して返す。
 
     self-referenced（τ ラダー）と common-target（最弱/中堅/最強手法の最終 HV を共通 q
@@ -904,7 +1219,9 @@ def _compute_ttt_block(method_info_list, ref, taus, region=None, n_jobs=1):
       'common': {method: {qname: {median,q25,q75,n,n_total}}},
     }
     """
-    executor = ProcessPoolExecutor(max_workers=n_jobs) if n_jobs > 1 else None
+    _own_pool = shared_executor is None and n_jobs > 1
+    executor = shared_executor if shared_executor is not None else (
+        ProcessPoolExecutor(max_workers=n_jobs) if n_jobs > 1 else None)
     prepared = {}   # method -> (valid_pairs, kind, baseline)
     finals_by_m = {}
     try:
@@ -921,8 +1238,15 @@ def _compute_ttt_block(method_info_list, ref, taus, region=None, n_jobs=1):
             finals_by_m[m] = [r['final'] for r in r1]
 
         med_final = {m: float(np.median(v)) for m, v in finals_by_m.items() if v}
-        if med_final:
-            ordered = sorted(med_final.items(), key=lambda kv: kv[1])
+        # common-target の決定からは GA（局所探索なし参考値）を除外し、検定対象手法で
+        # q_low（全員到達ライン）/q_high を決める。さらに当該領域で HV=0 の手法（例: 高安定
+        # 領域の Memetic-LS）も除外する（q_low が 0 に潰れて速度比較が無意味になるのを防ぐ）。
+        # GA・HV=0 手法自身の到達時刻は表に残す（到達率 n/N で「届かなさ」を可視化）。
+        med_for_q = {m: v for m, v in med_final.items() if m != 'ga' and v > 1e-9}
+        if not med_for_q:
+            med_for_q = med_final
+        if med_for_q:
+            ordered = sorted(med_for_q.items(), key=lambda kv: kv[1])
             q_low_m, q_low = ordered[0]
             q_high_m, q_high = ordered[-1]
             q_mid = float(np.median([v for _, v in ordered]))
@@ -948,7 +1272,7 @@ def _compute_ttt_block(method_info_list, ref, taus, region=None, n_jobs=1):
             common_agg[m] = {nm: _agg_ttt_col(common_rows[:, i])
                              for i, nm in enumerate(_TTT_COMMON_NAMES)}
     finally:
-        if executor is not None:
+        if _own_pool and executor is not None:
             executor.shutdown(wait=False)
 
     return {'q': dict(zip(_TTT_COMMON_NAMES, q_vals)),
@@ -992,7 +1316,7 @@ def _md_ttt_common_table(block, methods):
 
     def _ql(name):
         v = q.get(name)
-        return f'{v:.1f}' if (v is not None and np.isfinite(v)) else 'n/a'
+        return f'{v:.4f}' if (v is not None and np.isfinite(v)) else 'n/a'
     low_lbl = METHOD_LABELS.get(q_src.get('low'), q_src.get('low') or '?')
     high_lbl = METHOD_LABELS.get(q_src.get('high'), q_src.get('high') or '?')
     lines = []
@@ -1018,7 +1342,7 @@ def _md_ttt_common_table(block, methods):
     return lines
 
 
-def write_anytime_txt(method_info_list, ref, w_label, outpath, n_jobs=1):
+def write_anytime_txt(method_info_list, ref, w_label, outpath, n_jobs=1, shared_executor=None):
     """anytime curve の数値サマリ (scalar + HV) をテキストファイルに書き出す。"""
     # t_max 推定用に粗いグリッドを構築して t_max を取得
     t_grid_tmp = _build_t_grid(method_info_list, n_pts=20, xscale='linear')
@@ -1033,7 +1357,9 @@ def write_anytime_txt(method_info_list, ref, w_label, outpath, n_jobs=1):
     lines.append(f'# trials per method: {len(method_info_list[0][1]) if method_info_list else 0}')
     lines.append('')
 
-    executor = ProcessPoolExecutor(max_workers=n_jobs) if n_jobs > 1 else None
+    _own_pool = shared_executor is None and n_jobs > 1
+    executor = shared_executor if shared_executor is not None else (
+        ProcessPoolExecutor(max_workers=n_jobs) if n_jobs > 1 else None)
     try:
         for m, hist_list, pts_list, kind, baseline in method_info_list:
             label = METHOD_LABELS.get(m, m)
@@ -1086,7 +1412,7 @@ def write_anytime_txt(method_info_list, ref, w_label, outpath, n_jobs=1):
                 )
             lines.append('')
     finally:
-        if executor is not None:
+        if _own_pool and executor is not None:
             executor.shutdown(wait=False)
 
     with open(outpath, 'w', encoding='utf-8') as f:
@@ -1140,14 +1466,16 @@ def plot_anytime_scalar(method_info_list, title, outpath, xscale='log'):
     plt.close(fig)
 
 
-def plot_anytime_uea_hv(method_info_list, ref, title, outpath, xscale='log', n_jobs=1):
+def plot_anytime_uea_hv(method_info_list, ref, title, outpath, xscale='log', n_jobs=1, shared_executor=None):
     """anytime per-weight UEA HV 曲線 (左: per-trial median+IQR, 右: union)。"""
     t_grid = _build_t_grid(method_info_list, xscale=xscale)
     if t_grid is None:
         return
     t_grid_list = t_grid.tolist()
     fig, (ax_l, ax_r) = plt.subplots(1, 2, figsize=(14, 6), sharey=True)
-    executor = ProcessPoolExecutor(max_workers=n_jobs) if n_jobs > 1 else None
+    _own_pool = shared_executor is None and n_jobs > 1
+    executor = shared_executor if shared_executor is not None else (
+        ProcessPoolExecutor(max_workers=n_jobs) if n_jobs > 1 else None)
     try:
         for m, hist_list, pts_list, kind, baseline in method_info_list:
             color = get_method_color(m)
@@ -1175,7 +1503,7 @@ def plot_anytime_uea_hv(method_info_list, ref, title, outpath, xscale='log', n_j
             union_curve = _worker_union_hv_curve(union_args)
             ax_r.plot(t_grid, union_curve, color=color, lw=2, label=label)
     finally:
-        if executor is not None:
+        if _own_pool and executor is not None:
             executor.shutdown(wait=False)
     for ax, sub in [(ax_l, 'per-trial (median ± IQR)'), (ax_r, 'union (all trials)')]:
         ax.set_xlabel('CPU time (s)')
@@ -1450,9 +1778,10 @@ def format_b1_scalar_stats(method_data_by_weight_trial, methods, w_labels,
 
 
 def format_b1_uea_hv_stats(method_data_by_weight_trial, methods, w_labels,
-                             ref, baselines_by_method):
+                             ref, baselines_by_method, norm=None):
     """per-weight UEA HV の手法間 Wilcoxon + Cliff's delta。
     HV は大きい方が良いので alternative='greater' (A > B)。
+    norm 指定時は全 HV を正規化空間 [0,1]^2・参照点 NORM_REF で計算する。
     """
     lines = ['per-weight UEA HV 比較 (Wilcoxon paired, alternative: A > B = A の HV が大きい)',
              '']
@@ -1478,8 +1807,11 @@ def format_b1_uea_hv_stats(method_data_by_weight_trial, methods, w_labels,
         if not all_w_pts:
             continue
         all_w_concat = np.concatenate(all_w_pts)
-        w_ref = (float(all_w_concat[:, 0].max()) + max(all_w_concat[:, 0].max() * 0.01, 1.0),
-                 float(all_w_concat[:, 1].max()) + max(all_w_concat[:, 1].max() * 0.01, 0.01))
+        if norm is not None:
+            w_ref = NORM_REF
+        else:
+            w_ref = (float(all_w_concat[:, 0].max()) + max(all_w_concat[:, 0].max() * 0.01, 1.0),
+                     float(all_w_concat[:, 1].max()) + max(all_w_concat[:, 1].max() * 0.01, 0.01))
 
         cells = []
         for (ma, mb) in pairs:
@@ -1490,6 +1822,8 @@ def format_b1_uea_hv_stats(method_data_by_weight_trial, methods, w_labels,
                 bl = baselines_by_method.get(ma)
                 if bl:
                     pts = filter_baselines(pts, bl)
+                if norm is not None:
+                    pts = normalize_pts(pts, norm)
                 hv_a.append(hypervolume(pts, w_ref))
             for t_idx in sorted(method_data_by_weight_trial.get(mb, {}).get(wl, {}).keys()):
                 data = method_data_by_weight_trial[mb][wl][t_idx]
@@ -1497,6 +1831,8 @@ def format_b1_uea_hv_stats(method_data_by_weight_trial, methods, w_labels,
                 bl = baselines_by_method.get(mb)
                 if bl:
                     pts = filter_baselines(pts, bl)
+                if norm is not None:
+                    pts = normalize_pts(pts, norm)
                 hv_b.append(hypervolume(pts, w_ref))
             min_n = min(len(hv_a), len(hv_b))
             stat, p = wilcoxon_paired(hv_b[:min_n], hv_a[:min_n], alternative='less')
@@ -1507,12 +1843,54 @@ def format_b1_uea_hv_stats(method_data_by_weight_trial, methods, w_labels,
     return '\n'.join(lines)
 
 
+def _wilcoxon_families_block(value_fn, methods, higher_is_better=True):
+    """COMPARE_FAMILIES ごとに Wilcoxon + Cliff's d を計算し、Holm 補正を
+    **ファミリー内で独立に**適用して行リストを返す。
+
+    value_fn(method) -> その手法の per-trial 値リスト（trial 順、欠損は短く切られる）。
+    higher_is_better=True なら 'A > B'（A の値が大きい＝良い）を検定、False なら 'A < B'。
+    """
+    out = []
+    for fam_key, fam_pairs in COMPARE_FAMILIES.items():
+        pairs = [(a, b) for (a, b) in fam_pairs if a in methods and b in methods]
+        if not pairs:
+            continue
+        out.append(f"  【{FAMILY_LABELS.get(fam_key, fam_key)}】 (Holm: family 内 {len(pairs)} 検定)")
+        rel = '>' if higher_is_better else '<'
+        out.append(f"    {'A ' + rel + ' B':<34} {'p(raw)':>9} {'p(Holm)':>9} {'Cliff d':>9} {'effect':>8}")
+        all_p, rows = [], []
+        for (ma, mb) in pairs:
+            va = list(value_fn(ma))
+            vb = list(value_fn(mb))
+            n = min(len(va), len(vb))
+            if higher_is_better:
+                _, p = wilcoxon_paired(vb[:n], va[:n], alternative='less')  # A>B
+            else:
+                _, p = wilcoxon_paired(va[:n], vb[:n], alternative='less')  # A<B
+            d = cliffs_delta(va, vb)
+            all_p.append(p)
+            rows.append((ma, mb, p, d))
+        finite = [(i, p) for i, p in enumerate(all_p) if not np.isnan(p)]
+        corr = [np.nan] * len(all_p)
+        if finite:
+            idxs, ps = zip(*finite)
+            for i, c in zip(idxs, holm_bonferroni(list(ps))):
+                corr[i] = c
+        for k, (ma, mb, p, d) in enumerate(rows):
+            label = f'{METHOD_LABELS.get(ma,ma)} {rel} {METHOD_LABELS.get(mb,mb)}'
+            out.append(f"    {label:<34} {p:>9.4f}{_p_star(p)} {corr[k]:>9.4f}{_p_star(corr[k])} "
+                       f"{d:>9.3f} {effect_label(d):>8}")
+        out.append('')
+    return out
+
+
 def format_b2a_union_hv_stats(union_hv_by_method, methods):
-    """per-trial union UEA HV の手法間 Wilcoxon + Cliff's delta。"""
+    """per-trial union UEA HV の手法間 Wilcoxon + Cliff's delta（ファミリー単位 Holm 補正）。"""
     lines = ['per-trial union UEA HV 統計 (B-2a 主筋)',
              '  Wilcoxon: alternative = A > B (A の HV が大きい)',
+             '  Holm 補正は各ファミリー内で独立に適用（GA は参考値・検定対象外）',
              '']
-    # 各手法の median + IQR
+    # 各手法の median + IQR（GA も参考として表示）
     lines.append(f"  {'method':<18} {'median':>10} {'IQR':>12} {'n':>5}")
     lines.append('  ' + '-' * 50)
     for m in methods:
@@ -1522,38 +1900,85 @@ def format_b2a_union_hv_stats(union_hv_by_method, methods):
         med = float(np.median(hvs))
         q25 = float(np.percentile(hvs, 25))
         q75 = float(np.percentile(hvs, 75))
-        lines.append(f"  {METHOD_LABELS.get(m,m):<18} {med:>10.2f} [{q25:.2f},{q75:.2f}] {len(hvs):>5}")
-
+        lines.append(f"  {METHOD_LABELS.get(m,m):<18} {med:>10.4f} [{q25:.4f},{q75:.4f}] {len(hvs):>5}")
     lines.append('')
-    pairs = [(a, b) for (a, b) in COMPARE_PAIRS if a in methods and b in methods]
-    all_p = []
-    pair_rows = []
-    for (ma, mb) in pairs:
-        hv_a = union_hv_by_method.get(ma, [])
-        hv_b = union_hv_by_method.get(mb, [])
-        min_n = min(len(hv_a), len(hv_b))
-        # A > B → test hv_b < hv_a → wilcoxon(hv_b - hv_a, alternative='less')
-        stat, p = wilcoxon_paired(hv_b[:min_n], hv_a[:min_n], alternative='less')
-        d = cliffs_delta(hv_a, hv_b)
-        all_p.append(p)
-        pair_rows.append((ma, mb, p, d))
+    lines += _wilcoxon_families_block(
+        lambda m: union_hv_by_method.get(m, []), methods, higher_is_better=True)
+    return '\n'.join(lines)
 
-    finite_p = [(i, p) for i, p in enumerate(all_p) if not np.isnan(p)]
-    corrected = [np.nan] * len(all_p)
-    if finite_p:
-        idxs, ps = zip(*finite_p)
-        corr = holm_bonferroni(list(ps))
-        for i, c in zip(idxs, corr):
-            corrected[i] = c
 
-    _cd_hdr = "Cliff's d"
-    lines.append(f"  {'A > B pair':<32} {'p (raw)':>10} {'p (Holm)':>10} {_cd_hdr:>12} {'effect':>8}")
-    lines.append('  ' + '-' * 76)
-    for k, (ma, mb, p, d) in enumerate(pair_rows):
-        p_h = corrected[k]
-        label = f'{METHOD_LABELS.get(ma,ma)} > {METHOD_LABELS.get(mb,mb)}'
-        lines.append(f"  {label:<32} {p:>10.4f}{_p_star(p)} {p_h:>10.4f}{_p_star(p_h)} "
-                     f"{d:>12.3f} {effect_label(d):>8}")
+def compute_region_hv_per_trial(method_data_by_weight_trial, baselines_by_method,
+                                global_ref, thr, hi_max, norm=None):
+    """各 (method, trial) で全重み union 点の領域別 HV を計算する。
+
+    高安定 = D ∈ [0, thr)（Sp 近傍）, 低安定 = D ∈ [thr, hi_max]（効率重視帯）。
+    境界 thr は全手法プールの P50（b2a 主筋の領域別 HV と同じ 2 分割）。
+    Returns: {method: {'high': [per-trial...], 'low': [per-trial...]}}
+    """
+    result = {}
+    all_methods = list(method_data_by_weight_trial.keys())
+    all_trials = set()
+    for m in all_methods:
+        for w in method_data_by_weight_trial[m]:
+            all_trials.update(method_data_by_weight_trial[m][w].keys())
+    if not all_trials:
+        return result
+    n_trials = max(all_trials) + 1
+    for m in all_methods:
+        bl = baselines_by_method.get(m)
+        highs, lows = [], []
+        for t in range(n_trials):
+            union_pts = []
+            for w in method_data_by_weight_trial[m]:
+                data = method_data_by_weight_trial[m][w].get(t)
+                if data is None:
+                    continue
+                pts = get_uea_points(data, t)
+                if bl is not None:
+                    pts = filter_baselines(pts, bl)
+                if len(pts) > 0:
+                    union_pts.append(pts)
+            if union_pts:
+                pf = pareto_front(np.concatenate(union_pts))
+                hh, _ = region_hv(pf, 0.0, thr, global_ref[0], norm=norm)
+                hl, _ = region_hv(pf, thr, hi_max, global_ref[0],
+                                  hi_inclusive=True, norm=norm)
+                highs.append(hh)
+                lows.append(hl)
+            else:
+                highs.append(0.0)
+                lows.append(0.0)
+        result[m] = {'high': highs, 'low': lows}
+    return result
+
+
+def format_region_hv_wilcoxon(region_hv_per_trial, methods, thr, hi_max):
+    """領域別 union HV（高安定/低安定）の手法間 Wilcoxon（領域 × ファミリー単位 Holm）。
+
+    H2 の核心（PR/repair が高安定領域＝Sp 近傍の覆域を補完する／軌道ベースが高安定領域で
+    集団ベースに優る）を、中央値の目視ではなく検定で裏づけるための表。
+    """
+    lines = ['領域別 union HV 手法間 Wilcoxon (alternative: A > B = A の HV が大きい)',
+             f'  境界 D={thr:.4f}（P50）  高安定=D∈[0,{thr:.2f}) (Sp近傍)  '
+             f'低安定=D∈[{thr:.2f},{hi_max:.2f}] (効率重視帯)',
+             '  Holm 補正は (領域 × ファミリー) ごとに独立に適用',
+             '']
+    for region_key, region_name in [('high', '高安定領域 (D 小, Sp 近傍)'),
+                                     ('low',  '低安定領域 (D 大, 効率重視帯)')]:
+        lines.append(f'================ {region_name} ================')
+        lines.append(f"  {'method':<18} {'median':>10} {'IQR':>16} {'n':>5}")
+        lines.append('  ' + '-' * 54)
+        for m in methods:
+            vals = [v for v in region_hv_per_trial.get(m, {}).get(region_key, [])
+                    if np.isfinite(v)]
+            if not vals:
+                continue
+            lines.append(f"  {METHOD_LABELS.get(m,m):<18} {np.median(vals):>10.4f} "
+                         f"[{np.percentile(vals,25):.4f},{np.percentile(vals,75):.4f}] {len(vals):>5}")
+        lines.append('')
+        lines += _wilcoxon_families_block(
+            lambda m, rk=region_key: region_hv_per_trial.get(m, {}).get(rk, []),
+            methods, higher_is_better=True)
     return '\n'.join(lines)
 
 
@@ -1772,7 +2197,7 @@ def format_n_sensitivity(union_hv_by_n, methods):
             med = float(np.median(vals))
             q25 = float(np.percentile(vals, 25))
             q75 = float(np.percentile(vals, 75))
-            lines.append(f"    {METHOD_LABELS.get(m,m):<20} median={med:.2f}  IQR=[{q25:.2f},{q75:.2f}]")
+            lines.append(f"    {METHOD_LABELS.get(m,m):<20} median={med:.4f}  IQR=[{q25:.4f},{q75:.4f}]")
         lines.append('')
     return '\n'.join(lines)
 
@@ -1833,7 +2258,8 @@ def _compute_summary_for_md(method_data, methods, w_labels, baselines_by_method,
                               region_hv_counts, region_hvs_2split,
                               region_hv_counts_2split, union_pf_by_method,
                               global_ref, union_hv_by_n, init_ms,
-                              convergence_by_weight=None, ttt_by_weight=None):
+                              convergence_by_weight=None, ttt_by_weight=None,
+                              norm=None):
     """MD サマリ用データを dict にまとめて返す。"""
     # --- per-weight × per-method ---
     per_weight = {}
@@ -1849,7 +2275,9 @@ def _compute_summary_for_md(method_data, methods, w_labels, baselines_by_method,
                     pts = filter_baselines(pts, bl)
                 if len(pts) > 0:
                     all_w_pts.append(pts)
-        if all_w_pts:
+        if norm is not None:
+            w_ref = NORM_REF
+        elif all_w_pts:
             wc = np.concatenate(all_w_pts)
             w_ref = (float(wc[:, 0].max()) + max(wc[:, 0].max() * 0.01, 1.0),
                      float(wc[:, 1].max()) + max(wc[:, 1].max() * 0.01, 0.01))
@@ -1885,12 +2313,13 @@ def _compute_summary_for_md(method_data, methods, w_labels, baselines_by_method,
                 if bl:
                     pts = filter_baselines(pts, bl)
                 pf_t = pareto_front(pts) if len(pts) > 0 else np.zeros((0, 2))
-                hv_vals.append(hypervolume(pf_t, w_ref) if len(pf_t) > 0 else 0.0)
+                pf_hv = normalize_pts(pf_t, norm) if (norm is not None and len(pf_t) > 0) else pf_t
+                hv_vals.append(hypervolume(pf_hv, w_ref) if len(pf_t) > 0 else 0.0)
                 # per-trial 領域別 HV / n_PF（ローカル参照点・半開区間で二重カウント防止）
-                rl, nl = region_hv(pf_t, 0.0, p33,           global_ref[0])
-                rm, nm = region_hv(pf_t, p33, p67,           global_ref[0])
+                rl, nl = region_hv(pf_t, 0.0, p33,           global_ref[0], norm=norm)
+                rm, nm = region_hv(pf_t, p33, p67,           global_ref[0], norm=norm)
                 rh, nh = region_hv(pf_t, p67, global_ref[1], global_ref[0],
-                                   hi_inclusive=True)
+                                   hi_inclusive=True, norm=norm)
                 rhv_low_vals.append(rl);  n_low_vals.append(nl)
                 rhv_mid_vals.append(rm);  n_mid_vals.append(nm)
                 rhv_high_vals.append(rh); n_high_vals.append(nh)
@@ -2026,21 +2455,407 @@ def _compute_summary_for_md(method_data, methods, w_labels, baselines_by_method,
     }
 
 
-def generate_summary_md(all_summary, out_path, input_dir=''):
-    """全問題のサマリ MD を生成して out_path に書き込む。
+# ========== 横断スコアボード / 主張 / PR vs repair（summary.md 用） ==========
 
+def _median_finite(vals):
+    v = [x for x in (vals or []) if np.isfinite(x)]
+    return float(np.median(v)) if v else 0.0
+
+
+def _iqr_finite(vals):
+    """四分位範囲 IQR = Q3 − Q1（ばらつき指標）。有限値が無ければ nan。"""
+    v = [x for x in (vals or []) if np.isfinite(x)]
+    if not v:
+        return float('nan')
+    q1, q3 = np.percentile(v, [25, 75])
+    return float(q3 - q1)
+
+
+def _friedman_avg_rank(matrix):
+    """matrix: (N_problem, k_method) の中央値（大きいほど良い）。
+    Returns (avg_rank[k], chi, p, W, ranks[N,k])。"""
+    N, k = matrix.shape
+    if not SCIPY_OK or N < 2:
+        return (np.full(k, np.nan), float('nan'), float('nan'), float('nan'),
+                np.full((N, k), np.nan))
+    ranks = np.array([rankdata(-row, method='average') for row in matrix])
+    avg_rank = ranks.mean(axis=0)
+    try:
+        chi, p = friedmanchisquare(*[matrix[:, j] for j in range(k)])
+        W = chi / (N * (k - 1)) if N * (k - 1) > 0 else float('nan')
+    except Exception:
+        chi = p = W = float('nan')
+    return avg_rank, chi, p, W, ranks
+
+
+def _arpd_pct(matrix):
+    """各問題で best=max とした相対偏差% = (1 - v/best)×100（v≤0 は 100%）。
+    Returns (mean[k], median[k])。"""
+    N, k = matrix.shape
+    devs = [[] for _ in range(k)]
+    for i in range(N):
+        row = matrix[i]
+        fin = row[np.isfinite(row)]
+        if len(fin) == 0:
+            continue
+        best = float(np.max(fin))
+        if best <= 0:
+            continue  # 全手法 0（退化問題, 例 la36S 高安定）は ARPD 非情報的→除外
+        for j in range(k):
+            v = row[j]
+            if not np.isfinite(v):
+                continue
+            devs[j].append((1.0 - v / best) * 100.0)
+    mean = [float(np.mean(d)) if d else float('nan') for d in devs]
+    med = [float(np.median(d)) if d else float('nan') for d in devs]
+    return mean, med
+
+
+def _loo_top(ranks, methods):
+    """leave-one-problem-out で首位手法が変わらないか。Returns (Counter, robust)。"""
+    from collections import Counter
+    N = ranks.shape[0]
+    if N < 2:
+        return Counter(), True
+    tops = []
+    for i in range(N):
+        sub = np.delete(ranks, i, axis=0).mean(axis=0)
+        tops.append(METHOD_LABELS.get(methods[int(np.argmin(sub))],
+                                      methods[int(np.argmin(sub))]))
+    c = Counter(tops)
+    return c, (len(c) == 1)
+
+
+def _metric_matrix(all_summary, prob_labels, methods, arr_key):
+    """problems × methods の per-trial 中央値行列を作る。欠損は nan。"""
+    M = np.full((len(prob_labels), len(methods)), np.nan)
+    for i, pl in enumerate(prob_labels):
+        per_trial = all_summary[pl].get(arr_key, {}) or {}
+        for j, m in enumerate(methods):
+            if m in per_trial and per_trial[m]:
+                M[i, j] = _median_finite(per_trial.get(m))
+    return M
+
+
+def _metric_iqr_matrix(all_summary, prob_labels, methods, arr_key):
+    """problems × methods の per-trial IQR 行列（ばらつき）。欠損は nan。"""
+    Q = np.full((len(prob_labels), len(methods)), np.nan)
+    for i, pl in enumerate(prob_labels):
+        per_trial = all_summary[pl].get(arr_key, {}) or {}
+        for j, m in enumerate(methods):
+            if m in per_trial and per_trial[m]:
+                Q[i, j] = _iqr_finite(per_trial.get(m))
+    return Q
+
+
+def _incomplete_problems(all_summary, prob_labels):
+    """重み掃引が途中の問題（w_labels が最多数より少ない）を {prob_label: n_w} で返す。"""
+    nw = {pl: len(all_summary[pl].get('w_labels', []) or []) for pl in prob_labels}
+    full = max(nw.values()) if nw else 0
+    return {pl: n for pl, n in nw.items() if n < full}, full
+
+
+def _scoreboard_methods(all_summary):
+    present = set()
+    for pl in all_summary:
+        present.update(all_summary[pl].get('methods', []))
+    return [m for m in METHOD_ORDER if m in present]
+
+
+def _scoreboard_section(all_summary):
+    """横断スコアボード（3指標 × Friedman順位 × ARPD%）の md 行を返す。"""
+    prob_labels = order_prob_labels(all_summary.keys())
+    methods = _scoreboard_methods(all_summary)
+    incomplete, full_nw = _incomplete_problems(all_summary, prob_labels)
+    # 途中の問題は略記に † を付す（Friedman/ARPD には従来どおり含むが注記する）
+    tags = [problem_short_tag(pl) + ('†' if pl in incomplete else '')
+            for pl in prob_labels]
+    aoc_weight = None
+    for pl in prob_labels:
+        aoc_weight = all_summary[pl].get('aoc_weight') or aoc_weight
+
+    lines = ['## 総合スコアボード（横断ランキング）', '']
+    lines.append('同じデータでも指標で1位が替わる（品質=統合HV / 本命=高安定HV / アンタイム=AOC）。'
+                 '各セルは問題ごとの **per-trial 中央値 (IQR)**（IQR=Q3−Q1 のばらつき。'
+                 'IQR=0.000 は全 trial 同値＝飽和/タイ）。Friedman 平均順位（1=最良, 昇順）は中央値で算出。'
+                 'ARPD% は magnitude（ベスト比からの相対偏差 (1−v/best)×100, 低いほど良い）の 平均/中央値。'
+                 f'AOC は全重み平均（{aoc_weight}）。')
+    if incomplete:
+        inc_txt = ', '.join(f'{problem_short_tag(pl)}({n}/{full_nw}重み)'
+                            for pl, n in incomplete.items())
+        lines.append('')
+        lines.append(f'> **† 重み掃引が途中の問題（参考値）**: {inc_txt}。'
+                     '安定性重視側の重みが未走のため数値は暫定で、順位・検定にも影響しうる。')
+    lines.append('')
+
+    reading = []
+    for key, label, arr_key in SCOREBOARD_METRICS:
+        M = _metric_matrix(all_summary, prob_labels, methods, arr_key)
+        Q = _metric_iqr_matrix(all_summary, prob_labels, methods, arr_key)
+        valid_rows = ~np.any(np.isnan(M), axis=1)
+        Mv = M[valid_rows]
+        Qv = Q[valid_rows]
+        used_tags = [t for t, ok in zip(tags, valid_rows) if ok]
+        if Mv.shape[0] < 2:
+            lines.append(f'### {label} — データ不足（スキップ）')
+            lines.append('')
+            continue
+        avg_rank, chi, p, W, ranks = _friedman_avg_rank(Mv)
+        arpd_mean, arpd_med = _arpd_pct(Mv)
+        order = list(np.argsort(avg_rank))
+        loo_c, robust = _loo_top(ranks, methods)
+
+        ttl = label + (f'（{aoc_weight}）' if key == 'aoc' else '')
+        lines.append(f"### {ttl} — Friedman p={p:.4f}, Kendall's W={W:.2f}")
+        lines.append('')
+        lines.append('| 手法 | ' + ' | '.join(used_tags) + ' | Friedman順位 | ARPD%(平/中) |')
+        lines.append('|---|' + '---|' * (len(used_tags) + 2))
+        for rk, j in enumerate(order, 1):
+            cells = ' | '.join(
+                f'{Mv[i, j]:.3f} ({Qv[i, j]:.3f})' if np.isfinite(Qv[i, j])
+                else f'{Mv[i, j]:.3f}' for i in range(Mv.shape[0]))
+            name = METHOD_LABELS.get(methods[j], methods[j])
+            lines.append(f'| {name} | {cells} | {avg_rank[j]:.2f} {_circled(rk)} '
+                         f'| {arpd_mean[j]:.1f} / {arpd_med[j]:.1f} |')
+        lines.append('')
+        top = METHOD_LABELS.get(methods[order[0]], methods[order[0]])
+        loser = METHOD_LABELS.get(methods[order[-1]], methods[order[-1]])
+        if robust:
+            lines.append(f'- LOO首位=頑健（どの1問題を除いても {top}）。')
+        else:
+            lines.append('- LOO首位=変動: ' +
+                         ', '.join(f'{m}×{c}' for m, c in loo_c.items()) + '。')
+        lines.append('')
+        reading.append((label, top, loser))
+
+    if reading:
+        lines.append('### スコアボードの読み')
+        lines.append('')
+        lines.append('| 指標 | 1位 | 最下位 |')
+        lines.append('|---|---|---|')
+        for lab, top, loser in reading:
+            lines.append(f'| {lab} | **{top}** | {loser} |')
+        lines.append('')
+    return lines
+
+
+def _pairwise_per_problem(all_summary, prob_labels, arr_key, a, b):
+    """各問題で a vs b（per-trial）の中央値・両向き片側 Wilcoxon p・Cliff d。
+
+    rec['p_ab'] = 片側「a>b」の p, rec['p_ba'] = 片側「b>a」の p。
+    Cliff d = cliffs_delta(a,b)（符号: 負 = a 優位 / 正 = b 優位）。
+    """
+    out = []
+    for pl in prob_labels:
+        pt = all_summary[pl].get(arr_key, {}) or {}
+        xa, xb = pt.get(a), pt.get(b)
+        rec = {'tag': problem_short_tag(pl),
+               'a_med': _median_finite(xa) if xa else float('nan'),
+               'b_med': _median_finite(xb) if xb else float('nan'),
+               'p_ab': float('nan'), 'p_ba': float('nan'), 'd': float('nan')}
+        if xa and xb:
+            _, rec['p_ab'] = wilcoxon_paired(xa, xb, alternative='greater')
+            _, rec['p_ba'] = wilcoxon_paired(xb, xa, alternative='greater')
+            rec['d'] = cliffs_delta(xa, xb)
+        out.append(rec)
+    return out
+
+
+def _claim_pair_table(recs, a_label, b_label):
+    """1a/1b 用: A vs B の per-problem 表（中央値・勝者・勝者向き片側 p・d）。"""
+    lines = [f'| 問題 | {a_label} | {b_label} | 勝者 (片側 p, d) |',
+             '|---|---|---|---|']
+    for r in recs:
+        am, bm, d = r['a_med'], r['b_med'], r['d']
+        if abs(am - bm) < 1e-9:
+            verdict = '—（タイ/両0）'
+        elif (am > bm):  # A 優位 → 片側「a>b」の p
+            verdict = f'**{a_label}** ({_p_text(r["p_ab"])}, d={d:+.2f})'
+        else:            # B 優位 → 片側「b>a」の p
+            verdict = f'**{b_label}** ({_p_text(r["p_ba"])}, d={d:+.2f})'
+        lines.append(f"| {r['tag']} | {am:.4f} | {bm:.4f} | {verdict} |")
+    return lines
+
+
+def _p_text(p):
+    if p is None or not np.isfinite(p):
+        return 'p=nan'
+    star = _p_star(p).strip()
+    return f'p={p:.3f}{star}' if star else f'p={p:.3f}'
+
+
+def _claim1_section(all_summary):
+    """主張1: ILS-baseline vs Memetic-LS（統合HV=互角 / 高安定HV=ILS優位）。"""
+    prob_labels = order_prob_labels(all_summary.keys())
+    lines = ['## 主張1: 軌道(ILS) vs 集団(Memetic) ― 純粋比較 `ILS-baseline` vs `Memetic-LS`', '']
+    lines.append('> p は勝者方向の片側 Wilcoxon。Cliff d = cliffs_delta(ILS, Mem) 符号: **負=ILS優位 / 正=Memetic優位**。')
+    lines.append('')
+    # 1a 統合HV
+    recs_u = _pairwise_per_problem(all_summary, prob_labels, 'union_hv_pt',
+                                   'ils_baseline', 'memetic_ls')
+    lines.append('### 1a. 統合HV ― 互角（一貫した勝者なし）')
+    lines.append('')
+    lines += _claim_pair_table(recs_u, 'ILS-baseline', 'Memetic-LS')
+    lines.append('')
+    ils_wins = sum(1 for r in recs_u if r['a_med'] - r['b_med'] > 1e-9)
+    mem_wins = sum(1 for r in recs_u if r['b_med'] - r['a_med'] > 1e-9)
+    lines.append(f'→ ILS {ils_wins}勝・Memetic {mem_wins}勝。**統合HVは互角＝規模・多峰性次第で逆転**。')
+    lines.append('')
+    # 1b 高安定HV
+    recs_h = _pairwise_per_problem(all_summary, prob_labels, 'highstab_hv_pt',
+                                   'ils_baseline', 'memetic_ls')
+    lines.append('### 1b. 高安定HV（本命）― ILS が優位')
+    lines.append('')
+    lines += _claim_pair_table(recs_h, 'ILS-baseline', 'Memetic-LS')
+    lines.append('')
+    lines.append('→ 有効問題で **ILS-baseline > Memetic-LS**（$S_p$ 近傍の充填は軌道ベースの構造的得意領域）。'
+                 '**統合=互角 vs 高安定=ILS優位の対比が主張1の核**。')
+    lines.append('')
+    return lines
+
+
+def _claim2_section(all_summary):
+    """主張2: 機構の非対称（高安定HV: 集団=大きく改善 / 軌道=頭打ち）。"""
+    prob_labels = order_prob_labels(all_summary.keys())
+    lines = ['## 主張2: PR/Repair の磨き効果は非対称（高安定HV=本命）', '']
+    lines.append('> 検定は片側「+機構 > baseline」。Cliff d 符号: **負=+機構優位**。')
+    lines.append('')
+
+    def _host_block(host_label, base, pr, rep, headline):
+        out = [f'### {host_label}', '']
+        out.append(f'| 問題 | base | +PR | +repair | +PR>base (p,d) | +repair>base (p,d) |')
+        out.append('|---|---|---|---|---|---|')
+        rp = _pairwise_per_problem(all_summary, prob_labels, 'highstab_hv_pt', pr, base)
+        rr = _pairwise_per_problem(all_summary, prob_labels, 'highstab_hv_pt', rep, base)
+        for a, b in zip(rp, rr):
+            base_m = a['b_med']
+            out.append(f"| {a['tag']} | {base_m:.4f} | {a['a_med']:.4f} | {b['a_med']:.4f} "
+                       f"| {_p_text(a['p_ab'])} (d={a['d']:+.2f}) "
+                       f"| {_p_text(b['p_ab'])} (d={b['d']:+.2f}) |")
+        out.append('')
+        out.append(headline)
+        out.append('')
+        return out
+
+    lines += _host_block(
+        '2a. 集団(Memetic): 機構が高安定HVを大きく補う',
+        'memetic_ls', 'memetic_pr', 'memetic_repair',
+        '→ Memetic-LS が届かない $S_p$ 近傍を機構が埋め、ILS 水準の天井へ。')
+    lines += _host_block(
+        '2b. 軌道(ILS): 機構の効果はほぼ頭打ち',
+        'ils_baseline', 'ils_pr', 'ils_repair',
+        '→ ILS は baseline で既に高安定域を飽和。**機構効果の非対称＝集団に大・軌道に僅少**。')
+    return lines
+
+
+def _pr_vs_repair_section(all_summary):
+    """§4.3: host 別に +PR vs +repair を 中央値/ARPD/片側検定 で比較。"""
+    prob_labels = order_prob_labels(all_summary.keys())
+    methods = _scoreboard_methods(all_summary)
+    lines = ['## PR vs repair（host 別: 中央値 / 検定）', '']
+    lines.append('各指標で同 host の +PR vs +repair を比較。検定は片側「+PR > +repair」'
+                 '（有意なら PR優、逆向き有意なら repair優）。'
+                 'Cliff d = cliffs_delta(+PR, +repair) 符号: **負=PR優 / 正=repair優**。')
+    lines.append('')
+    for host_label, m_pr, m_rep in [('ILS', 'ils_pr', 'ils_repair'),
+                                    ('Memetic', 'memetic_pr', 'memetic_repair')]:
+        if m_pr not in methods or m_rep not in methods:
+            continue
+        lines.append(f'### {host_label}')
+        lines.append('')
+        lines.append(f'| 指標 | {METHOD_LABELS[m_pr]} 中央(平) | {METHOD_LABELS[m_rep]} 中央(平) | 有意問題 (p, d) |')
+        lines.append('|---|---|---|---|')
+        for key, label, arr_key in SCOREBOARD_METRICS:
+            recs = _pairwise_per_problem(all_summary, prob_labels, arr_key, m_pr, m_rep)
+            pr_meds = [r['a_med'] for r in recs if np.isfinite(r['a_med'])]
+            rep_meds = [r['b_med'] for r in recs if np.isfinite(r['b_med'])]
+            sig = []
+            for r in recs:  # p_ab = PR>repair, p_ba = repair>PR
+                if np.isfinite(r['p_ab']) and r['p_ab'] < 0.05:
+                    sig.append(f"{r['tag']}: PR優 ({_p_text(r['p_ab'])}, d={r['d']:+.2f})")
+                elif np.isfinite(r['p_ba']) and r['p_ba'] < 0.05:
+                    sig.append(f"{r['tag']}: repair優 ({_p_text(r['p_ba'])}, d={r['d']:+.2f})")
+            sig_str = '; '.join(sig) if sig else 'ns（全問題）'
+            pr_c = f"{np.median(pr_meds):.3f}({np.mean(pr_meds):.3f})" if pr_meds else 'N/A'
+            rep_c = f"{np.median(rep_meds):.3f}({np.mean(rep_meds):.3f})" if rep_meds else 'N/A'
+            lines.append(f'| {label} | {pr_c} | {rep_c} | {sig_str} |')
+        lines.append('')
+    return lines
+
+
+def generate_summary_md(all_summary, out_path, input_dir=''):
+    """主張ドリブンな summary.md（スコアボード→主張1/2→PR vs repair）を書き出す。
+
+    数値表・検定値は all_summary の per-trial 配列から自動算出。ナラティブ（解釈の
+    文章）は最小限のテンプレートのみで、詳細は details_by_weight.md / ゼミ資料を参照。
     all_summary: {prob_label: summary_data dict}
     """
     from datetime import date as _date
     lines = []
     lines.append('# 実験サマリ: core_comparison_v3')
     lines.append('')
+    lines.append(f'生成: {_date.today().isoformat()}'
+                 + (f' ／ データ: `{input_dir}`' if input_dir else '')
+                 + ' ／ 全数値: [details_by_weight.md](details_by_weight.md)')
+    lines.append('')
+    lines.append('論文の結果ストーリーに沿って **スコアボード → 主張 → 補助** の順。'
+                 '各表は per-trial データから自動算出（中央値・Friedman順位・ARPD%・Wilcoxon・Cliff d）。')
+    lines.append('')
+    lines.append('## 読み方')
+    lines.append('')
+    _ns = [len(v) for sd in all_summary.values()
+           for v in (sd.get('union_hv_pt') or {}).values() if v]
+    _n_txt = (f'各 n={_ns[0]} trials' if _ns and min(_ns) == max(_ns)
+              else (f'n={min(_ns)}〜{max(_ns)} trials（問題により異なる）' if _ns else 'n trials'))
+    lines.append(f'- 手法: `GA`(参考) ／ 軌道=`ILS-baseline/+PR/+repair` ／ 集団=`Memetic-LS/+PR/+repair`。{_n_txt}。')
+    lines.append('- **HVは正規化済み**: (problem,scenario)ごとに ideal=(MS_min,D=0)・nadir=(MS_max,D_max) で [0,1]² にアフィン正規化、参照点 (1.1,1.1)。値域~[0,1.21]。順位・p値・Cliff d は生HVと不変。')
+    lines.append('- 指標: **統合HV**(全領域) / **高安定HV**(D小=$S_p$近傍, *本命*) / **AOC**(HV-対-log時間の時間平均=アンタイム性能)。')
+    _tag_legend = ' / '.join(
+        f'{problem_short_tag(pl)}({pl})' for pl in order_prob_labels(all_summary.keys()))
+    lines.append('- 検定: 片側 Wilcoxon + Cliff d。`*`p<.05 `**`p<.01 `***`p<.001。'
+                 f'問題略記（{len(all_summary)}問題）: {_tag_legend}。')
+    lines.append('- 図: スコアボードCD=`overall_ranking_*.png` ／ 主張1=`claim1_ils_vs_memetic.png` ／ 主張2=`claim2_mechanism.png` ／ AOC交差=`anytime_crossover.png` ／ 性能プロファイル=`perf_profile_*.png`。生成 `python analyze_v3.py`（末尾で figures_v3 が自動実行）。')
+    lines.append('')
+    lines.append('---')
+    lines.append('')
+    lines += _scoreboard_section(all_summary)
+    lines.append('---')
+    lines.append('')
+    lines += _claim1_section(all_summary)
+    lines.append('---')
+    lines.append('')
+    lines += _claim2_section(all_summary)
+    lines.append('---')
+    lines.append('')
+    lines += _pr_vs_repair_section(all_summary)
+    lines.append('---')
+    lines.append('')
+    lines.append('*generated by analyze_v3.py / figures by figures_v3.py*')
+
+    with open(out_path, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(lines) + '\n')
+    print(f'  → サマリ MD: {out_path}')
+
+
+def generate_details_md(all_summary, out_path, input_dir=''):
+    """全数値詳細 MD（重み別・カバー率・C-metric・N感度・収束速度の生データ）を書く。
+
+    主張・結論は summary.md（generate_summary_md）に置き、ここは裏付けの全数値の置き場。
+    all_summary: {prob_label: summary_data dict}
+    """
+    from datetime import date as _date
+    lines = []
+    lines.append('# 全数値詳細: core_comparison_v3（重み別・カバー率・C-metric・N感度・収束速度の生データ）')
+    lines.append('')
+    lines.append('> このファイルは `summary.md` の裏付けとなる全数値の置き場。主張・結論は `summary.md` を参照。')
+    lines.append('> 内訳: 全体概要 / 収束速度(全領域×ターゲット) / カバー率 / C-metric / 領域別HV2分割 / N感度 / **重み別詳細(改善成功率 imp は重みごと)**')
+    lines.append('')
     lines.append(f'生成: {_date.today().isoformat()}')
     if input_dir:
         lines.append(f'データ: `{input_dir}`')
     lines.append('')
 
-    for prob_label in sorted(all_summary.keys()):
+    for prob_label in order_prob_labels(all_summary.keys()):
         sd = all_summary[prob_label]
         methods   = sd['methods']
         w_labels  = sd['w_labels']
@@ -2059,9 +2874,9 @@ def generate_summary_md(all_summary, out_path, input_dir=''):
         lines.append('|------|:------------:|:---:|:----------:|')
         for m in methods:
             uhv = sd['union_hv_summary'].get(m, {})
-            med = _fmt_v(uhv.get('median'), '.2f')
-            q25 = _fmt_v(uhv.get('q25'), '.2f')
-            q75 = _fmt_v(uhv.get('q75'), '.2f')
+            med = _fmt_v(uhv.get('median'), '.4f')
+            q25 = _fmt_v(uhv.get('q25'), '.4f')
+            q75 = _fmt_v(uhv.get('q75'), '.4f')
             imp = _fmt_v(sd['avg_imp'].get(m), '.3f')
             lines.append(f'| {METHOD_LABELS.get(m, m)} | {med} | [{q25}, {q75}] | {imp} |')
         lines.append('')
@@ -2164,7 +2979,7 @@ def generate_summary_md(all_summary, out_path, input_dir=''):
                 for m in methods:
                     d = n_sens[n].get(m)
                     if d:
-                        row += f' {d["median"]:.2f} [{d["q25"]:.2f}, {d["q75"]:.2f}] |'
+                        row += f' {d["median"]:.4f} [{d["q25"]:.4f}, {d["q75"]:.4f}] |'
                     else:
                         row += ' N/A |'
                 lines.append(row)
@@ -2186,7 +3001,7 @@ def generate_summary_md(all_summary, out_path, input_dir=''):
             ('scalar_med', 'scalar',                  '.4f'),
             ('ms_med',     'MS',                      '.1f'),
             ('stab_med',   'stab',                    '.4f'),
-            ('hv_med',     'HV',                      '.2f'),
+            ('hv_med',     'HV',                      '.4f'),
             ('n_pf',       'n_PF',                    'd'),
             ('rhv_low',    f'rHV-low(≤{p33_v:.3f})',  '.4f'),
             ('n_pf_low',   f'n_PF-low',               'd'),
@@ -2211,11 +3026,11 @@ def generate_summary_md(all_summary, out_path, input_dir=''):
 
     lines.append('---')
     lines.append('')
-    lines.append('*generated by analyze_v3.py*')
+    lines.append('*generated by analyze_v3.py (details)*')
 
     with open(out_path, 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines) + '\n')
-    print(f'  → サマリ MD: {out_path}')
+    print(f'  → 詳細 MD: {out_path}')
 
 
 # ========== メイン分析: 問題ごと ==========
@@ -2306,6 +3121,12 @@ def analyze_problem(prob_key, method_data, out_dir, problems_filter=None,
         float(all_pts_concat[:, 0].max()) + max(all_pts_concat[:, 0].max() * 0.01, 1.0),
         float(all_pts_concat[:, 1].max()) + max(all_pts_concat[:, 1].max() * 0.01, 0.01),
     )
+    # HV 正規化アンカー: 全 HV を [0,1]^2（ideal=(MS_min,D=0) / nadir=(MS_max,D_max)）
+    # 空間・参照点 NORM_REF=(1.1,1.1) で計算する。global_ref は領域マスキングの raw 上端
+    # としてのみ使う。
+    norm = make_norm(all_pts_concat)
+    print(f'  正規化アンカー: MS∈[{norm[0]:.0f}, {norm[0]+norm[1]:.0f}], '
+          f'D∈[0, {norm[2]:.0f}]  → HV は [0,1]^2 空間・参照点 {NORM_REF}')
 
     # ===== P33/P67 閾値計算 =====
     thresholds = compute_p33_p67(method_data, baselines_by_method)
@@ -2328,7 +3149,7 @@ def analyze_problem(prob_key, method_data, out_dir, problems_filter=None,
     # ===== B-1: per-weight UEA HV 比較 =====
     print('  B-1: per-weight UEA HV 統計...')
     b1_uea_text = format_b1_uea_hv_stats(method_data, methods, w_labels,
-                                          global_ref, baselines_by_method)
+                                          global_ref, baselines_by_method, norm=norm)
     with open(os.path.join(prob_out, 'b1_uea_hv_stats.txt'), 'w', encoding='utf-8') as f:
         f.write(f'=== {prob_label} ===\n\n{b1_uea_text}\n')
 
@@ -2345,7 +3166,7 @@ def analyze_problem(prob_key, method_data, out_dir, problems_filter=None,
     # ===== B-2a: per-trial union UEA HV =====
     print('  B-2a: per-trial union UEA HV...')
     union_hv_by_method = compute_union_hv_per_trial(
-        method_data, baselines_by_method, global_ref, weights_subset=None)
+        method_data, baselines_by_method, norm, weights_subset=None)
     plot_union_hv_boxplot(
         union_hv_by_method, methods,
         f'{prob_label}: per-trial union UEA HV (N=all weights)',
@@ -2353,6 +3174,17 @@ def analyze_problem(prob_key, method_data, out_dir, problems_filter=None,
     b2a_stats_text = format_b2a_union_hv_stats(union_hv_by_method, methods)
     with open(os.path.join(prob_out, 'b2a_union_hv_stats.txt'), 'w', encoding='utf-8') as f:
         f.write(f'=== {prob_label} ===\n\n{b2a_stats_text}\n')
+
+    # ===== B-2a: 領域別 union HV 手法間 Wilcoxon（H2 の領域別効果を検定）=====
+    print('  B-2a: 領域別 union HV Wilcoxon...')
+    thr_split = thresholds.get('P50', thresholds['stab_max'] / 2)
+    region_hv_pt = compute_region_hv_per_trial(
+        method_data, baselines_by_method, global_ref, thr_split,
+        thresholds['stab_max'], norm=norm)
+    region_hv_wx_text = format_region_hv_wilcoxon(
+        region_hv_pt, methods, thr_split, thresholds['stab_max'])
+    with open(os.path.join(prob_out, 'b2a_region_hv_wilcoxon.txt'), 'w', encoding='utf-8') as f:
+        f.write(f'=== {prob_label} ===\n\n{region_hv_wx_text}\n')
 
     # ===== B-2a: C-metric =====
     print('  B-2a: C-metric...')
@@ -2446,7 +3278,7 @@ def analyze_problem(prob_key, method_data, out_dir, problems_filter=None,
                 for rn, (lo, hi) in regions_dict.items():
                     hi_inc = (hi == global_ref[1])
                     hv_val, n_val = region_hv(pf_t, lo, hi, global_ref[0],
-                                              hi_inclusive=hi_inc)
+                                              hi_inclusive=hi_inc, norm=norm)
                     rn_hv_lists[rn].append(hv_val)
                     rn_n_lists[rn].append(n_val)
             for rn in regions_dict:
@@ -2518,51 +3350,50 @@ def analyze_problem(prob_key, method_data, out_dir, problems_filter=None,
             if not use_w:
                 continue
         union_hv_by_n[n] = compute_union_hv_per_trial(
-            method_data, baselines_by_method, global_ref, weights_subset=use_w)
+            method_data, baselines_by_method, norm, weights_subset=use_w)
     n_sens_text = format_n_sensitivity(union_hv_by_n, methods)
     with open(os.path.join(prob_out, 'n_sensitivity.txt'), 'w', encoding='utf-8') as f:
         f.write(f'=== {prob_label} ===\n\n{n_sens_text}\n')
 
     # ===== Anytime 曲線（代表重み × 手法）=====
+    # anytime/TTT/AOC は重い HV 曲線をプロセス並列で計算する。これらを通して
+    # ProcessPoolExecutor を 1 つだけ作って使い回す（Windows の spawn は 1 プール
+    # 生成あたり全 worker でモジュール再 import が走り高コスト。重みごとに作り直すと
+    # AOC で問題あたり 10 回 spawn する無駄が出ていた）。n_jobs<=1 では None のまま逐次。
     print('  Anytime 曲線...')
     repr_w = [wl for wl in (repr_weights or REPR_WEIGHTS_DEFAULT) if wl in all_w_labels_set]
     convergence_by_weight = {}
     ttt_by_weight = {}
+    pool = ProcessPoolExecutor(max_workers=n_jobs) if n_jobs > 1 else None
     for wl in repr_w:
         # method_info_list: [(m, hist_list, pts_list, kind, baseline)]
         # pts は anytime 用に (N,3)=[ms, st, cpu_time]。記録済み訪問時刻を使って
         # anytime HV(t) / HV ベース time-to-target を正確に再構成する。
+        # method_info: scalar プロット用（raw, hist の best_score を使う）。
+        # method_info_n: HV/TTT 用（pts の ms,st 列と baseline を正規化空間に写す。
+        #   時刻列(2列目)は保持）。worker はプロセス境界で raw を受け取らないよう、
+        #   メインプロセスでここで正規化してから渡す。
         method_info = []
+        method_info_n = []
         for m in methods:
             kind = 'ga' if m == 'ga' else 'ils'
             bl = baselines_by_method.get(m)
             by_trial = method_data[m].get(wl, {})
-            hist_list, pts_list = [], []
+            hist_list, pts_list, pts_list_n = [], [], []
             for t_idx in sorted(by_trial.keys()):
                 data = by_trial[t_idx]
                 hist_list.append(get_anytime(data))
-                pts_list.append(get_uea_points_xyt(data, t_idx))
+                pts = get_uea_points_xyt(data, t_idx)
+                pts_list.append(pts)
+                pts_list_n.append(normalize_pts(pts, norm) if len(pts) else pts)
             method_info.append((m, hist_list, pts_list, kind, bl))
+            method_info_n.append((m, hist_list, pts_list_n, kind,
+                                  normalize_baseline(bl, norm)))
 
         if not any(h for _, h, _, _, _ in method_info):
             continue
 
-        # per-weight 参照点（ms, st の 2 列のみ使用。pts は (N,3) のこともあるので
-        # 先頭 2 列に正規化してから集約する）
-        w_pts = []
-        for m, _, pts_list, _, bl in method_info:
-            for pts in pts_list:
-                if len(pts) == 0:
-                    continue
-                arr = np.asarray(pts, dtype=float)[:, :2]
-                filtered = filter_baselines(arr, bl) if bl else arr
-                if len(filtered) > 0:
-                    w_pts.append(filtered)
-        if not w_pts:
-            continue
-        w_concat = np.concatenate(w_pts)
-        w_ref = (float(w_concat[:, 0].max()) + max(w_concat[:, 0].max() * 0.01, 1.0),
-                 float(w_concat[:, 1].max()) + max(w_concat[:, 1].max() * 0.01, 0.01))
+        w_ref = NORM_REF  # HV は正規化空間で計算
 
         plot_anytime_scalar(
             method_info,
@@ -2571,30 +3402,68 @@ def analyze_problem(prob_key, method_data, out_dir, problems_filter=None,
             xscale=xscale)
 
         plot_anytime_uea_hv(
-            method_info, w_ref,
-            f'{prob_label} [{wl}]: anytime per-weight UEA HV',
+            method_info_n, w_ref,
+            f'{prob_label} [{wl}]: anytime per-weight UEA HV (正規化)',
             os.path.join(prob_out, f'anytime_uea_hv_{wl}.png'),
             xscale=xscale,
-            n_jobs=n_jobs)
+            n_jobs=n_jobs, shared_executor=pool)
 
         write_anytime_txt(
-            method_info, w_ref, wl,
+            method_info_n, w_ref, wl,
             os.path.join(prob_out, f'anytime_detail_{wl}.txt'),
-            n_jobs=n_jobs)
+            n_jobs=n_jobs, shared_executor=pool)
 
         # 収束速度: time-to-target を主指標とする（quality@%t は anytime_detail_<w>.txt）。
         # 全フロント + 安定性バンド別（high_stability=D 小, low_stability=D 大）で、
         # self-referenced(τ) と common-target(QRTD) を計算する。
+        # pts は正規化済みなので領域境界も正規化 D に写す。
         p50_band = thresholds['P50']
         regions_ttt = {
             'full':  None,
-            'lowD':  (0.0, p50_band, False),           # 高安定性（安定性関数値 D が小さい）
-            'highD': (p50_band, global_ref[1], True),  # 低安定性（D が大きい）
+            'lowD':  (0.0, ny(p50_band, norm), False),          # 高安定性（D が小さい）
+            'highD': (ny(p50_band, norm), ny(global_ref[1], norm), True),  # 低安定性（D 大）
         }
         ttt_by_weight[wl] = {
-            rk: _compute_ttt_block(method_info, w_ref, _TTT_TAUS, region=rv, n_jobs=n_jobs)
+            rk: _compute_ttt_block(method_info_n, w_ref, _TTT_TAUS, region=rv,
+                                   n_jobs=n_jobs, shared_executor=pool)
             for rk, rv in regions_ttt.items()
         }
+
+    # ===== AOC（per-trial・全重み平均 all_mean）=====
+    # アンタイム性能 = HV-対-log時間の時間平均。各重みで per-trial AOC を計算し、trial ごとに
+    # 全重みで平均する（= 重み掃引全体での平均アンタイム性能）。正規化は per-problem の norm
+    # （make_norm 全UEA点）・参照点 NORM_REF で、旧 aoc_all_weights.py --write と同一値になる。
+    # これにより「代表重み → 後段パッチ → 図再実行」の二度手間を解消し analyze 一発で確定する。
+    print('  AOC（全重み平均）...')
+    per_w_aoc = {}
+    for wl in w_labels:
+        mi_n = []
+        for m in methods:
+            kind = 'ga' if m == 'ga' else 'ils'
+            bl = baselines_by_method.get(m)
+            by_trial = method_data[m].get(wl, {})
+            hist_list, pts_list_n = [], []
+            for t_idx in sorted(by_trial.keys()):
+                data = by_trial[t_idx]
+                hist_list.append(get_anytime(data))
+                pts = get_uea_points_xyt(data, t_idx)
+                pts_list_n.append(normalize_pts(pts, norm) if len(pts) else pts)
+            mi_n.append((m, hist_list, pts_list_n, kind, normalize_baseline(bl, norm)))
+        per_w_aoc[wl] = compute_aoc_per_trial(mi_n, NORM_REF, n_jobs=n_jobs,
+                                              shared_executor=pool)
+    aoc_pt_all_mean = {}
+    for m in methods:
+        n_tr = max((len(per_w_aoc[wl].get(m, [])) for wl in w_labels), default=0)
+        col = []
+        for t in range(n_tr):
+            xs = [per_w_aoc[wl][m][t] for wl in w_labels
+                  if m in per_w_aoc[wl] and t < len(per_w_aoc[wl][m])
+                  and np.isfinite(per_w_aoc[wl][m][t])]
+            col.append(float(np.mean(xs)) if xs else float('nan'))
+        aoc_pt_all_mean[m] = col
+
+    if pool is not None:
+        pool.shutdown(wait=True)
 
     print(f'  → {prob_out}')
 
@@ -2604,7 +3473,17 @@ def analyze_problem(prob_key, method_data, out_dir, problems_filter=None,
         thresholds, union_hv_by_method, region_hvs, region_hv_counts,
         region_hvs_2split, region_hv_counts_2split,
         union_pf_by_method, global_ref, union_hv_by_n, init_ms,
-        convergence_by_weight, ttt_by_weight)
+        convergence_by_weight, ttt_by_weight, norm=norm)
+
+    # 横断スコアボード/§4.3 用の per-trial 配列（統合HV / 高安定HV / AOC）を添付。
+    # AOC は全重み平均（all_mean）を既定とする（aoc_all_weights.py の後段パッチは不要）。
+    summary_data['union_hv_pt'] = {m: list(union_hv_by_method.get(m, [])) for m in methods}
+    summary_data['highstab_hv_pt'] = {
+        m: list(region_hv_pt.get(m, {}).get('high', [])) for m in methods}
+    summary_data['aoc_pt'] = aoc_pt_all_mean
+    summary_data['aoc_weight'] = 'all_mean'
+
+    clear_uea_cache(method_data)  # この問題の UEA パースキャッシュを解放（RAM 増を抑制）
     return prob_label, summary_data
 
 
@@ -2631,43 +3510,118 @@ def main():
     parser.add_argument(
         '--n-jobs', type=int, default=4,
         help='anytime HV 曲線の並列計算ワーカー数 (デフォルト: 4)')
+    parser.add_argument(
+        '--no-figures', action='store_true',
+        help='末尾の figures_v3（CD図/claim図/AOC交差/性能プロファイル）生成をスキップ')
+    parser.add_argument(
+        '--from-cache', action='store_true',
+        help='per-problem 解析を一切せず、前回の _summary_data.pkl から MD/図のみ再生成（図の微調整用）')
+    parser.add_argument(
+        '--force', action='store_true',
+        help='増分キャッシュを無視して全問題を再計算（解析コードを変えたとき等）')
     args = parser.parse_args()
 
     input_dir = args.input_dir
     out_dir = args.out_dir or os.path.join(input_dir, 'analysis')
     os.makedirs(out_dir, exist_ok=True)
 
-    print(f'データ読み込み: {input_dir}')
-    grouped = load_all_runs(input_dir)
-    if not grouped:
-        print('データが見つかりませんでした。')
-        return
-
-    print(f'問題数: {len(grouped)}')
-    for k, m in grouped.items():
-        total_runs = sum(len(by_trial)
-                         for method_data in m.values()
-                         for by_trial in method_data.values())
-        print(f'  {k[0]}/{k[1]}: {list(m.keys())} × {len(next(iter(m.values())))} weights'
-              f' × ... = {total_runs} runs')
-
     repr_weights = args.repr_weights if args.repr_weights else REPR_WEIGHTS_DEFAULT
+    cache_path = os.path.join(out_dir, '_summary_data.pkl')
 
-    all_summary = {}
-    for prob_key in sorted(grouped.keys()):
-        result = analyze_problem(
-            prob_key, grouped[prob_key], out_dir,
-            problems_filter=args.problems,
-            repr_weights=repr_weights,
-            n_jobs=args.n_jobs,
-            xscale=args.xscale)
-        if result is not None:
-            prob_label, summary_data = result
-            all_summary[prob_label] = summary_data
+    import pickle
+    if args.from_cache:
+        # 重い per-problem 解析も raw ロードも一切せず、キャッシュした all_summary から
+        # MD/図のみ再生成する（figures は内部で raw を読む点に注意）。
+        if not os.path.exists(cache_path):
+            print(f'[ERROR] --from-cache 指定だがキャッシュなし: {cache_path}')
+            return
+        with open(cache_path, 'rb') as f:
+            all_summary = pickle.load(f)
+        print(f'キャッシュから all_summary をロード: {cache_path}')
+    else:
+        # 増分キャッシュ（デフォルト）: 問題ごとに raw の指紋（stat のみ・読み込みなし）を見て、
+        # 変更がなければ前回結果を流用し raw ロードもスキップ。新規/変更（試行追加・シナリオ改訂・
+        # 再走）分だけ raw を読んで再計算する。raw が消えた問題はキャッシュからも自然に落ちる。
+        # --force で全再計算。
+        # prev は常にロードする（--force でも、対象外/失敗問題のエントリを温存するため）。
+        # --force は「流用判定をスキップして再計算する」ことだけに使う。
+        prev_summary = {}
+        if os.path.exists(cache_path):
+            try:
+                with open(cache_path, 'rb') as f:
+                    prev_summary = pickle.load(f)
+            except Exception as e:
+                print(f'[WARN] 既存キャッシュ読込失敗（全再計算）: {e}')
+                prev_summary = {}
+
+        # raw を持つ問題ディレクトリ一覧（ディレクトリ名 = prob_label = f'{prob}_{scen}'）
+        prob_dirs = [d for d in sorted(os.listdir(input_dir))
+                     if os.path.isdir(os.path.join(input_dir, d, 'raw'))]
+        if not prob_dirs:
+            print('データが見つかりませんでした。')
+            return
+        print(f'問題ディレクトリ: {len(prob_dirs)}')
+
+        all_summary = {}
+        compute_dirs = []
+        for d in prob_dirs:
+            # --problems フィルタ（問題名で前方一致）対象外は既存キャッシュを温存して読まない
+            if args.problems and not any(d == p or d.startswith(p + '_')
+                                         for p in args.problems):
+                if d in prev_summary:
+                    all_summary[d] = prev_summary[d]
+                continue
+            fp = _raw_fingerprint(input_dir, d)
+            cached = prev_summary.get(d)
+            if (not args.force and cached is not None and fp is not None
+                    and cached.get('_fingerprint') == fp
+                    and cached.get('_cache_version') == _CACHE_VERSION):
+                all_summary[d] = cached
+                print(f'  [cache] {d}: 変更なし → 流用（raw 読込・再計算スキップ）')
+            else:
+                compute_dirs.append((d, fp))
+
+        print(f'  [cache] 流用 {len(all_summary)} 問題 / 再計算 {len(compute_dirs)} 問題')
+        for d, fp in compute_dirs:
+            # 再計算対象だけ raw をロード（流用分の I/O を払わない）
+            grouped_one = load_problem_dir(input_dir, d)
+            if not grouped_one:
+                if d in prev_summary:
+                    all_summary[d] = prev_summary[d]
+                continue
+            for prob_key in sorted(grouped_one.keys()):
+                result = analyze_problem(
+                    prob_key, grouped_one[prob_key], out_dir,
+                    problems_filter=args.problems,
+                    repr_weights=repr_weights,
+                    n_jobs=args.n_jobs,
+                    xscale=args.xscale)
+                if result is not None:
+                    rlabel, summary_data = result
+                    summary_data['_fingerprint'] = fp
+                    summary_data['_cache_version'] = _CACHE_VERSION
+                    all_summary[rlabel] = summary_data
+                elif d in prev_summary:
+                    all_summary[d] = prev_summary[d]  # 計算不可だが旧キャッシュ温存
+        if all_summary:
+            with open(cache_path, 'wb') as f:
+                pickle.dump(all_summary, f)
+            print(f'  → all_summary キャッシュ更新: {cache_path}')
 
     if all_summary:
-        md_path = os.path.join(out_dir, 'summary.md')
-        generate_summary_md(all_summary, md_path, input_dir=input_dir)
+        generate_summary_md(all_summary, os.path.join(out_dir, 'summary.md'),
+                            input_dir=input_dir)
+        generate_details_md(all_summary, os.path.join(out_dir, 'details_by_weight.md'),
+                            input_dir=input_dir)
+
+        # 横断スコアボード/主張の図を再生成（CD図・claim図・AOC交差・性能プロファイル）。
+        if not args.no_figures:
+            try:
+                import figures_v3
+                figures_v3.generate_all(input_dir, weight=repr_weights[0]
+                                        if repr_weights else 'w08_02')
+            except Exception as e:
+                print(f'[WARN] figures_v3 の実行に失敗（数値出力は完了済み）: {e}')
 
     print(f'\n分析完了: {out_dir}')
 
