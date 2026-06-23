@@ -1,0 +1,148 @@
+diff --git a/ils_scheduling.py b/ils_scheduling.py
+index 0212b9b..c776734 100644
+--- a/ils_scheduling.py
++++ b/ils_scheduling.py
+@@ -998,9 +998,12 @@ class ILSSolver:
+         cur_score = F_best  # 現在の経路点のスコア（FI の「改善」判定の基準）
+ 
+         while True:
+-            # 不一致位置から全 direct-swap 候補を生成
+-            candidates = []
+-            cand_swaps = []      # 各候補の (machine, i, q) スワップ（安定性差分計算用）
++            # 不一致位置から全 direct-swap 候補の (machine, i, q) を列挙する。
++            # B1最適化(2026-06-23): 候補ごとの full copy(_copy_orders) はせず swap タプルだけ
++            # 作る(O(diffs))。評価は in-place swap→evaluate→revert(_perturb_repair と同方式)で
++            # 行い、採用した1手だけを最後に S へ実体化する。乱数消費(scan_order shuffle)・選択順・
++            # 出力は従来と厳密に同一で、コピー構築コスト O(diffs^2)→O(diffs) のみ削減する。
++            cand_swaps = []      # 各候補の (machine, i, q) スワップ
+             candidate_info = []  # trace用
+             for m, cur_ops in S.items():
+                 ref_ops = S_ref.get(m, cur_ops)
+@@ -1012,14 +1015,11 @@ class ILSSolver:
+                         if target_op not in cur_ops:
+                             continue
+                         q = cur_ops.index(target_op)
+-                        cand = self._copy_orders(S)
+-                        cand[m][i], cand[m][q] = cand[m][q], cand[m][i]
+-                        candidates.append(cand)
+                         cand_swaps.append((m, i, q))
+                         if trace:
+                             candidate_info.append({'machine': m, 'pos': i, 'swap_with': q})
+ 
+-            if not candidates:
++            if not cand_swaps:
+                 if trace:
+                     trace_log.append({
+                         'step': step + 1, 'type': 'end_no_candidates',
+@@ -1027,17 +1027,17 @@ class ILSSolver:
+                     })
+                 break
+ 
+-            # 各候補を評価
++            # 各候補を評価（in-place swap→evaluate→revert）
+             #   step_strategy='best' : 全候補を評価して最良 swap を採る（従来）
+             #   step_strategy='first': 現在解を改善する最初の実行可能 swap を即採用。
+             #                          改善候補が無ければ最良（=改悪が最小）の候補を採る。
+-            best_cand = None
++            best_cand_swap = None
+             best_cand_score = float('inf')
+             n_feasible = 0
+             n_infeasible = 0
+             cand_scores = []
+ 
+-            scan_order = list(range(len(candidates)))
++            scan_order = list(range(len(cand_swaps)))
+             if step_strategy in ('first', 'random'):
+                 random.shuffle(scan_order)  # swap 選択をばらつかせる（first:改善探索 / random:TS-PR流）
+ 
+@@ -1046,16 +1046,20 @@ class ILSSolver:
+             use_delta = not self.active_schedule
+             S_stab = self.compute_stability(S) if use_delta else None
+ 
+-            sel_cand = None
++            sel_swap = None
+             sel_score = float('inf')
+             for idx in scan_order:
+-                cand = candidates[idx]
++                m_, i_, q_ = cand_swaps[idx]
+                 if use_delta:
+-                    m_, i_, q_ = cand_swaps[idx]
++                    # delta は swap 前の S で計算 → in-place swap → 評価 → 復元
+                     cand_stab = S_stab + self._stab_swap_delta(S, m_, i_, q_)
+-                    score = self.evaluate(cand, stability=cand_stab)
++                    S[m_][i_], S[m_][q_] = S[m_][q_], S[m_][i_]
++                    score = self.evaluate(S, stability=cand_stab)
++                    S[m_][i_], S[m_][q_] = S[m_][q_], S[m_][i_]
+                 else:
+-                    score = self.evaluate(cand)
++                    S[m_][i_], S[m_][q_] = S[m_][q_], S[m_][i_]
++                    score = self.evaluate(S)
++                    S[m_][i_], S[m_][q_] = S[m_][q_], S[m_][i_]
+                 if score == float('inf'):
+                     n_infeasible += 1
+                 else:
+@@ -1063,32 +1067,43 @@ class ILSSolver:
+                 cand_scores.append(score)
+                 if score < best_cand_score:          # 最良（=改悪が最小）を常に追跡
+                     best_cand_score = score
+-                    best_cand = cand
++                    best_cand_swap = (m_, i_, q_)
+                 if step_strategy == 'first' and score < cur_score:
+-                    sel_cand, sel_score = cand, score  # 改善する最初の候補で打ち切り
++                    sel_swap, sel_score = (m_, i_, q_), score  # 改善する最初の候補で打ち切り
+                     break
+                 if step_strategy == 'random' and score < float('inf'):
+-                    sel_cand, sel_score = cand, score  # 最初の実行可能 swap を採用（TS-PR流ランダム）
++                    sel_swap, sel_score = (m_, i_, q_), score  # 最初の実行可能 swap を採用（TS-PR流ランダム）
+                     break
+ 
+-            if sel_cand is None:                     # 'best'、または FI で改善候補なし
+-                sel_cand, sel_score = best_cand, best_cand_score
++            if sel_swap is None:                     # 'best'、または FI で改善候補なし
++                sel_swap, sel_score = best_cand_swap, best_cand_score
+ 
+-            if sel_cand is None and escape_infeasible:
++            if sel_swap is not None:
++                m_, i_, q_ = sel_swap                 # 採用 swap を S に実体化（1手のみコピー相当）
++                S[m_][i_], S[m_][q_] = S[m_][q_], S[m_][i_]
++            elif escape_infeasible:
+                 # 全 direct-swap が単体 infeasible → 2手先読みで突破を試みる（稀）
+-                sel_cand, sel_score = self._escape_infeasible(S, S_ref)
+-
+-            if sel_cand is None:                     # 突破も不可 → 経路終了
++                esc_cand, esc_score = self._escape_infeasible(S, S_ref)
++                if esc_cand is None:                 # 突破も不可 → 経路終了
++                    if trace:
++                        trace_log.append({
++                            'step': step + 1, 'type': 'end_all_infeasible',
++                            'n_candidates': len(cand_swaps),
++                            'n_infeasible': n_infeasible,
++                            'diffs_to_ref': self._count_diffs(S, S_ref),
++                        })
++                    break
++                S = esc_cand
++                sel_score = esc_score
++            else:                                    # 突破不可 → 経路終了
+                 if trace:
+                     trace_log.append({
+                         'step': step + 1, 'type': 'end_all_infeasible',
+-                        'n_candidates': len(candidates),
++                        'n_candidates': len(cand_swaps),
+                         'n_infeasible': n_infeasible,
+                         'diffs_to_ref': self._count_diffs(S, S_ref),
+                     })
+                 break
+-
+-            S = sel_cand
+             cur_score = sel_score
+             reached_ref = all(S.get(m) == S_ref.get(m) for m in S_ref)
+ 
+@@ -1117,7 +1132,7 @@ class ILSSolver:
+                     'makespan': cand_ms, 'stability': cand_st,
+                     'score': sel_score, 'best_score': F_best,
+                     'improved': improved,
+-                    'n_candidates': len(candidates),
++                    'n_candidates': len(cand_swaps),
+                     'n_feasible': n_feasible, 'n_infeasible': n_infeasible,
+                     'score_min': min(finite_scores) if finite_scores else None,
+                     'score_max': max(finite_scores) if finite_scores else None,

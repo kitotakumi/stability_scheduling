@@ -96,6 +96,16 @@ PR の候補生成を repair 方式に書き換える:
 
 ---
 
+## 5.5. B1 実測結果（2026-06-23・見送り確定）
+
+worktree 隔離で B1（候補の lazy 生成）を実装し memetic_pr で OLD/NEW を実測:
+
+- **等価性: ✅ 完全一致**。mt10・la36_large とも finals・uea_points・history（cpu_time除く）が bit 一致。乱数列を保つ等価リファクタであることを実証（変わるのは時間系のみ＝設計どおり）。
+- **速度短縮（cpu, 競合下・各1本）**: mt10(低diffs) ~3% / **la36_large(73%) ~12%**。ta21_high(82%) 外挿でも ~15〜25% 程度。
+- **解釈**: O(diffs²) コピーは memetic_pr の主コストではなかった。実コストの大半は **top-k LS×3（best-improvement, O(n²)）と経路 decode**。コピー削減はそこに効かない。
+
+**判断: B1 は見送り**。~12%のために PR系2手法を 10〜17h 再走（しかも変わるのは AOC のみ・HVは不変）は非効率。現状結果＋脚注（「PR実装はO(diffs²)のコピー余地ありfuture work」）で確定。検証済みパッチは `doc/patches/B1_path_relinking_lazy_candidates.patch` に保存（将来 ta21_high の速度が律速になったら適用可・等価性実証済み）。AOC を本気で縮めるなら効くのは B1 でなく top-k LS（ただし解が変わる別物）。
+
 ## 6. アクション（保留中）
 
 - [ ] 現バッチ完走を待つ（走行中コードは触らない＝再現性保護）。
