@@ -24,3 +24,7 @@ Thumbs.db
 .venv/
 venv/
 env/
+
+# 参考文献PDF（著作権物のため git 管理外）
+*.pdf
+doc/references/
