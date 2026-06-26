@@ -118,7 +118,7 @@ GA は交叉 1 個でこの 2 役を兼ねるので、操作の役割が曖昧
 
 ## 2.2 局所探索：N5 近傍
 
-![h:340 center](N5neighborhood.png)
+![h:340 center](N5neighborhood.svg)
 
 - **N5 近傍** (Nowicki & Smutnicki 1996): クリティカルパス上のブロック端点の隣接 swap のみ
 - **閉路フリーが理論保証** = 必ず実行可能解

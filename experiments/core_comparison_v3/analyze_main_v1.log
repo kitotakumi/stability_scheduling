@@ -1,0 +1,739 @@
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1316: MatplotlibDeprecationWarning: The 'labels' parameter of boxplot() has been renamed 'tick_labels' since Matplotlib 3.9; support for the old name will be dropped in 3.11.
+  bp = ax.boxplot(data, labels=labels, patch_artist=True, notch=False)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 20013 (\N{CJK UNIFIED IDEOGRAPH-4E2D}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 20013 (\N{CJK UNIFIED IDEOGRAPH-4E2D}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1198: RuntimeWarning: All-NaN slice encountered
+  med = np.nanmedian(arr, axis=0)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1620: RuntimeWarning: All-NaN slice encountered
+  return fnb._ureduce(a,
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1267: UserWarning: Glyph 27491 (\N{CJK UNIFIED IDEOGRAPH-6B63}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1267: UserWarning: Glyph 35215 (\N{CJK UNIFIED IDEOGRAPH-898F}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1267: UserWarning: Glyph 21270 (\N{CJK UNIFIED IDEOGRAPH-5316}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1268: UserWarning: Glyph 27491 (\N{CJK UNIFIED IDEOGRAPH-6B63}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1268: UserWarning: Glyph 35215 (\N{CJK UNIFIED IDEOGRAPH-898F}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1268: UserWarning: Glyph 21270 (\N{CJK UNIFIED IDEOGRAPH-5316}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1153: RuntimeWarning: All-NaN slice encountered
+  sc_med = float(np.nanmedian(sc_arr[:, i_ck]))
+C:\Users\takum\Documents\研究\program\project01\SourceCode\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1409: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1316: MatplotlibDeprecationWarning: The 'labels' parameter of boxplot() has been renamed 'tick_labels' since Matplotlib 3.9; support for the old name will be dropped in 3.11.
+  bp = ax.boxplot(data, labels=labels, patch_artist=True, notch=False)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 20013 (\N{CJK UNIFIED IDEOGRAPH-4E2D}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 20013 (\N{CJK UNIFIED IDEOGRAPH-4E2D}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1267: UserWarning: Glyph 27491 (\N{CJK UNIFIED IDEOGRAPH-6B63}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1267: UserWarning: Glyph 35215 (\N{CJK UNIFIED IDEOGRAPH-898F}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1267: UserWarning: Glyph 21270 (\N{CJK UNIFIED IDEOGRAPH-5316}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1268: UserWarning: Glyph 27491 (\N{CJK UNIFIED IDEOGRAPH-6B63}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1268: UserWarning: Glyph 35215 (\N{CJK UNIFIED IDEOGRAPH-898F}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1268: UserWarning: Glyph 21270 (\N{CJK UNIFIED IDEOGRAPH-5316}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1153: RuntimeWarning: All-NaN slice encountered
+  sc_med = float(np.nanmedian(sc_arr[:, i_ck]))
+C:\Users\takum\Documents\研究\program\project01\SourceCode\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1409: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1316: MatplotlibDeprecationWarning: The 'labels' parameter of boxplot() has been renamed 'tick_labels' since Matplotlib 3.9; support for the old name will be dropped in 3.11.
+  bp = ax.boxplot(data, labels=labels, patch_artist=True, notch=False)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 20013 (\N{CJK UNIFIED IDEOGRAPH-4E2D}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 20013 (\N{CJK UNIFIED IDEOGRAPH-4E2D}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1198: RuntimeWarning: All-NaN slice encountered
+  med = np.nanmedian(arr, axis=0)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1620: RuntimeWarning: All-NaN slice encountered
+  return fnb._ureduce(a,
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1267: UserWarning: Glyph 27491 (\N{CJK UNIFIED IDEOGRAPH-6B63}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1267: UserWarning: Glyph 35215 (\N{CJK UNIFIED IDEOGRAPH-898F}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1267: UserWarning: Glyph 21270 (\N{CJK UNIFIED IDEOGRAPH-5316}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1268: UserWarning: Glyph 27491 (\N{CJK UNIFIED IDEOGRAPH-6B63}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1268: UserWarning: Glyph 35215 (\N{CJK UNIFIED IDEOGRAPH-898F}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1268: UserWarning: Glyph 21270 (\N{CJK UNIFIED IDEOGRAPH-5316}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1153: RuntimeWarning: All-NaN slice encountered
+  sc_med = float(np.nanmedian(sc_arr[:, i_ck]))
+C:\Users\takum\Documents\研究\program\project01\SourceCode\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1409: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1316: MatplotlibDeprecationWarning: The 'labels' parameter of boxplot() has been renamed 'tick_labels' since Matplotlib 3.9; support for the old name will be dropped in 3.11.
+  bp = ax.boxplot(data, labels=labels, patch_artist=True, notch=False)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 20013 (\N{CJK UNIFIED IDEOGRAPH-4E2D}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 20013 (\N{CJK UNIFIED IDEOGRAPH-4E2D}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1198: RuntimeWarning: All-NaN slice encountered
+  med = np.nanmedian(arr, axis=0)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1620: RuntimeWarning: All-NaN slice encountered
+  return fnb._ureduce(a,
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1267: UserWarning: Glyph 27491 (\N{CJK UNIFIED IDEOGRAPH-6B63}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1267: UserWarning: Glyph 35215 (\N{CJK UNIFIED IDEOGRAPH-898F}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1267: UserWarning: Glyph 21270 (\N{CJK UNIFIED IDEOGRAPH-5316}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1268: UserWarning: Glyph 27491 (\N{CJK UNIFIED IDEOGRAPH-6B63}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1268: UserWarning: Glyph 35215 (\N{CJK UNIFIED IDEOGRAPH-898F}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1268: UserWarning: Glyph 21270 (\N{CJK UNIFIED IDEOGRAPH-5316}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1153: RuntimeWarning: All-NaN slice encountered
+  sc_med = float(np.nanmedian(sc_arr[:, i_ck]))
+C:\Users\takum\Documents\研究\program\project01\SourceCode\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1409: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1316: MatplotlibDeprecationWarning: The 'labels' parameter of boxplot() has been renamed 'tick_labels' since Matplotlib 3.9; support for the old name will be dropped in 3.11.
+  bp = ax.boxplot(data, labels=labels, patch_artist=True, notch=False)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 20013 (\N{CJK UNIFIED IDEOGRAPH-4E2D}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 20013 (\N{CJK UNIFIED IDEOGRAPH-4E2D}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1198: RuntimeWarning: All-NaN slice encountered
+  med = np.nanmedian(arr, axis=0)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1620: RuntimeWarning: All-NaN slice encountered
+  return fnb._ureduce(a,
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1267: UserWarning: Glyph 27491 (\N{CJK UNIFIED IDEOGRAPH-6B63}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1267: UserWarning: Glyph 35215 (\N{CJK UNIFIED IDEOGRAPH-898F}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1267: UserWarning: Glyph 21270 (\N{CJK UNIFIED IDEOGRAPH-5316}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1268: UserWarning: Glyph 27491 (\N{CJK UNIFIED IDEOGRAPH-6B63}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1268: UserWarning: Glyph 35215 (\N{CJK UNIFIED IDEOGRAPH-898F}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1268: UserWarning: Glyph 21270 (\N{CJK UNIFIED IDEOGRAPH-5316}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1153: RuntimeWarning: All-NaN slice encountered
+  sc_med = float(np.nanmedian(sc_arr[:, i_ck]))
+C:\Users\takum\Documents\研究\program\project01\SourceCode\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1409: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1316: MatplotlibDeprecationWarning: The 'labels' parameter of boxplot() has been renamed 'tick_labels' since Matplotlib 3.9; support for the old name will be dropped in 3.11.
+  bp = ax.boxplot(data, labels=labels, patch_artist=True, notch=False)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 20013 (\N{CJK UNIFIED IDEOGRAPH-4E2D}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1357: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 20013 (\N{CJK UNIFIED IDEOGRAPH-4E2D}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1358: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1387: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 20998 (\N{CJK UNIFIED IDEOGRAPH-5206}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 21106 (\N{CJK UNIFIED IDEOGRAPH-5272}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 39640 (\N{CJK UNIFIED IDEOGRAPH-9AD8}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 23433 (\N{CJK UNIFIED IDEOGRAPH-5B89}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 23450 (\N{CJK UNIFIED IDEOGRAPH-5B9A}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 24615 (\N{CJK UNIFIED IDEOGRAPH-6027}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 65288 (\N{FULLWIDTH LEFT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 65289 (\N{FULLWIDTH RIGHT PARENTHESIS}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1388: UserWarning: Glyph 20302 (\N{CJK UNIFIED IDEOGRAPH-4F4E}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1198: RuntimeWarning: All-NaN slice encountered
+  med = np.nanmedian(arr, axis=0)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1620: RuntimeWarning: All-NaN slice encountered
+  return fnb._ureduce(a,
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1267: UserWarning: Glyph 27491 (\N{CJK UNIFIED IDEOGRAPH-6B63}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1267: UserWarning: Glyph 35215 (\N{CJK UNIFIED IDEOGRAPH-898F}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1267: UserWarning: Glyph 21270 (\N{CJK UNIFIED IDEOGRAPH-5316}) missing from font(s) DejaVu Sans.
+  fig.tight_layout()
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1268: UserWarning: Glyph 27491 (\N{CJK UNIFIED IDEOGRAPH-6B63}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1268: UserWarning: Glyph 35215 (\N{CJK UNIFIED IDEOGRAPH-898F}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1268: UserWarning: Glyph 21270 (\N{CJK UNIFIED IDEOGRAPH-5316}) missing from font(s) DejaVu Sans.
+  fig.savefig(outpath, dpi=150)
+C:\Users\takum\Documents\研究\program\project01\SourceCode\experiments\core_comparison_v3\analyze_v3.py:1153: RuntimeWarning: All-NaN slice encountered
+  sc_med = float(np.nanmedian(sc_arr[:, i_ck]))
+C:\Users\takum\Documents\研究\program\project01\SourceCode\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1409: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+データ読み込み: experiments/core_comparison_v3/results/main_v1
+問題数: 6
+  la21/la21_delay147: ['ga', 'ils_baseline', 'ils_pr', 'ils_repair', 'memetic_ls', 'memetic_pr', 'memetic_repair'] × 10 weights × ... = 700 runs
+  la36/la36_large: ['ga', 'ils_baseline', 'ils_pr', 'ils_repair', 'memetic_ls', 'memetic_pr', 'memetic_repair'] × 10 weights × ... = 700 runs
+  la36/la36_small: ['ga', 'ils_baseline', 'ils_pr', 'ils_repair', 'memetic_ls', 'memetic_pr', 'memetic_repair'] × 10 weights × ... = 700 runs
+  la40/la40_delay148: ['ga', 'ils_baseline', 'ils_pr', 'ils_repair', 'memetic_ls', 'memetic_pr', 'memetic_repair'] × 10 weights × ... = 700 runs
+  mt10/mt10_delay60: ['ga', 'ils_baseline', 'ils_pr', 'ils_repair', 'memetic_ls', 'memetic_pr', 'memetic_repair'] × 10 weights × ... = 700 runs
+  ta21/ta21_delay97: ['ga', 'ils_baseline', 'ils_pr', 'ils_repair', 'memetic_ls', 'memetic_pr', 'memetic_repair'] × 10 weights × ... = 700 runs
+
+============================================================
+分析: la21_la21_delay147
+============================================================
+  手法: ['ga', 'ils_baseline', 'ils_pr', 'ils_repair', 'memetic_ls', 'memetic_pr', 'memetic_repair']
+  重み: ['w01_09', 'w02_08', 'w03_07', 'w04_06', 'w05_05', 'w06_04', 'w07_03', 'w08_02', 'w09_01', 'w10_00']
+  試行数: {'ga': 10, 'ils_baseline': 10, 'ils_pr': 10, 'ils_repair': 10, 'memetic_ls': 10, 'memetic_pr': 10, 'memetic_repair': 10}
+  init_ms = 1523
+  正規化アンカー: MS∈[1461, 1522], D∈[0, 98]  → HV は [0,1]^2 空間・参照点 (1.1, 1.1)
+  P33=10.0000, P67=28.0000, stab_max=84.0000
+  B-1: per-weight scalar 統計...
+  B-1: per-weight UEA HV 統計...
+  B-1: 改善成功率ヒートマップ...
+  B-2a: per-trial union UEA HV...
+  B-2a: 領域別 union HV Wilcoxon...
+  B-2a: C-metric...
+  PF 2D プロット (weighted sweep)...
+  B-2b: カバー率...
+  B-2b: 領域別 HV...
+  B-2b: 条件付き MS Wilcoxon...
+  B-2b: 差分 EAF...
+  N sensitivity check...
+  Anytime 曲線...
+  → experiments/core_comparison_v3/results/main_v1\analysis\la21_la21_delay147
+
+============================================================
+分析: la36_la36_large
+============================================================
+  手法: ['ga', 'ils_baseline', 'ils_pr', 'ils_repair', 'memetic_ls', 'memetic_pr', 'memetic_repair']
+  重み: ['w01_09', 'w02_08', 'w03_07', 'w04_06', 'w05_05', 'w06_04', 'w07_03', 'w08_02', 'w09_01', 'w10_00']
+  試行数: {'ga': 10, 'ils_baseline': 10, 'ils_pr': 10, 'ils_repair': 10, 'memetic_ls': 10, 'memetic_pr': 10, 'memetic_repair': 10}
+  init_ms = 1653
+  正規化アンカー: MS∈[1530, 1652], D∈[0, 284]  → HV は [0,1]^2 空間・参照点 (1.1, 1.1)
+  P33=10.0000, P67=42.0000, stab_max=258.0000
+  B-1: per-weight scalar 統計...
+  B-1: per-weight UEA HV 統計...
+  B-1: 改善成功率ヒートマップ...
+  B-2a: per-trial union UEA HV...
+  B-2a: 領域別 union HV Wilcoxon...
+  B-2a: C-metric...
+  PF 2D プロット (weighted sweep)...
+  B-2b: カバー率...
+  B-2b: 領域別 HV...
+  B-2b: 条件付き MS Wilcoxon...
+  B-2b: 差分 EAF...
+  N sensitivity check...
+  Anytime 曲線...
+  → experiments/core_comparison_v3/results/main_v1\analysis\la36_la36_large
+
+============================================================
+分析: la36_la36_small
+============================================================
+  手法: ['ga', 'ils_baseline', 'ils_pr', 'ils_repair', 'memetic_ls', 'memetic_pr', 'memetic_repair']
+  重み: ['w01_09', 'w02_08', 'w03_07', 'w04_06', 'w05_05', 'w06_04', 'w07_03', 'w08_02', 'w09_01', 'w10_00']
+  試行数: {'ga': 10, 'ils_baseline': 10, 'ils_pr': 10, 'ils_repair': 10, 'memetic_ls': 10, 'memetic_pr': 10, 'memetic_repair': 10}
+  init_ms = 1609
+  正規化アンカー: MS∈[1580, 1608], D∈[0, 24]  → HV は [0,1]^2 空間・参照点 (1.1, 1.1)
+  P33=2.0000, P67=2.0000, stab_max=2.0000
+  B-1: per-weight scalar 統計...
+  B-1: per-weight UEA HV 統計...
+  B-1: 改善成功率ヒートマップ...
+  B-2a: per-trial union UEA HV...
+  B-2a: 領域別 union HV Wilcoxon...
+  B-2a: C-metric...
+  PF 2D プロット (weighted sweep)...
+  B-2b: カバー率...
+  B-2b: 領域別 HV...
+  B-2b: 条件付き MS Wilcoxon...
+  B-2b: 差分 EAF...
+  N sensitivity check...
+  Anytime 曲線...
+  → experiments/core_comparison_v3/results/main_v1\analysis\la36_la36_small
+
+============================================================
+分析: la40_la40_delay148
+============================================================
+  手法: ['ga', 'ils_baseline', 'ils_pr', 'ils_repair', 'memetic_ls', 'memetic_pr', 'memetic_repair']
+  重み: ['w01_09', 'w02_08', 'w03_07', 'w04_06', 'w05_05', 'w06_04', 'w07_03', 'w08_02', 'w09_01', 'w10_00']
+  試行数: {'ga': 10, 'ils_baseline': 10, 'ils_pr': 10, 'ils_repair': 10, 'memetic_ls': 10, 'memetic_pr': 10, 'memetic_repair': 10}
+  init_ms = 1685
+  正規化アンカー: MS∈[1613, 1684], D∈[0, 108]  → HV は [0,1]^2 空間・参照点 (1.1, 1.1)
+  P33=6.0000, P67=10.0000, stab_max=54.0000
+  B-1: per-weight scalar 統計...
+  B-1: per-weight UEA HV 統計...
+  B-1: 改善成功率ヒートマップ...
+  B-2a: per-trial union UEA HV...
+  B-2a: 領域別 union HV Wilcoxon...
+  B-2a: C-metric...
+  PF 2D プロット (weighted sweep)...
+  B-2b: カバー率...
+  B-2b: 領域別 HV...
+  B-2b: 条件付き MS Wilcoxon...
+  B-2b: 差分 EAF...
+  N sensitivity check...
+  Anytime 曲線...
+  → experiments/core_comparison_v3/results/main_v1\analysis\la40_la40_delay148
+
+============================================================
+分析: mt10_mt10_delay60
+============================================================
+  手法: ['ga', 'ils_baseline', 'ils_pr', 'ils_repair', 'memetic_ls', 'memetic_pr', 'memetic_repair']
+  重み: ['w01_09', 'w02_08', 'w03_07', 'w04_06', 'w05_05', 'w06_04', 'w07_03', 'w08_02', 'w09_01', 'w10_00']
+  試行数: {'ga': 10, 'ils_baseline': 10, 'ils_pr': 10, 'ils_repair': 10, 'memetic_ls': 10, 'memetic_pr': 10, 'memetic_repair': 10}
+  init_ms = 1079
+  正規化アンカー: MS∈[1023, 1078], D∈[0, 88]  → HV は [0,1]^2 空間・参照点 (1.1, 1.1)
+  P33=16.0000, P67=34.0000, stab_max=82.0000
+  B-1: per-weight scalar 統計...
+  B-1: per-weight UEA HV 統計...
+  B-1: 改善成功率ヒートマップ...
+  B-2a: per-trial union UEA HV...
+  B-2a: 領域別 union HV Wilcoxon...
+  B-2a: C-metric...
+  PF 2D プロット (weighted sweep)...
+  B-2b: カバー率...
+  B-2b: 領域別 HV...
+  B-2b: 条件付き MS Wilcoxon...
+  B-2b: 差分 EAF...
+  N sensitivity check...
+  Anytime 曲線...
+  → experiments/core_comparison_v3/results/main_v1\analysis\mt10_mt10_delay60
+
+============================================================
+分析: ta21_ta21_delay97
+============================================================
+  手法: ['ga', 'ils_baseline', 'ils_pr', 'ils_repair', 'memetic_ls', 'memetic_pr', 'memetic_repair']
+  重み: ['w01_09', 'w02_08', 'w03_07', 'w04_06', 'w05_05', 'w06_04', 'w07_03', 'w08_02', 'w09_01', 'w10_00']
+  試行数: {'ga': 10, 'ils_baseline': 10, 'ils_pr': 10, 'ils_repair': 10, 'memetic_ls': 10, 'memetic_pr': 10, 'memetic_repair': 10}
+  init_ms = 1970
+  正規化アンカー: MS∈[1913, 1969], D∈[0, 164]  → HV は [0,1]^2 空間・参照点 (1.1, 1.1)
+  P33=8.0000, P67=20.0000, stab_max=104.0000
+  B-1: per-weight scalar 統計...
+  B-1: per-weight UEA HV 統計...
+  B-1: 改善成功率ヒートマップ...
+  B-2a: per-trial union UEA HV...
+  B-2a: 領域別 union HV Wilcoxon...
+  B-2a: C-metric...
+  PF 2D プロット (weighted sweep)...
+  B-2b: カバー率...
+  B-2b: 領域別 HV...
+  B-2b: 条件付き MS Wilcoxon...
+  B-2b: 差分 EAF...
+  N sensitivity check...
+  Anytime 曲線...
+  → experiments/core_comparison_v3/results/main_v1\analysis\ta21_ta21_delay97
+  → サマリ MD: experiments/core_comparison_v3/results/main_v1\analysis\summary.md
+
+分析完了: experiments/core_comparison_v3/results/main_v1\analysis

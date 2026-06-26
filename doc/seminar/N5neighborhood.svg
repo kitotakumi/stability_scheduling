@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 680 380" role="img">
+<title>N5 近傍の概念図</title>
+<desc>クリティカルパスを同一機械の連続区間（ブロック）に分割し、各ブロックの端の隣接2ジョブのみを swap 候補とする。ブロック内部の順序は動かさない。先頭ブロックは末尾2つ、中間ブロックは両端2つ（中央は不変）、最終ブロックは先頭2つを入れ替える。</desc>
+<defs>
+  <marker id="n5-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M2 1L8 5L2 9" fill="none" class="n5-arrowhead" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+</defs>
+<style>
+  .n5-title { font-family: sans-serif; font-size: 15px; font-weight: 600; fill: #2c2c2a; }
+  .n5-lbl   { font-family: sans-serif; font-size: 12px; fill: #73726c; }
+  .n5-mac   { font-family: sans-serif; font-size: 12px; font-weight: 600; fill: #44443f; }
+  .n5-note  { font-family: sans-serif; font-size: 12px; font-weight: 500; fill: #993c1d; }
+  .n5-fix   { font-family: sans-serif; font-size: 11px; font-weight: 500; fill: #73726c; }
+  .n5-cap   { font-family: sans-serif; font-size: 12px; fill: #44443f; }
+  .n5-cp    { stroke: #9c9a92; stroke-width: 2; }
+  .n5-block { fill: rgba(0,0,0,0.04); stroke: rgba(0,0,0,0.3); stroke-width: 1.1; stroke-dasharray: 5 3; }
+  .n5-op    { fill: #f0efe9; stroke: #c5c3bb; stroke-width: 1; }
+  .n5-optx  { font-family: sans-serif; font-size: 12px; font-weight: 600; fill: #3d3d3a; }
+  .n5-hi    { fill: #f7e0d4; stroke: #cc6a3f; stroke-width: 2; }
+  .n5-hitx  { font-family: sans-serif; font-size: 12px; font-weight: 600; fill: #993c1d; }
+  .n5-swap  { fill: none; stroke: #cc6a3f; stroke-width: 2.2; }
+  .n5-arrowhead { stroke: #cc6a3f; }
+  @media (prefers-color-scheme: dark) {
+    .n5-title { fill: #faf9f5; }
+    .n5-lbl   { fill: #9c9a92; }
+    .n5-mac   { fill: #d3d1c7; }
+    .n5-note  { fill: #f0997b; }
+    .n5-fix   { fill: #9c9a92; }
+    .n5-cap   { fill: #d3d1c7; }
+    .n5-cp    { stroke: #9c9a92; }
+    .n5-block { fill: rgba(255,255,255,0.05); stroke: rgba(255,255,255,0.35); }
+    .n5-op    { fill: #444441; stroke: #8a8880; }
+    .n5-optx  { fill: #d3d1c7; }
+    .n5-hi    { fill: #712b13; stroke: #f0997b; }
+    .n5-hitx  { fill: #f5c4b3; }
+    .n5-swap  { stroke: #f0997b; }
+    .n5-arrowhead { stroke: #f0997b; }
+  }
+</style>
+
+<text x="40" y="28" class="n5-title">N5 近傍 — ブロック端の隣接2ジョブのみ swap（内部は不変）</text>
+
+<!-- クリティカルパスの線 -->
+<line x1="50" y1="190" x2="614" y2="190" class="n5-cp"/>
+<text x="40" y="358" class="n5-lbl">クリティカルパス（同一機械の連続処理 = ブロック）。ブロック内部の swap は MS を改善しないため候補から除外 [1]。</text>
+
+<!-- ===== 第1ブロック（機械A・4op）: 末尾2つを swap、先頭2つは不変 ===== -->
+<rect x="40" y="162" width="180" height="56" rx="10" class="n5-block"/>
+<text x="130" y="126" text-anchor="middle" class="n5-mac">機械A</text>
+<g><circle cx="70"  cy="190" r="18" class="n5-op"/><text x="70"  y="190" text-anchor="middle" dominant-baseline="central" class="n5-optx">O₁</text></g>
+<g><circle cx="110" cy="190" r="18" class="n5-op"/><text x="110" y="190" text-anchor="middle" dominant-baseline="central" class="n5-optx">O₂</text></g>
+<g><circle cx="150" cy="190" r="18" class="n5-hi"/><text x="150" y="190" text-anchor="middle" dominant-baseline="central" class="n5-hitx">O₃</text></g>
+<g><circle cx="190" cy="190" r="18" class="n5-hi"/><text x="190" y="190" text-anchor="middle" dominant-baseline="central" class="n5-hitx">O₄</text></g>
+<path d="M150 169 Q170 143 190 169" class="n5-swap" marker-start="url(#n5-arrow)" marker-end="url(#n5-arrow)"/>
+<text x="90" y="234" text-anchor="middle" class="n5-fix">内部=不変</text>
+<text x="130" y="256" text-anchor="middle" class="n5-lbl">先頭ブロック</text>
+<text x="130" y="274" text-anchor="middle" class="n5-note">末尾2つのみ swap</text>
+
+<!-- ===== 中間ブロック（機械B・5op）: 両端2つを swap、中央は不変 ===== -->
+<rect x="222" y="162" width="220" height="56" rx="10" class="n5-block"/>
+<text x="332" y="126" text-anchor="middle" class="n5-mac">機械B</text>
+<g><circle cx="252" cy="190" r="18" class="n5-hi"/><text x="252" y="190" text-anchor="middle" dominant-baseline="central" class="n5-hitx">O₅</text></g>
+<g><circle cx="292" cy="190" r="18" class="n5-hi"/><text x="292" y="190" text-anchor="middle" dominant-baseline="central" class="n5-hitx">O₆</text></g>
+<g><circle cx="332" cy="190" r="18" class="n5-op"/><text x="332" y="190" text-anchor="middle" dominant-baseline="central" class="n5-optx">O₇</text></g>
+<g><circle cx="372" cy="190" r="18" class="n5-hi"/><text x="372" y="190" text-anchor="middle" dominant-baseline="central" class="n5-hitx">O₈</text></g>
+<g><circle cx="412" cy="190" r="18" class="n5-hi"/><text x="412" y="190" text-anchor="middle" dominant-baseline="central" class="n5-hitx">O₉</text></g>
+<path d="M252 169 Q272 143 292 169" class="n5-swap" marker-start="url(#n5-arrow)" marker-end="url(#n5-arrow)"/>
+<path d="M372 169 Q392 143 412 169" class="n5-swap" marker-start="url(#n5-arrow)" marker-end="url(#n5-arrow)"/>
+<text x="332" y="234" text-anchor="middle" class="n5-fix">中央=不変</text>
+<text x="332" y="256" text-anchor="middle" class="n5-lbl">中間ブロック</text>
+<text x="332" y="274" text-anchor="middle" class="n5-note">両端の2つを swap</text>
+
+<!-- ===== 最終ブロック（機械C・4op）: 先頭2つを swap、末尾2つは不変 ===== -->
+<rect x="444" y="162" width="180" height="56" rx="10" class="n5-block"/>
+<text x="534" y="126" text-anchor="middle" class="n5-mac">機械C</text>
+<g><circle cx="474" cy="190" r="18" class="n5-hi"/><text x="474" y="190" text-anchor="middle" dominant-baseline="central" class="n5-hitx">O₁₀</text></g>
+<g><circle cx="514" cy="190" r="18" class="n5-hi"/><text x="514" y="190" text-anchor="middle" dominant-baseline="central" class="n5-hitx">O₁₁</text></g>
+<g><circle cx="554" cy="190" r="18" class="n5-op"/><text x="554" y="190" text-anchor="middle" dominant-baseline="central" class="n5-optx">O₁₂</text></g>
+<g><circle cx="594" cy="190" r="18" class="n5-op"/><text x="594" y="190" text-anchor="middle" dominant-baseline="central" class="n5-optx">O₁₃</text></g>
+<path d="M474 169 Q494 143 514 169" class="n5-swap" marker-start="url(#n5-arrow)" marker-end="url(#n5-arrow)"/>
+<text x="574" y="234" text-anchor="middle" class="n5-fix">内部=不変</text>
+<text x="534" y="256" text-anchor="middle" class="n5-lbl">最終ブロック</text>
+<text x="534" y="274" text-anchor="middle" class="n5-note">先頭2つのみ swap</text>
+
+<!-- 凡例 -->
+<g transform="translate(40, 304)">
+  <circle cx="9" cy="0" r="9" class="n5-hi"/>
+  <text x="24" y="0" dominant-baseline="central" class="n5-cap">swap 候補（ブロック端の隣接ジョブ）</text>
+  <circle cx="320" cy="0" r="9" class="n5-op"/>
+  <text x="335" y="0" dominant-baseline="central" class="n5-cap">候補にならない（ブロック内部）</text>
+</g>
+</svg>
