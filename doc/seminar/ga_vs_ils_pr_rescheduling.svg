@@ -14,7 +14,7 @@
   .ptitle { font-family: sans-serif; font-size: 14px; font-weight: 500; fill: #2c2c2a; }
   .lbl { font-family: sans-serif; font-size: 11px; fill: #73726c; }
   .legend-text { font-family: sans-serif; font-size: 11px; fill: #73726c; }
-  .xline { stroke: rgba(127,119,221,0.22); stroke-width: 1; }
+  .xline { stroke: rgba(127,119,221,0.10); stroke-width: 0.8; }
   .kid { fill: rgba(127,119,221,0.75); }
   .kid-faint { fill: rgba(127,119,221,0.30); }
   .par-faint { fill: rgba(239,159,39,0.30); }
@@ -29,7 +29,7 @@
     .ptitle { fill: #c2c0b6; }
     .lbl { fill: #9c9a92; }
     .legend-text { fill: #9c9a92; }
-    .xline { stroke: rgba(175,169,236,0.22); }
+    .xline { stroke: rgba(175,169,236,0.14); }
     .kid { fill: rgba(175,169,236,0.75); }
     .kid-faint { fill: rgba(175,169,236,0.32); }
     .par-faint { fill: rgba(239,159,39,0.32); }
