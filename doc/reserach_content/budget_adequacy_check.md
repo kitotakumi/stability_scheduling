@@ -131,7 +131,7 @@ trial単位（union HV への影響上界）でも最悪セル（la36 Memetic+PR
 
 - **ILS 3種は互いにほぼ等時間** ＝ ILS 内部比較は壁時計でもフェア。
 - 名目予算（500世代 vs 3000反復）は族の軸ごとに揃うが**壁時計は揃わない**:
-  Mem+repair ≈ ILS の 4〜5倍、**Mem+PR ≈ 5〜8倍**。原因は PR の O(diffs²) decode。
+  Mem+repair ≈ ILS の 4〜5倍、**Mem+PR ≈ 5〜8倍**。主因は飛散した集団から $S_p$ への長い経路 decode（O(n·diffs)＝経路長比例）＋ top-k LS×3 であり、O(diffs²) の候補フルコピーは実測 ~10% で主因ではない（[[pr_decode_cost_and_aoc_consistency]] §2 の B1 実験で確定）。
 - ただし**この超過コストは勝因ではない**: Mem+PR は既に頭打ち（gain20 p90 ≤ 0.67%）＝
   余分な CPU を使い切っていない。逆に ILS の裾もほぼ平坦なので、ILS に Mem+PR 並みの壁時計
   （≈5倍反復）を与えても +13〜54% の HV 差は埋まらない。**勝因は構造であって予算ではない。**
