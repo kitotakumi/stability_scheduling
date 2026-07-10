@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2480" height="1040" viewBox="0 0 1240 520" role="img">
+<title>Search behavior of population-based, trajectory-based, and stability-inducing operators in rescheduling</title>
+<desc>Population-based search scatters away from S_p via crossover; trajectory-based ILS fills the vicinity of S_p by continuous transformation; PR/repair pulls scattered solutions back toward S_p.</desc>
+<defs>
+  <marker id="prarrow" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto">
+    <path d="M0,0 L6.5,3 L0,6 Z" fill="rgba(107,97,214,0.9)"/>
+  </marker>
+</defs>
+<style>
+  .panel-bg { fill: #f8f7f4; }
+  .cn { stroke: rgba(0,0,0,0.04); stroke-width: 9; }
+  .cs { stroke: rgba(0,0,0,0.09); stroke-width: 9; }
+  .panel-border { fill: none; stroke: rgba(0,0,0,0.08); stroke-width: 0.5; }
+  .ptitle { font-family: 'Times New Roman', serif; font-size: 25px; font-weight: 500; fill: #2c2c2a; }
+  .lbl { font-family: 'Times New Roman', serif; font-size: 20px; fill: #73726c; }
+  .legend-text { font-family: 'Times New Roman', serif; font-size: 19px; fill: #73726c; }
+  .xline { stroke: rgba(127,119,221,0.10); stroke-width: 0.8; }
+  .kid { fill: rgba(127,119,221,0.75); }
+  .kid-faint { fill: rgba(127,119,221,0.30); }
+  .par-faint { fill: rgba(239,159,39,0.30); }
+  .prpath { fill: none; stroke: rgba(107,97,214,0.7); stroke-width: 1.8; stroke-dasharray: 5 3; }
+  .prmid { fill: rgba(107,97,214,0.5); }
+  .prfound { fill: #6B61D6; }
+  </style>
+
+<text x="200.00" y="20" class="ptitle" text-anchor="middle">(a) Population-based (Memetic)</text>
+<text x="620.00" y="20" class="ptitle" text-anchor="middle">(b) Trajectory-based (ILS)</text>
+<text x="1040.00" y="20" class="ptitle" text-anchor="middle">(c) Population + PR / repair</text>
+
+<!-- ============ Panel 1: 集団ベース（交叉で飛散） ============ -->
+<g transform="translate(0, 34)">
+  <rect class="panel-bg" x="0" y="0" width="400" height="360" rx="12"/>
+  <rect class="panel-border" x="0" y="0" width="400" height="360" rx="12"/>
+  <clipPath id="clip-ga"><rect x="0" y="0" width="400" height="360" rx="12"/></clipPath>
+  <g clip-path="url(#clip-ga)">
+    <circle cx="200" cy="180" r="26.67" fill="none" class="cn"/><circle cx="200" cy="180" r="50" fill="none" class="cn"/><circle cx="200" cy="180" r="73.33" fill="none" class="cs"/><circle cx="200" cy="180" r="96.67" fill="none" class="cn"/><circle cx="200" cy="180" r="120" fill="none" class="cn"/><circle cx="200" cy="180" r="143.33" fill="none" class="cs"/><circle cx="200" cy="180" r="166.67" fill="none" class="cn"/><circle cx="200" cy="180" r="190" fill="none" class="cn"/><circle cx="200" cy="180" r="213.33" fill="none" class="cs"/>
+    <circle cx="200" cy="180" r="113.33" fill="none" stroke="rgba(226,75,74,0.4)" stroke-width="1.5" stroke-dasharray="6 5"/>
+    <circle cx="200" cy="180" r="8" fill="#E24B4A"/>
+    <circle cx="146.67" cy="120" r="7" fill="#1D9E75"/><circle cx="146.67" cy="120" r="12" fill="none" stroke="#1D9E75" stroke-width="2"/>
+    <text x="200" y="204" class="lbl" text-anchor="middle">S<tspan font-size="14" dy="4.5">p</tspan><tspan dy="-4.5"> </tspan>(preschedule)</text>
+    <text x="130.67" y="114" class="lbl" text-anchor="end">optimum</text>
+    <circle cx="301.15" cy="180.28" r="5" class="kid"/><circle cx="38.56" cy="70.00" r="5" class="kid"/><circle cx="29.23" cy="114.25" r="5" class="kid"/><circle cx="376.74" cy="143.19" r="5" class="kid"/><circle cx="256.88" cy="6.55" r="5" class="kid"/><circle cx="292.58" cy="312.46" r="5" class="kid"/><circle cx="150.87" cy="240.21" r="5" class="kid"/><circle cx="122.17" cy="256.42" r="5" class="kid"/>
+    <circle cx="130.50" cy="246.85" r="5" class="kid"/><circle cx="323.21" cy="73.65" r="5" class="kid"/><circle cx="287.58" cy="204.09" r="5" class="kid"/><circle cx="36.34" cy="80.63" r="5" class="kid"/><circle cx="369.45" cy="122.25" r="5" class="kid"/><circle cx="207.27" cy="250.54" r="5" class="kid"/><circle cx="108.86" cy="215.45" r="5" class="kid"/><circle cx="295.52" cy="195.26" r="5" class="kid"/>
+  </g>
+</g>
+
+<!-- ============ Panel 2: 軌道ベース（ILS, 連続充填） ============ -->
+<g transform="translate(420, 34)">
+  <rect class="panel-bg" x="0" y="0" width="400" height="360" rx="12"/>
+  <rect class="panel-border" x="0" y="0" width="400" height="360" rx="12"/>
+  <clipPath id="clip-ils"><rect x="0" y="0" width="400" height="360" rx="12"/></clipPath>
+  <g clip-path="url(#clip-ils)">
+    <circle cx="200" cy="180" r="26.67" fill="none" class="cn"/><circle cx="200" cy="180" r="50" fill="none" class="cn"/><circle cx="200" cy="180" r="73.33" fill="none" class="cs"/><circle cx="200" cy="180" r="96.67" fill="none" class="cn"/><circle cx="200" cy="180" r="120" fill="none" class="cn"/><circle cx="200" cy="180" r="143.33" fill="none" class="cs"/><circle cx="200" cy="180" r="166.67" fill="none" class="cn"/><circle cx="200" cy="180" r="190" fill="none" class="cn"/><circle cx="200" cy="180" r="213.33" fill="none" class="cs"/>
+    <circle cx="200" cy="180" r="113.33" fill="none" stroke="rgba(226,75,74,0.4)" stroke-width="1.5" stroke-dasharray="6 5"/>
+    <circle cx="200" cy="180" r="8" fill="#E24B4A"/>
+    <circle cx="146.67" cy="120" r="7" fill="#1D9E75"/><circle cx="146.67" cy="120" r="12" fill="none" stroke="#1D9E75" stroke-width="2"/>
+    <text x="200" y="204" class="lbl" text-anchor="middle">S<tspan font-size="14" dy="4.5">p</tspan><tspan dy="-4.5"> </tspan>(preschedule)</text>
+    <text x="130.67" y="114" class="lbl" text-anchor="end">optimum</text>
+    <polyline points="200,180 218.22,177.39 222.29,162.40 233.52,147.32 244.73,126.23 256.11,123.01 231.36,122.80 209.92,112.68 186.29,112.24" fill="none" stroke="rgba(239,159,39,0.35)" stroke-width="1.3"/>
+    <circle cx="218.22" cy="177.39" r="4.5" fill="rgba(239,159,39,0.55)"/><circle cx="222.29" cy="162.40" r="4.5" fill="rgba(239,159,39,0.55)"/><circle cx="233.52" cy="147.32" r="4.5" fill="rgba(239,159,39,0.55)"/><circle cx="244.73" cy="126.23" r="4.5" fill="rgba(239,159,39,0.55)"/><circle cx="256.11" cy="123.01" r="4.5" fill="rgba(239,159,39,0.55)"/><circle cx="231.36" cy="122.80" r="4.5" fill="rgba(239,159,39,0.55)"/><circle cx="209.92" cy="112.68" r="4.5" fill="rgba(239,159,39,0.55)"/>
+    <circle cx="186.29" cy="112.24" r="6" fill="#EF9F27"/>
+  </g>
+</g>
+
+<!-- ============ Panel 3: 集団 + PR/repair（S_p方向へ引き戻し） ============ -->
+<g transform="translate(840, 34)">
+  <rect class="panel-bg" x="0" y="0" width="400" height="360" rx="12"/>
+  <rect class="panel-border" x="0" y="0" width="400" height="360" rx="12"/>
+  <clipPath id="clip-pr"><rect x="0" y="0" width="400" height="360" rx="12"/></clipPath>
+  <g clip-path="url(#clip-pr)">
+    <circle cx="200" cy="180" r="26.67" fill="none" class="cn"/><circle cx="200" cy="180" r="50" fill="none" class="cn"/><circle cx="200" cy="180" r="73.33" fill="none" class="cs"/><circle cx="200" cy="180" r="96.67" fill="none" class="cn"/><circle cx="200" cy="180" r="120" fill="none" class="cn"/><circle cx="200" cy="180" r="143.33" fill="none" class="cs"/><circle cx="200" cy="180" r="166.67" fill="none" class="cn"/><circle cx="200" cy="180" r="190" fill="none" class="cn"/><circle cx="200" cy="180" r="213.33" fill="none" class="cs"/>
+    <circle cx="200" cy="180" r="113.33" fill="none" stroke="rgba(226,75,74,0.4)" stroke-width="1.5" stroke-dasharray="6 5"/>
+
+    <!-- 飛散した集団（淡色で背景表示＝PR の出発点） -->
+    <circle cx="301.15" cy="180.28" r="4.5" class="kid-faint"/><circle cx="38.56" cy="70.00" r="4.5" class="kid-faint"/><circle cx="29.23" cy="114.25" r="4.5" class="kid-faint"/><circle cx="256.88" cy="6.55" r="4.5" class="kid-faint"/><circle cx="292.58" cy="312.46" r="4.5" class="kid-faint"/><circle cx="150.87" cy="240.21" r="4.5" class="kid-faint"/>
+    <circle cx="287.58" cy="204.09" r="4.5" class="kid-faint"/><circle cx="36.34" cy="80.63" r="4.5" class="kid-faint"/><circle cx="207.27" cy="250.54" r="4.5" class="kid-faint"/><circle cx="108.86" cy="215.45" r="4.5" class="kid-faint"/><circle cx="295.52" cy="195.26" r="4.5" class="kid-faint"/>
+
+    <!-- PR 経路 A：右上の飛散解 → S_p 近傍 -->
+    <polyline class="prpath" points="323.21,73.65 296,101 264,131 236,154" marker-end="url(#prarrow)"/>
+    <circle cx="296" cy="101" r="3.5" class="prmid"/><circle cx="264" cy="131" r="3.5" class="prmid"/>
+    <circle cx="323.21" cy="73.65" r="4.5" class="kid-faint"/>
+    <circle cx="230" cy="158" r="6" class="prfound"/>
+
+    <!-- PR 経路 B：左下の飛散解 → S_p 近傍 -->
+    <polyline class="prpath" points="122.17,256.42 150,228 176,206 194,192" marker-end="url(#prarrow)"/>
+    <circle cx="150" cy="228" r="3.5" class="prmid"/><circle cx="176" cy="206" r="3.5" class="prmid"/>
+    <circle cx="122.17" cy="256.42" r="4.5" class="kid-faint"/>
+    <circle cx="188" cy="196" r="6" class="prfound"/>
+
+    <!-- PR 経路 C：右の飛散解 → S_p 近傍 -->
+    <polyline class="prpath" points="376.74,143.19 332,151 288,160 252,168" marker-end="url(#prarrow)"/>
+    <circle cx="332" cy="151" r="3.5" class="prmid"/><circle cx="288" cy="160" r="3.5" class="prmid"/>
+    <circle cx="376.74" cy="143.19" r="4.5" class="kid-faint"/>
+    <circle cx="246" cy="170" r="6" class="prfound"/>
+
+    <circle cx="200" cy="180" r="8" fill="#E24B4A"/>
+    <circle cx="146.67" cy="120" r="7" fill="#1D9E75"/><circle cx="146.67" cy="120" r="12" fill="none" stroke="#1D9E75" stroke-width="2"/>
+    <text x="200" y="204" class="lbl" text-anchor="middle">S<tspan font-size="14" dy="4.5">p</tspan><tspan dy="-4.5"> </tspan>(guiding solution)</text>
+    <text x="130.67" y="114" class="lbl" text-anchor="end">optimum</text>
+  </g>
+</g>
+
+<!-- ============ legend (2 rows: 4 + 3) ============ -->
+<g transform="translate(0, 424)">
+  <!-- row 1: landmarks + the two search-structure distributions -->
+  <g transform="translate(67, 0)">
+    <circle cx="6" cy="0" r="6" fill="#E24B4A"/>
+    <text x="26" y="6" class="legend-text">S<tspan font-size="14" dy="4.5">p</tspan><tspan dy="-4.5"> </tspan>(initial; stability optimum)</text>
+  </g>
+  <g transform="translate(432, 0)">
+    <circle cx="6" cy="0" r="6" fill="#1D9E75"/>
+    <text x="26" y="6" class="legend-text">optimum</text>
+  </g>
+  <g transform="translate(585, 0)">
+    <circle cx="6" cy="0" r="6" fill="rgba(127,119,221,0.75)"/>
+    <text x="26" y="6" class="legend-text">population (scattered by crossover)</text>
+  </g>
+  <g transform="translate(1004, 0)">
+    <line x1="0" y1="0" x2="26" y2="0" stroke="#EF9F27" stroke-width="2.5"/>
+    <circle cx="13" cy="0" r="3.5" fill="rgba(239,159,39,0.75)"/>
+    <text x="36" y="6" class="legend-text">ILS trajectory</text>
+  </g>
+  <!-- row 2: PR mechanism + region -->
+  <g transform="translate(32, 46)">
+    <line x1="0" y1="0" x2="26" y2="0" class="prpath" marker-end="url(#prarrow)"/>
+    <text x="36" y="6" class="legend-text">PR/repair path (guided toward S<tspan font-size="14" dy="4.5">p</tspan>)</text>
+  </g>
+  <g transform="translate(448, 46)">
+    <circle cx="6" cy="0" r="6.5" class="prfound"/>
+    <text x="26" y="6" class="legend-text">improving solutions found on the path</text>
+  </g>
+  <g transform="translate(892, 46)">
+    <line x1="0" y1="0" x2="22" y2="0" stroke="rgba(226,75,74,0.5)" stroke-width="2" stroke-dasharray="3 2"/>
+    <text x="32" y="6" class="legend-text">high-stability region (near S<tspan font-size="14" dy="4.5">p</tspan>)</text>
+  </g>
+</g>
+</svg>
