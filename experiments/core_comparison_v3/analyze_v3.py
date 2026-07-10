@@ -2699,7 +2699,7 @@ def _claim1_section(all_summary):
     lines.append('')
     ils_wins = sum(1 for r in recs_u if r['a_med'] - r['b_med'] > 1e-9)
     mem_wins = sum(1 for r in recs_u if r['b_med'] - r['a_med'] > 1e-9)
-    lines.append(f'→ ILS {ils_wins}勝・Memetic {mem_wins}勝。**統合HVは互角＝規模・多峰性次第で逆転**。')
+    lines.append(f'→ ILS {ils_wins}勝・Memetic {mem_wins}勝。**統合HVは互角＝再スケジューリング率次第で逆転**。')
     lines.append('')
     # 1b 高安定HV
     recs_h = _pairwise_per_problem(all_summary, prob_labels, 'highstab_hv_pt',
