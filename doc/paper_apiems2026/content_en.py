@@ -236,6 +236,12 @@ BLOCKS = [
           '**Crossover is a destructive operation splicing two parents, so offspring '
           'readily jump away from the vicinity of $S_p$; even Memetic-LS with N5 '
           'therefore fills the high-stability region only coarsely—the crux of H1.**'),
+    ('fig', 'fig_concept_en.png',
+     'Figure 1: Schematic search behavior on the (MS, D) plane. (a) population '
+     'scatters away from $S_p$ via crossover; (b) trajectory (ILS) fills the '
+     'vicinity of $S_p$; (c) PR/repair pulls scattered solutions back toward '
+     '$S_p$.',
+     'full', 0.80),
     ('h2', '3.3 Stability-Inducing Operators (PR and repair) and H2'),
     ('p', '**Path relinking (PR).** PR exploits the idea that good intermediate '
           'solutions lie on the path connecting two high-quality solutions; it is '
@@ -287,12 +293,6 @@ BLOCKS = [
           'P50 (near $S_p$), P50 being the median $D$ of Pareto solutions pooled over '
           'all methods and trials; **AOC (anytime performance (López-Ibáñez and '
           'Stützle, 2014))** = the time average of the HV-versus-log-time curve.'),
-    ('fig', 'fig_concept_en.png',
-     'Figure 1: Schematic search behavior on the (MS, D) plane. (a) population '
-     'scatters away from $S_p$ via crossover; (b) trajectory (ILS) fills the '
-     'vicinity of $S_p$; (c) PR/repair pulls scattered solutions back toward '
-     '$S_p$.',
-     'full', 0.80),
     ('p', 'For cross-scenario comparison, HV is computed after affine normalization to '
           '$[0,1]^2$ per scenario with reference point $(1.1,1.1)$. The anytime '
           'HV($t$) for AOC is measured on the wall clock, with the integration window '
@@ -404,6 +404,12 @@ BLOCKS = [
           'many solutions far from $S_p$ also lengthens the paths, creating exactly '
           'the headroom the mechanisms (PR/repair) can fill by pulling back—picked '
           'up in H2 (Section 4.3).'),
+    ('fig', 'fig_density_en.png',
+     'Figure 3: Structural cause of H1—normalized visit-density difference maps '
+     '(red: ILS-baseline denser; blue: Memetic-LS denser; sign·√|Δ|); orange: ILS '
+     'PF; green: Memetic PF. Four representative scenarios; the rest are in the '
+     'repository.',
+     'full'),
     ('h2', '4.3 Result 2: Asymmetric Effects of the PR/repair Operators (H2)'),
     ('p', 'We examine the high-stability HV gain from adding the mechanisms to each '
           'baseline, by host (Figure 4).'),
@@ -423,6 +429,12 @@ BLOCKS = [
      'across all trials). The effect is thus not absent: ILS leaves little headroom '
      'by filling the neighborhood itself, and a small margin remains only when the '
      'disruption is so large that the filling cannot keep up.'),
+    ('fig', 'fig_claim2_en.png',
+     'Figure 4: H2—the operators (PR, repair) (a) more than double the population\'s '
+     'high-stability HV in every scenario, but (b) are mostly saturated on the '
+     'trajectory host (high-stability HV medians vs. baseline; \\*p<.05 \\*\\*p<.01 '
+     '\\*\\*\\*p<.001).',
+     'full'),
     ('p', '**Mechanistic cause (PR path statistics, Figure 5).** The path '
           'statistics directly corroborate the asymmetry: **Memetic has large path '
           'lengths $d_0$ and finds improving solutions on roughly 30–65% of '
@@ -435,17 +447,11 @@ BLOCKS = [
           'up empty on ILS. The slight la36L/ta21L effect owes to the post-kick '
           'local search re-optimizing pockets that ILS\'s own filling left '
           'unfilled, not to the directing itself.'),
-    ('fig', 'fig_density_en.png',
-     'Figure 3: Structural cause of H1—normalized visit-density difference maps '
-     '(red: ILS-baseline denser; blue: Memetic-LS denser; sign·√|Δ|); orange: ILS '
-     'PF; green: Memetic PF. Four representative scenarios; the rest are in the '
-     'repository.',
-     'full'),
-    ('fig', 'fig_claim2_en.png',
-     'Figure 4: H2—the operators (PR, repair) (a) more than double the population\'s '
-     'high-stability HV in every scenario, but (b) are mostly saturated on the '
-     'trajectory host (high-stability HV medians vs. baseline; \\*p<.05 \\*\\*p<.01 '
-     '\\*\\*\\*p<.001).',
+    ('fig', 'fig_mech_pr_en.png',
+     'Figure 5: Mechanistic cause of H2—(a) PR path length $d_0$ (mean disagreements '
+     'to $S_p$) and (b) improvement discovery rate (share of calls finding a '
+     'solution better than the initiating one). Memetic: long paths, many '
+     'improvements; ILS: short paths, almost none.',
      'full'),
     ('p', '**PR or repair—host-dependent usage.** Whether PR and repair need '
           'distinguishing—on quality (union/high-stability HV) and anytime '
@@ -462,18 +468,11 @@ BLOCKS = [
           'truncates after a few moves and updates the incumbent immediately. Hence: '
           'Memetic+PR when final quality is paramount, repair when the budget is '
           'tight and anytime performance matters.'),
-    ('fig', 'fig_mech_pr_en.png',
-     'Figure 5: Mechanistic cause of H2—(a) PR path length $d_0$ (mean disagreements '
-     'to $S_p$) and (b) improvement discovery rate (share of calls finding a '
-     'solution better than the initiating one). Memetic: long paths, many '
-     'improvements; ILS: short paths, almost none.',
-     'full'),
     ('h2', '4.4 Overall Scoreboard and Integration of Results'),
     ('p', 'We survey the structures established by H1 and H2 on the **overall '
           'scoreboard** of 7 methods × 8 scenarios × 3 metrics (Figure 6), '
-          'corroborating the complementary structure announced at the outset: the '
-          'best method switches with the metric—the reshuffling of green (best) '
-          'cells across the metrics is the visual evidence. Friedman average ranks '
+          'corroborating the complementary structure announced at the outset, in '
+          'which the best method switches with the metric. Friedman average ranks '
           'separate the methods clearly on all three metrics, with medium-to-large '
           'cross-scenario rank consistency (Kendall\'s $W$=0.59/0.81/0.63, '
           '$p$<0.001; per Section 3.4, an exploratory summary given the correlated '
@@ -499,6 +498,11 @@ BLOCKS = [
           'with the evaluation axis (Memetic+PR for overall quality; the ILS family '
           'for stability emphasis and speed), and the two structures complement the '
           'different demands of rescheduling.'),
+    ('fig', 'fig_scoreboard_en.png',
+     'Figure 6: Overall scoreboard—(a) union HV, (b) high-stability HV, (c) AOC over '
+     '7 methods × 8 scenarios. Cells: RPD% relative to the best of each scenario '
+     '(green = best, 0%); each panel sorted by its own Friedman average rank.',
+     'full'),
     ('p', '**[Exploratory observation] Union-HV winner and the rescheduling ratio.** '
           'The union HV winner corresponds to $ρ$, splitting at around 50%: ILS '
           'below, Memetic at mid-to-high (on the same la36 ladder 27/54/73%, ILS → '
@@ -508,7 +512,7 @@ BLOCKS = [
           '($D$=0) an attractor. At small $ρ$ the fixed skeleton dominates the '
           'solution, so no good local optimum far from $S_p$ can arise however the '
           'movable part is reordered; good solutions are thus confined to the $S_p$ '
-          'neighborhood and ILS\'s neighborhood filling suffices; as $ρ$ '
+          'neighborhood, and ILS\'s neighborhood filling suffices. As $ρ$ '
           'grows and the efficiency extreme recedes, the single trajectory struggles '
           'to escape the basin while Memetic, retaining crossover-scattered '
           'individuals, reaches it (isomorphic to H1)—$ρ$ thus proxies the '
@@ -572,11 +576,6 @@ BLOCKS = [
           '$S_p$-biased crossover as an alternative population-side prescription (a '
           'direct test of the crossover-destructiveness reading of H1); and '
           're-verification with Pareto-native methods (e.g., NSGA-II).'),
-    ('fig', 'fig_scoreboard_en.png',
-     'Figure 6: Overall scoreboard—(a) union HV, (b) high-stability HV, (c) AOC over '
-     '7 methods × 8 scenarios. Cells: RPD% relative to the best of each scenario '
-     '(green = best, 0%); each panel sorted by its own Friedman average rank.',
-     'full'),
 
     ('h1', 'REFERENCES'),
 ] + _REFS
