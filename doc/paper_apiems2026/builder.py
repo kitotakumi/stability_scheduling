@@ -163,9 +163,10 @@ def p_xml(inner, ppr=''):
 
 
 def para_title(text, ea):
+    # タイトルはハイフネーション無効（単語途中の泣き別れを防ぐ）
     return p_xml(rich_runs(text, ea).replace('</w:rPr>',
                  '<w:bCs/><w:sz w:val="40"/><w:szCs w:val="40"/></w:rPr>'),
-                 '<w:jc w:val="center"/>')
+                 '<w:suppressAutoHyphens/><w:jc w:val="center"/>')
 
 
 def para_center(text, ea, bold=False):

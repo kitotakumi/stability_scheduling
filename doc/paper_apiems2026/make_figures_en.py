@@ -126,7 +126,7 @@ def fig_claim1(S):
                   '(a) Union HV: comparable', legend=False)
     _annotate_pair(axes[0], tags, union, 'ils_baseline', 'memetic_ls')
     _grouped_bars(axes[1], tags, pair, high, 'Normalized HV',
-                  '(b) High-stability HV: ILS dominates')
+                  '(b) High-stability HV: ILS wins all 8')
     _annotate_pair(axes[1], tags, high, 'ils_baseline', 'memetic_ls')
     _grouped_bars(axes[2], tags, pair, aoc, 'Normalized AOC',
                   '(c) AOC: ILS ahead (6/8)', legend=False)
