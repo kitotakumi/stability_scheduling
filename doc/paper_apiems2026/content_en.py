@@ -67,9 +67,9 @@ BLOCKS = [
     # ================= 1 =================
     ('h1', '1. INTRODUCTION'),
     ('p', 'Manufacturing shop floors frequently face disruptions—operation delays, '
-          'machine breakdowns—that make the original schedule infeasible. Among the '
-          'static (built-in tolerance) and dynamic (after-the-fact revision) responses, '
-          'we address the latter, specifically **predictive-reactive rescheduling** '
+          'machine breakdowns—that make the original schedule infeasible. Of the two '
+          'response types—static (built-in tolerance) and dynamic (after-the-fact '
+          'revision)—we address the latter, specifically **predictive-reactive rescheduling** '
           '(Ouelhadj and Petrovic, 2009), which repairs the executing schedule into a '
           'feasible one after a disruption. '
           'We focus on **operation delays**.'),
@@ -86,10 +86,10 @@ BLOCKS = [
           'distributed near $S_p$, so the evaluation of a search method gains a new axis: '
           'not mere global search ability, but **how well it fills the vicinity of $S_p$ '
           '(the high-stability region)**.'),
-    ('p', 'Our aim is to analyze, under control, how the rescheduling-specific '
+    ('p', 'Our aim is to analyze, under controlled conditions, how the rescheduling-specific '
           'existence of a high-quality initial solution $S_p$ reshapes the behavior '
-          'of the two metaheuristic families—trajectory and population. Alongside, '
-          'we propose **stability-inducing operators (PR and repair)** that actively '
+          'of the two metaheuristic families—trajectory and population. We also '
+          'propose **stability-inducing operators (PR and repair)** that actively '
           'pull solutions toward $S_p$, and verify the whole comparison under a '
           'multi-perspective evaluation methodology integrating Pareto coverage, '
           'performance by stability band, and speed. '
@@ -109,7 +109,7 @@ BLOCKS = [
           '2013), where stability enters not as an independent mechanism but '
           'passively, as a single evaluation term of the objective. '
           'Of the two metaheuristic families—'
-          'trajectory (single-solution) and population-based (Blum and Roli, 2003)—'
+          'trajectory-based (single-solution) and population-based (Blum and Roli, 2003)—'
           'the solvers here are **predominantly population-based**, anchored in GAs.'),
     ('p', '**Embedding stability as a mechanism (scope-limiting approaches).** A '
           'separate lineage guarantees stability structurally by **limiting the '
@@ -127,11 +127,10 @@ BLOCKS = [
           'population) has not been analyzed head-on; we do so '
           'via a controlled contrast between ILS and a memetic algorithm sharing the '
           'same local search (N5). Second, neither existing means of securing '
-          'stability steers the search toward stability actively. They fall into '
-          'two families: scope limiting, which excludes trade-off solutions outside the '
-          'restriction; and objective embedding, in which the search itself does not '
-          'pursue stability, leaving high-stability filling to the raw ability of the '
-          'base search. We propose operators (PR, repair) that '
+          'stability actively steers the search toward it: scope limiting excludes '
+          'trade-off solutions outside the restriction, and objective embedding leaves '
+          'high-stability filling to the raw ability of the base search. '
+          'We propose operators (PR, repair) that '
           'actively pull solutions toward $S_p$; securing stability as an operator '
           'rather than by restricting the space is our core design claim against the '
           'scope-limiting family. Third, existing '
@@ -141,8 +140,8 @@ BLOCKS = [
           '(Section 3.4).'),
     ('p', 'We pose two hypotheses. **H1 (suitability)**: a population-based method '
           '(memetic) that recombines solutions wholesale by crossover scatters '
-          'offspring away from $S_p$ and fills the high-stability region (near $S_p$) '
-          'only coarsely, whereas a trajectory-based method (ILS) that fills the '
+          'offspring away from $S_p$ and fills the high-stability region only '
+          'coarsely, whereas a trajectory-based method (ILS) that fills the '
           'neighborhood by continuous transformation from $S_p$ covers it efficiently. '
           '**H2 (complementarity)**: operators pulling solutions toward $S_p$ (PR, '
           'repair) complement precisely the neighborhood filling that populations are '
@@ -233,8 +232,8 @@ BLOCKS = [
           'inversion mutation, tournament selection with elitism), applying the same '
           'N5 to each individual in a Lamarckian manner to form **Memetic-LS** (GA + '
           'local-search integration (Neri and Cotta, 2012)); the plain GA is a '
-          'reference baseline. Sharing N5 with ILS, its difference reduces solely to '
-          'the search structure (single trajectory vs. population + crossover). '
+          'reference baseline. Sharing N5 with ILS, Memetic-LS differs from it solely '
+          'in the search structure (single trajectory vs. population + crossover). '
           '**Crossover is a destructive operation splicing two parents, so offspring '
           'readily jump away from the vicinity of $S_p$; even Memetic-LS with N5 '
           'therefore fills the high-stability region only coarsely—the crux of H1.**'),
@@ -277,8 +276,8 @@ BLOCKS = [
           'depth drawn at random up to the disagreement count, and the outcome, '
           're-optimized by N5, returns to the population unconditionally, leaving '
           'acceptance to tournament selection. What both hosts mount is the '
-          'identical operator—swap moves toward $S_p$; they differ only in when '
-          'it fires.'),
+          'identical operator—swap moves toward $S_p$; the hosts differ only in how '
+          'it is fired.'),
     ('p', '**H2 (complementarity hypothesis).** PR and repair both pull solutions '
           'toward $S_p$, complementing exactly the high-stability filling that '
           'population-based search is poor at; ILS has already filled the '
@@ -288,7 +287,7 @@ BLOCKS = [
           'whose stability can improve without hurting MS—and sit far from $S_p$ '
           'with long PR paths, while ILS clings to the vicinity of $S_p$ with short '
           'paths. Hence we predict **an asymmetry: large effects on the population, '
-          'marginal on the trajectory**.'),
+          'marginal on the trajectory** (Figure 1).'),
     ('p', 'We study seven methods: ILS-baseline / ILS+repair / ILS+PR / GA / '
           'Memetic-LS / Memetic+PR / Memetic+repair.'),
     ('h2', '3.4 Evaluation Framework'),
@@ -303,7 +302,12 @@ BLOCKS = [
           'region; **high-stability HV (primary)** = hypervolume restricted to $D$ < '
           'P50 (near $S_p$), P50 being the median $D$ of Pareto solutions pooled over '
           'all methods and trials; **AOC (anytime performance (López-Ibáñez and '
-          'Stützle, 2014))** = the time average of the HV-versus-log-time curve.'),
+          'Stützle, 2014))** = the time average of the HV-versus-log-time curve. '
+          'Since the P50 threshold is pooled over the compared methods, we swept it '
+          'over P25–P75: no high-stability comparison in Section 4 reverses (the '
+          'population-side operator gains hold at $p$=0.001 at every threshold; '
+          'H1\'s complete separation holds over P33–P67); only orderings among the '
+          'top methods shift.'),
     ('p', 'For cross-scenario comparison, HV is computed after affine normalization to '
           '$[0,1]^2$ per scenario with reference point $(1.1,1.1)$. The anytime '
           'HV($t$) for AOC is measured on the wall clock, with the integration window '
@@ -349,7 +353,8 @@ BLOCKS = [
           'pure-stability endpoint $λ$=1.0 is excluded since the optimum degenerates '
           'to the trivial $S_{RSR}$ ($D$=0)); 10 trials per (scenario × method). The '
           'unit of analysis is one trial (the whole 10-weight sweep), yielding one HV '
-          'per trial; all tests use n=10.'),
+          'per trial (reported values are medians over trials unless noted); all '
+          'tests use n=10.'),
     ('p', '**Computational budget.** ILS iteration cap 3000; GA/memetic 500 '
           'generations (both budgets large enough for natural convergence). Iterations and generations '
           'differ in unit, so nominal values are aligned within each family and '
@@ -435,12 +440,12 @@ BLOCKS = [
      '• **Trajectory (ILS): mostly saturated.** In most scenarios the baseline has '
      'already filled the high-stability region, tying at the ceiling. The '
      'operators are significant **only in the highest-ratio band: la36L (73%) and '
-     'ta21L (82%)** (raw $p$=0.016, 0.001; after Holm correction over the '
+     'ta21L (82%)** (raw $p$=0.016, 0.001 for PR and repair alike; after Holm correction over the '
      '8-scenario ILS family only ta21L remains significant, $p_{adj}$≈0.008; the '
      'gain is small—the ta21L median rises 0.029 → 0.031—but consistently positive '
-     'across all trials). The effect is thus not absent: ILS leaves little headroom '
-     'by filling the neighborhood itself, and a small margin remains only when the '
-     'disruption is so large that the filling cannot keep up.'),
+     'across all trials). The effect is thus not absent: ILS\'s own filling leaves '
+     'little headroom; a small margin remains only when the disruption is too '
+     'large for the filling to keep up.'),
     ('fig', 'fig_claim2_en.png',
      'Figure 4: H2—the operators (PR, repair) (a) more than double the population\'s '
      'high-stability HV in every scenario, but (b) are mostly saturated on the '
@@ -495,7 +500,7 @@ BLOCKS = [
           'are Friedman average ranks, lower is better). On **union HV (quality)**, '
           'the operator-equipped populations form the top group (Memetic+PR 2.0, '
           'Memetic+repair 2.5), the three ILS variants and the plain Memetic-LS sit '
-          'in the middle (3.6–4.8), and only GA trails (6.9); the method that tied ILS '
+          'in the middle (3.6–4.8), and only GA trails (6.9); the method that tied with ILS '
           'in Section 4.2 was the plain population (Memetic-LS), and the '
           'operator-equipped Memetic+PR rises above it to lead—robust to '
           'leave-one-out (unchanged whichever scenario is removed), so the narrow '
@@ -530,7 +535,7 @@ BLOCKS = [
           'neighborhood, and ILS\'s neighborhood filling suffices. As $ρ$ '
           'grows and the efficiency extreme recedes, the single trajectory struggles '
           'to escape the basin while Memetic, retaining crossover-scattered '
-          'individuals, reaches it (isomorphic to H1)—$ρ$ thus proxies the '
+          'individuals, reaches that distant region (isomorphic to H1)—$ρ$ thus proxies the '
           'difficulty for the trajectory of escaping the attractor. However, ta21L (82%) is an '
           'exception (≈tie, $p$=0.053), and confounding by $S_p$ quality and '
           'dependence on the permutation-deviation representation remain, so this '
@@ -541,7 +546,7 @@ BLOCKS = [
           'Memetic+PR (pulling a scattered population toward $S_p$) reach similar '
           'final Pareto quality from opposite directions, but ILS holds a good '
           'incumbent early while Memetic+PR ramps up after a warm-up; AOC aggregates '
-          'this crossover on a log-time '
+          'this crossing on a log-time '
           'axis, reflecting early performance—hence the ILS family\'s clear lead '
           'there.'),
 
@@ -562,30 +567,31 @@ BLOCKS = [
      'the other three) and leads in anytime performance in 6/8—derived from the '
      'search structure, not the presence of local search.'),
     ('p_noindent',
-     '2. **The effects of PR and repair appear asymmetrically depending on the host '
+     '2. **The effects of PR and repair appear asymmetrically with the host '
      'structure (H2).** They more than double the population\'s high-stability HV, '
      'lifting it to the ILS level, whereas the trajectory, having already filled '
      'the neighborhood, is mostly saturated. The asymmetry is not fixed, however: '
-     'at extremely high rescheduling ratios where ILS\'s filling cannot keep up '
-     '(ta21L, 82%), a significant operator effect remains even on the trajectory.'),
+     'at extreme rescheduling ratios where ILS\'s filling cannot keep up '
+     '(ta21L, 82%), a significant effect remains even on the trajectory.'),
     ('p_noindent',
      '3. **Complementary structure of trajectory and population.** The best method '
      'changes with the metric: overall quality (union HV) favors Memetic + '
      'mechanism, high stability is shared by ILS and Memetic + mechanism, and speed '
-     '(anytime) favors the ILS family. Two methods carry no weak metric across the '
-     'three axes and serve as balanced defaults—Memetic+repair (leaning to overall '
-     'quality) and the ILS family (leaning to speed)—chosen between by that '
-     'emphasis. Only when squeezing out the '
+     '(anytime) favors the ILS family. Two options avoid the bottom group on all '
+     'three metrics: Memetic+repair (mid-tier in anytime) when overall quality '
+     'matters more, the ILS family (mid-tier in union HV) when speed does. Only '
+     'when squeezing out the '
      'last of final quality, at the cost of a slow ramp-up, does Memetic+PR edge '
      'ahead. The two structures thus complement the different demands of '
      'rescheduling (Section 4.3).'),
     ('p', 'Implementing the stability lever as an "operator" made it '
           'portable to both hosts, and **isolating its host-dependent asymmetry under '
           'control is the central contribution of this study**.'),
-    ('p', '**Limitations.** (i) Results rest on n=10 (the saturated main '
-          'conclusions are robust; borderline cases are another matter). (ii) The '
+    ('p', '**Limitations.** (i) Results rest on n=10 (saturated main conclusions '
+          'are robust; borderline cases less so). (ii) The '
           'rescheduling-ratio–union-HV-winner correspondence involves confounding '
-          'by $S_p$ quality and representation dependence, and stays exploratory. '
+          'by $S_p$ quality and dependence on the stability representation, and stays '
+          'exploratory. '
           '(iii) Stability is measured only by permutation deviation; validity '
           'under start-time (temporal) deviation is unverified (Section 3.1).'),
     ('p', '**Future work.** Re-verification under start-time deviation (temporal '
