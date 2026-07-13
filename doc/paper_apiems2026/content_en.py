@@ -30,7 +30,6 @@ _REFS = [
     ('ref', 'Sun, R., Cheng, G., Ding, Q., and Zhao, X. (2026) Impact of optimization scope on solution quality and stability in dynamic flexible job shop rescheduling. *Computers & Industrial Engineering*, **215**, Article 111943.'),
     ('ref', 'Wu, S. D., Storer, R. H., and Chang, P.-C. (1993) One-machine rescheduling heuristics with efficiency and stability as criteria. *Computers & Operations Research*, **20**, 1-14.'),
     ('ref', 'Zakaria, Z. and Petrovic, S. (2012) Genetic algorithms for match-up rescheduling of the flexible manufacturing systems. *Computers & Industrial Engineering*, **62**, 670-686.'),
-    ('ref', 'Zhang, L., Gao, L., and Li, X. (2013) A hybrid genetic algorithm and tabu search for a multi-objective dynamic job shop scheduling problem. *International Journal of Production Research*, **51**, 3516-3531.'),
 ]
 
 BLOCKS = [
@@ -103,11 +102,10 @@ BLOCKS = [
           'metaheuristics are the mainstream (Ouelhadj and Petrovic, 2009). Joint '
           'optimization of efficiency and stability in rescheduling was pioneered by Wu '
           'et al. (1993) and pursued for the JSSP by Rangsaritratsamee et al. (2004) '
-          '(hybrid GA) and Zhang et al. (2013) (GA + tabu search), and for flow shops by '
-          'Katragjini et al. (2013). These works mostly bundle the two objectives '
-          'into one weighted-sum scalar (Rangsaritratsamee et al., 2004; Zhang et al., '
-          '2013), where stability enters not as an independent mechanism but '
-          'passively, as a single evaluation term of the objective. '
+          '(hybrid GA) and for flow shops by Katragjini et al. (2013). These works '
+          'mostly bundle the two objectives into one weighted-sum scalar, where '
+          'stability enters not as an independent mechanism but passively, as a '
+          'single evaluation term of the objective. '
           'Of the two metaheuristic families—'
           'trajectory-based (single-solution) and population-based (Blum and Roli, 2003)—'
           'the solvers here are **predominantly population-based**, anchored in GAs.'),
@@ -302,12 +300,7 @@ BLOCKS = [
           'region; **high-stability HV (primary)** = hypervolume restricted to $D$ < '
           'P50 (near $S_p$), P50 being the median $D$ of Pareto solutions pooled over '
           'all methods and trials; **AOC (anytime performance (López-Ibáñez and '
-          'Stützle, 2014))** = the time average of the HV-versus-log-time curve. '
-          'Since the P50 threshold is pooled over the compared methods, we swept it '
-          'over P25–P75: no high-stability comparison in Section 4 reverses (the '
-          'population-side operator gains hold at $p$=0.001 at every threshold; '
-          'H1\'s complete separation holds over P33–P67); only orderings among the '
-          'top methods shift.'),
+          'Stützle, 2014))** = the time average of the HV-versus-log-time curve.'),
     ('p', 'For cross-scenario comparison, HV is computed after affine normalization to '
           '$[0,1]^2$ per scenario with reference point $(1.1,1.1)$. The anytime '
           'HV($t$) for AOC is measured on the wall clock, with the integration window '
@@ -486,6 +479,12 @@ BLOCKS = [
           'truncates after a few moves and updates the incumbent immediately. Hence: '
           'Memetic+PR when final quality is paramount, repair when the budget is '
           'tight and anytime performance matters.'),
+    ('p', '**Threshold robustness.** The high-stability conclusions above (H1 and '
+          'H2) do not depend on the P50 cut. Since P50 is pooled over the compared '
+          'methods, we swept it over P25–P75: no high-stability comparison '
+          'reverses (H2\'s population-side gains hold at $p$=0.001 at every '
+          'threshold; H1\'s complete separation holds over P33–P67), and only '
+          'orderings among the top methods shift.'),
     ('h2', '4.4 Overall Scoreboard and Integration of Results'),
     ('p', 'We survey the structures established by H1 and H2 on the **overall '
           'scoreboard** of 7 methods × 8 scenarios × 3 metrics (Figure 6), '

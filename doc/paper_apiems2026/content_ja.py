@@ -58,9 +58,8 @@ BLOCKS = [
     ('p', '**効率と安定性の同時考慮.** JSSP は NP 困難でありメタヒューリスティクスが主流である '
           '(Ouelhadj and Petrovic, 2009)。再スケジューリングにおける効率と安定性の同時最適化は '
           'Wu ら (1993) を先駆けとし、JSSP では Rangsaritratsamee ら (2004)（ハイブリッド GA）、'
-          'Zhang ら (2013)（GA＋Tabu Search）、フローショップでは Katragjini ら (2013) などが'
-          '取り組んできた。これらは効率と安定性を重み付き和で単一スカラーに束ねる枠組みが'
-          '主流であり (Rangsaritratsamee et al., 2004; Zhang et al., 2013)、安定性は独立した機構ではなく'
+          'フローショップでは Katragjini ら (2013) などが取り組んできた。これらは効率と安定性を'
+          '重み付き和で単一スカラーに束ねる枠組みが主流であり、安定性は独立した機構ではなく'
           '目的関数の一評価項として受動的に扱われる。'
           'また解法は、メタヒューリスティクスの二系統——軌道（単一解）ベースと集団ベース '
           '(Blum and Roli, 2003)——のうち GA を基軸とする**集団ベースが中心**である。'),
@@ -194,10 +193,7 @@ BLOCKS = [
           '問い——**総合品質・安定解の充填・速度**——に対応する 3 指標を用いる：**統合 HV（総合品質）**'
           '＝全領域の hypervolume；**高安定 HV（本命）**＝$D$<P50（$S_p$ 近傍）に限った hypervolume'
           '（P50 は全手法・全 trial の Pareto 解の $D$ をプールした中央値）；**AOC（アンタイム性能 '
-          '(López-Ibáñez and Stützle, 2014)）**＝HV-対-対数時間曲線の時間平均。'
-          'P50 は比較手法プールに相対的なため、閾値を P25〜P75 で掃引して頑健性を確認した：'
-          '§4 の高安定比較は一つも逆転せず（集団側の機構効果は全閾値で p=0.001、H1 の完全分離は '
-          'P33〜P67 で維持）、変動は上位手法間の順位に留まる。'),
+          '(López-Ibáñez and Stützle, 2014)）**＝HV-対-対数時間曲線の時間平均。'),
     ('p', 'HV はシナリオ横断比較のため各シナリオで $[0,1]^2$ にアフィン正規化し参照点 $(1.1,1.1)$ で'
           '算出する。AOC のアンタイム HV($t$) は壁時計上で測り、積分窓は**全手法共通**にとって'
           '対数幅で正規化する（手法間 apples-to-apples）。'
@@ -320,6 +316,10 @@ BLOCKS = [
           '長い経路を辿り切ってから最良中間解を返すため立ち上がりが遅く、repair は数手で打ち切って'
           '即座に incumbent を更新するためである。ゆえに Memetic では、最終品質最優先なら Memetic+PR、'
           '計算予算が厳しくアンタイム重視なら repair という使い分けが成立する。'),
+    ('p', '**閾値頑健性.** 高安定 HV に基づく以上の結論（H1・H2）は閾値 P50 の取り方に依存しない。'
+          'P50 は比較手法プールに相対的なため P25〜P75 で掃引して確認した：高安定比較は一つも逆転せず'
+          '（H2 の集団側は全閾値で $p$=0.001、H1 の完全分離は P33〜P67 で維持）、変動は上位手法間の'
+          '順位に留まる。'),
     ('h2', '4.4 総合スコアボードと結果の統合'),
     ('p', 'H1・H2 で確立した構造を、全 7 手法 × 8 シナリオ × 3 指標の**総合スコアボード**（図 6）で'
           '俯瞰し、冒頭で予告した「指標で首位が替わる」相補構造を裏付ける。Friedman 平均順位は 3 指標とも手法'
@@ -420,5 +420,4 @@ BLOCKS = [
     ('ref', 'Sun, R., Cheng, G., Ding, Q., and Zhao, X. (2026) Impact of optimization scope on solution quality and stability in dynamic flexible job shop rescheduling. *Computers & Industrial Engineering*, **215**, Article 111943.'),
     ('ref', 'Wu, S. D., Storer, R. H., and Chang, P.-C. (1993) One-machine rescheduling heuristics with efficiency and stability as criteria. *Computers & Operations Research*, **20**, 1-14.'),
     ('ref', 'Zakaria, Z. and Petrovic, S. (2012) Genetic algorithms for match-up rescheduling of the flexible manufacturing systems. *Computers & Industrial Engineering*, **62**, 670-686.'),
-    ('ref', 'Zhang, L., Gao, L., and Li, X. (2013) A hybrid genetic algorithm and tabu search for a multi-objective dynamic job shop scheduling problem. *International Journal of Production Research*, **51**, 3516-3531.'),
 ]
