@@ -91,8 +91,8 @@ BLOCKS = [
           'of the two metaheuristic families—trajectory and population. Alongside, '
           'we propose **stability-inducing operators (PR and repair)** that actively '
           'pull solutions toward $S_p$, and verify the whole comparison under a '
-          'multi-perspective evaluation methodology integrating speed, Pareto '
-          'coverage, and performance by stability band. '
+          'multi-perspective evaluation methodology integrating Pareto coverage, '
+          'performance by stability band, and speed. '
           'Our focus is the structural analysis of this operator–host interaction '
           'rather than a performance race against the state of the art '
           '(Sörensen, 2015).'),
@@ -136,8 +136,8 @@ BLOCKS = [
           'rather than by restricting the space is our core design claim against the '
           'scope-limiting family. Third, existing '
           'evaluations are mostly scalar comparisons at a few fixed weights, lacking a '
-          'multi-axis methodology covering Pareto coverage, convergence speed, and '
-          'stability bands; we evaluate with union HV, high-stability HV, and AOC '
+          'multi-axis methodology covering Pareto coverage, stability bands, and '
+          'convergence speed; we evaluate with union HV, high-stability HV, and AOC '
           '(Section 3.4).'),
     ('p', 'We pose two hypotheses. **H1 (suitability)**: a population-based method '
           '(memetic) that recombines solutions wholesale by crossover scatters '
