@@ -233,8 +233,9 @@ BLOCKS = [
           'reference baseline. Sharing N5 with ILS, Memetic-LS differs from it solely '
           'in the search structure (single trajectory vs. population + crossover). '
           '**Crossover is a destructive operation splicing two parents, so offspring '
-          'readily jump away from the vicinity of $S_p$; even Memetic-LS with N5 '
-          'therefore fills the high-stability region only coarsely—the crux of H1.**'),
+          'readily jump away from the vicinity of $S_p$—the structural reason even '
+          'Memetic-LS with the same N5 fills the high-stability region only coarsely '
+          '(the crux of H1).**'),
     ('fig', 'fig_concept_en.png',
      'Figure 1: Schematic search behavior on the (MS, D) plane. (a) population '
      'scatters away from $S_p$ via crossover; (b) trajectory (ILS) fills the '
@@ -250,7 +251,7 @@ BLOCKS = [
           'the pre-disruption schedule**: from the current local optimum (initiating) '
           'toward $S_p$ (guiding), the path is traced by swap moves—each picks a '
           'position where the current per-machine sequence disagrees with $S_p$ and '
-          'swaps in the operation $S_p$ has there, advancing one step toward $S_p$—'
+          'swaps in the operation that $S_p$ places there, advancing one step toward $S_p$—'
           'shrinking the disagreements one by one, returning the best solution on the '
           'path. '
           'Fixing to $S_p$ (a) makes PR uniquely interpretable as a "directed move '
@@ -279,12 +280,12 @@ BLOCKS = [
     ('p', '**H2 (complementarity hypothesis).** PR and repair both pull solutions '
           'toward $S_p$, complementing exactly the high-stability filling that '
           'population-based search is poor at; ILS has already filled the '
-          'neighborhood by itself (H1), leaving little headroom. The mechanism lies '
-          'in solution redundancy and path length: GA-derived solutions are not '
-          'MS-optimized as rigorously as N5 achieves—leaving redundant sequences '
-          'whose stability can improve without hurting MS—and sit far from $S_p$ '
-          'with long PR paths, while ILS clings to the vicinity of $S_p$ with short '
-          'paths. Hence we predict **an asymmetry: large effects on the population, '
+          'neighborhood by itself (H1), leaving little headroom. The predicted '
+          'mechanism is redundancy and path length: GA-derived solutions sit far '
+          'from $S_p$ with long PR paths and, not being MS-optimized as rigorously '
+          'as N5, retain slack whose stability can improve without hurting MS, '
+          'while ILS clings to the vicinity of $S_p$ with short paths and little '
+          'slack. Hence we predict **an asymmetry: large effects on the population, '
           'marginal on the trajectory** (Figure 1).'),
     ('p', 'We study seven methods: ILS-baseline / ILS+repair / ILS+PR / GA / '
           'Memetic-LS / Memetic+PR / Memetic+repair.'),
@@ -375,8 +376,7 @@ BLOCKS = [
           'solution and $S_p$—in a sawtooth). All values are common to the eight '
           'scenarios, not tuned per instance.'),
     ('p', '**Environment and reproducibility.** AMD Ryzen 5 7530U; Python 3.12 '
-          '(NumPy, DEAP, SciPy). All seeds fixed. Code is available in the same '
-          'repository.'),
+          '(NumPy, DEAP, SciPy). All seeds fixed.'),
     ('h2', '4.2 Result 1: Trajectory (ILS) vs. Population (Memetic) (H1)'),
     ('p', 'To avoid operator confounds, we compare ILS-baseline and Memetic-LS with '
           'the local search aligned. The '
@@ -449,10 +449,12 @@ BLOCKS = [
           'statistics directly corroborate the asymmetry: **Memetic has large path '
           'lengths $d_0$ and finds improving solutions on roughly 30–65% of '
           'paths**, whereas **ILS has short paths and a discovery rate near 0% '
-          'everywhere** (0.4% even on ta21L). This reflects more than trial '
-          'opportunities: ILS has already filled the vicinity of $S_p$—the short '
-          'paths are themselves a symptom—so no headroom remains on the segments '
-          'PR traverses, whereas in Memetic many unoptimized intermediates remain '
+          'everywhere** (0.4% even on ta21L). This is not merely a path-length '
+          'effect: because the discovery *rate* already normalizes for the number '
+          'of swap-steps, ILS\'s near-zero rate reflects a genuine absence of '
+          'headroom—it has already filled the vicinity of $S_p$ (the short paths '
+          'being the symptom), leaving nothing to find on the segments PR '
+          'traverses—whereas in Memetic many unoptimized intermediates remain '
           'between the scattered solutions and $S_p$; the directed move thus comes '
           'up empty on ILS. The slight la36L/ta21L effect owes to the post-kick '
           'local search re-optimizing pockets that ILS\'s own filling left '
