@@ -103,7 +103,8 @@ BLOCKS = [
           'optimization of efficiency and stability in rescheduling was pioneered by Wu '
           'et al. (1993) and pursued for the JSSP by Rangsaritratsamee et al. (2004) '
           '(hybrid GA) and for flow shops by Katragjini et al. (2013). These works '
-          'mostly bundle the two objectives into one weighted-sum scalar, where '
+          'mostly bundle the two objectives into one weighted-sum scalar '
+          '(Rangsaritratsamee et al., 2004; Katragjini et al., 2013), where '
           'stability enters not as an independent mechanism but passively, as a '
           'single evaluation term of the objective. '
           'Of the two metaheuristic families—'
@@ -479,12 +480,11 @@ BLOCKS = [
           'truncates after a few moves and updates the incumbent immediately. Hence: '
           'Memetic+PR when final quality is paramount, repair when the budget is '
           'tight and anytime performance matters.'),
-    ('p', '**Threshold robustness.** The high-stability conclusions above (H1 and '
-          'H2) do not depend on the P50 cut. Since P50 is pooled over the compared '
-          'methods, we swept it over P25–P75: no high-stability comparison '
-          'reverses (H2\'s population-side gains hold at $p$=0.001 at every '
-          'threshold; H1\'s complete separation holds over P33–P67), and only '
-          'orderings among the top methods shift.'),
+    ('p', '**Threshold robustness.** Since P50 is pooled over the compared '
+          'methods, we swept it over P25–P75: none of the high-stability '
+          'comparisons behind H1 and H2 reverses (H2\'s population-side gains '
+          'hold at $p$=0.001 at every threshold; H1\'s complete separation holds '
+          'over P33–P67), and only the closely spaced top methods trade places.'),
     ('h2', '4.4 Overall Scoreboard and Integration of Results'),
     ('p', 'We survey the structures established by H1 and H2 on the **overall '
           'scoreboard** of 7 methods × 8 scenarios × 3 metrics (Figure 6), '
@@ -507,9 +507,8 @@ BLOCKS = [
           '(primary)**, the ILS family and the operator-equipped Memetic cluster at '
           'the top (2.6–3.4), while only the operator-less populations collapse with '
           'ARPD ≈ 70–78%, failing to reach the vicinity of $S_p$ (GA 6.4, '
-          'Memetic-LS 6.6)—exactly what H1 (the trajectory fills it natively) and H2 '
-          '(the operators complement the population\'s coarseness so it catches up) '
-          'predict. On **AOC (anytime)**, the three ILS variants lead (2.5–2.8), the '
+          'Memetic-LS 6.6)—exactly what H1 and H2 predict. '
+          'On **AOC (anytime)**, the three ILS variants lead (2.5–2.8), the '
           'plain Memetic-LS and Memetic+repair are in the middle (3.5, 4.0), and the '
           'slow-starting Memetic+PR and GA trail (5.6, 7.0). The best method changes '
           'with the evaluation axis (Memetic+PR for overall quality; the ILS family '
@@ -543,7 +542,7 @@ BLOCKS = [
           'scenarios.'),
     ('p', '**Divergent vs. convergent.** ILS (spreading outward from $S_p$) and '
           'Memetic+PR (pulling a scattered population toward $S_p$) reach similar '
-          'final Pareto quality from opposite directions, but ILS holds a good '
+          'final Pareto quality, but ILS holds a good '
           'incumbent early while Memetic+PR ramps up after a warm-up; AOC aggregates '
           'this crossing on a log-time '
           'axis, reflecting early performance—hence the ILS family\'s clear lead '
