@@ -103,10 +103,9 @@ BLOCKS = [
           'optimization of efficiency and stability in rescheduling was pioneered by Wu '
           'et al. (1993) and pursued for the JSSP by Rangsaritratsamee et al. (2004) '
           '(hybrid GA) and for flow shops by Katragjini et al. (2013). These works '
-          'mostly bundle the two objectives into one weighted-sum scalar '
-          '(Rangsaritratsamee et al., 2004; Katragjini et al., 2013), where '
-          'stability enters not as an independent mechanism but passively, as a '
-          'single evaluation term of the objective. '
+          'mostly treat stability passively—as one more evaluation term folded '
+          'into a (typically weighted-sum) objective (Rangsaritratsamee et al., '
+          '2004; Katragjini et al., 2013)—rather than as an independent mechanism. '
           'Of the two metaheuristic families—'
           'trajectory-based (single-solution) and population-based (Blum and Roli, 2003)—'
           'the solvers here are **predominantly population-based**, anchored in GAs.'),
