@@ -1,0 +1,31 @@
+シナリオ (N=8): la36S, ta21S, la40, la21, la36M, mt10, la36L, ta21L
+手法 (k=7): GA, ILS-baseline, ILS+PR, ILS+repair, Memetic-LS, Memetic+repair, Memetic+PR
+
+=== 高安定 HV の Friedman 平均順位（列=分割パーセンタイル, 小さいほど良い）===
+  method          P25       P33       P50       P67       P75       
+  GA              6.38     6.31     6.38     6.56*    6.56*    
+  ILS-baseline    3.56     3.44     3.44     3.88     3.94     
+  ILS+PR          2.69*    2.88*    2.75     2.69*    2.81*    
+  ILS+repair      2.88*    2.62     2.62     2.94*    3.00*    
+  Memetic-LS      6.50     6.69     6.62     6.44*    6.44*    
+  Memetic+repair  3.31     3.31     3.31     2.75*    2.75*    
+  Memetic+PR      2.69*    2.75*    2.88     2.75     2.50*    
+
+  Friedman p / Kendall W:
+    P25: p=1.987e-07, W=0.871
+    P33: p=1.175e-07, W=0.896
+    P50: p=7.435e-07, W=0.811
+    P67: p=2.37e-06, W=0.757
+    P75: p=4.135e-06, W=0.731
+
+=== 二分構造・順位頑健性の判定 ===
+  P25: ILS+PR > Memetic+PR > ILS+repair > Memetic+repair > ILS-baseline > GA > Memetic-LS
+  P33: ILS+repair > Memetic+PR > ILS+PR > Memetic+repair > ILS-baseline > GA > Memetic-LS
+  P50: ILS+repair > ILS+PR > Memetic+PR > Memetic+repair > ILS-baseline > GA > Memetic-LS
+  P67: ILS+PR > Memetic+repair > Memetic+PR > ILS+repair > ILS-baseline > Memetic-LS > GA
+  P75: Memetic+PR > Memetic+repair > ILS+PR > ILS+repair > ILS-baseline > Memetic-LS > GA
+
+  最下位2手法: P25={Memetic-LS, GA}; P33={Memetic-LS, GA}; P50={Memetic-LS, GA}; P67={Memetic-LS, GA}; P75={Memetic-LS, GA}
+  → 最下位2手法は全閾値で不変（GA, Memetic-LS）
+  → 上位5手法のメンバーは全閾値で不変
+  → 完全順序は閾値で変動（上位群内で入れ替わり）
