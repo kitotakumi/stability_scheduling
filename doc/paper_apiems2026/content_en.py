@@ -480,11 +480,6 @@ BLOCKS = [
           'truncates after a few moves and updates the incumbent immediately. Hence: '
           'Memetic+PR when final quality is paramount, repair when the budget is '
           'tight and anytime performance matters.'),
-    ('p', '**Threshold robustness.** Since P50 is pooled over the compared '
-          'methods, we swept it over P25–P75: the comparisons behind H1 and H2 '
-          'never reverse at any threshold (H2\'s population-side gains hold at '
-          '$p$=0.001 throughout; H1\'s complete separation holds over P33–P67 and '
-          'only weakens—without reversing—at the extremes).'),
     ('h2', '4.4 Overall Scoreboard and Integration of Results'),
     ('p', 'We survey the structures established by H1 and H2 on the **overall '
           'scoreboard** of 7 methods × 8 scenarios × 3 metrics (Figure 6), '
@@ -521,6 +516,14 @@ BLOCKS = [
      '(green = best, 0%); each panel sorted by its own Friedman average rank. The '
      'right-most column reports ARPD% as mean/median across scenarios.',
      'full'),
+    ('p', '**Threshold robustness.** Since the high-stability threshold P50 is '
+          'pooled over the compared methods, we swept it over P25–P75: this '
+          'dichotomy—GA and plain Memetic-LS in the bottom group, the ILS family '
+          'and operator-equipped Memetic on top—holds at every threshold, and the '
+          'H1/H2 comparisons behind it never reverse (H2\'s population-side gains '
+          'hold at $p$=0.001 throughout; H1\'s complete separation holds over '
+          'P33–P67, keeping its direction at the extremes). Only the ordering '
+          'within the closely packed top group shifts with the threshold.'),
     ('p', '**[Exploratory observation] Union-HV winner and the rescheduling ratio.** '
           'The union HV winner corresponds to $ρ$, splitting at around 50%: ILS '
           'below, Memetic at mid-to-high (on the same la36 ladder 27/54/73%, ILS → '
@@ -542,7 +545,7 @@ BLOCKS = [
           'scenarios.'),
     ('p', '**Divergent vs. convergent.** ILS (spreading outward from $S_p$) and '
           'Memetic+PR (pulling a scattered population toward $S_p$) reach similar '
-          'final Pareto quality, but ILS holds a good '
+          'final Pareto quality from opposite directions, but ILS holds a good '
           'incumbent early while Memetic+PR ramps up after a warm-up; AOC aggregates '
           'this crossing on a log-time '
           'axis, reflecting early performance—hence the ILS family\'s clear lead '
