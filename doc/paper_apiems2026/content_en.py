@@ -377,7 +377,7 @@ BLOCKS = [
           'scenarios, not tuned per instance.'),
     ('p', '**Environment and reproducibility.** AMD Ryzen 5 7530U; Python 3.12 '
           '(NumPy, DEAP, SciPy). All seeds fixed.'),
-    ('h2', '4.2 Result 1: Trajectory (ILS) vs. Population (Memetic) (H1)'),
+    ('h2', '4.2 Trajectory vs. Population (H1)'),
     ('p', 'To avoid operator confounds, we compare ILS-baseline and Memetic-LS with '
           'the local search aligned. The '
           'high-stability gap is therefore attributable to '
@@ -397,7 +397,7 @@ BLOCKS = [
      '|$δ$|=1.0, significance survives Holm correction over the 8-scenario family '
      'everywhere.'),
     ('p_noindent',
-     '• **AOC: ILS significantly ahead in 6/8** (exceptions: la36S and mt10).'),
+     '• **AOC: ILS significantly ahead in 6/8** (except la36S, mt10).'),
     ('fig', 'fig_claim1_en.png',
      'Figure 2: H1—(a) union HV is comparable, but (b) high-stability HV favors ILS '
      'in all 8 scenarios, and (c) AOC favors ILS in 6/8 (ILS-baseline vs. Memetic-LS, '
@@ -420,7 +420,7 @@ BLOCKS = [
      'PF; green: Memetic PF. Four representative scenarios; the rest are in the '
      'repository.',
      'full'),
-    ('h2', '4.3 Result 2: Asymmetric Effects of the PR/repair Operators (H2)'),
+    ('h2', '4.3 Asymmetric Operator Effects (H2)'),
     ('p', 'We examine the high-stability HV gain from adding the operators to each '
           'baseline, by host (Figure 4).'),
     ('p_noindent',
@@ -590,15 +590,19 @@ BLOCKS = [
           'portable to both hosts, and **isolating its host-dependent asymmetry under '
           'control is the central contribution of this study**.'),
     ('p', '**Limitations.** (i) Results rest on n=10 (saturated main conclusions '
-          'are robust; borderline cases less so). (ii) The '
-          'rescheduling-ratio–union-HV-winner correspondence involves confounding '
-          'by $S_p$ quality and dependence on the stability representation, and stays '
-          'exploratory. '
-          '(iii) Stability is measured only by permutation deviation; validity '
-          'under start-time (temporal) deviation is unverified (Section 3.1).'),
-    ('p', '**Future work.** Re-verification under start-time deviation (temporal '
-          'stability); extension to disruptions altering machine assignments (e.g., '
-          'breakdowns); integrating the scope lever with the operator lever (the '
+          'are robust; borderline cases less so). (ii) Stability is measured only by '
+          'permutation deviation; validity under start-time deviation is '
+          'unverified (Section 3.1). '
+          '(iii) H1 and H2 are established for delay-type disruptions that preserve '
+          'the operation set. Under disruptions that change the operation set itself—'
+          'such as rush-job insertion or job cancellation—$S_p$ ceases to be a '
+          'complete reference and the very definition of stability (deviation from '
+          '$S_p$, Eq. (1)) is altered, so whether the same asymmetry holds is outside '
+          'the scope of this study.'),
+    ('p', '**Future work.** Re-verification under start-time deviation; '
+          'extension to disruptions that change the operation set (e.g., '
+          'rush-job insertion); '
+          'integrating the scope lever with the operator lever (the '
           'inducing operators within the affected range); comparison with an '
           '$S_p$-biased crossover as an alternative population-side prescription (a '
           'direct test of the crossover-destructiveness reading of H1); and '
