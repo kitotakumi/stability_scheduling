@@ -242,7 +242,7 @@ BLOCKS = [
      'vicinity of $S_p$; (c) PR/repair pulls scattered solutions back toward '
      '$S_p$.',
      'full', 0.80),
-    ('h2', '3.3 Stability-Inducing Operators (PR and repair) and H2'),
+    ('h2', '3.3 Stability-Inducing Operators: PR/repair (H2)'),
     ('p', '**Path relinking (PR).** PR exploits the idea that good intermediate '
           'solutions lie on the path connecting two high-quality solutions; it is '
           'commonly combined with scatter search, linking solutions within an elite '
@@ -484,7 +484,7 @@ BLOCKS = [
           'methods, we swept it over P25–P75: none of the high-stability '
           'comparisons behind H1 and H2 reverses (H2\'s population-side gains '
           'hold at $p$=0.001 at every threshold; H1\'s complete separation holds '
-          'over P33–P67), and only the closely spaced top methods trade places.'),
+          'over P33–P67), and only the best among near-tied methods shifts.'),
     ('h2', '4.4 Overall Scoreboard and Integration of Results'),
     ('p', 'We survey the structures established by H1 and H2 on the **overall '
           'scoreboard** of 7 methods × 8 scenarios × 3 metrics (Figure 6), '
