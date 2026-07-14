@@ -481,10 +481,10 @@ BLOCKS = [
           'Memetic+PR when final quality is paramount, repair when the budget is '
           'tight and anytime performance matters.'),
     ('p', '**Threshold robustness.** Since P50 is pooled over the compared '
-          'methods, we swept it over P25–P75: none of the high-stability '
-          'comparisons behind H1 and H2 reverses (H2\'s population-side gains '
-          'hold at $p$=0.001 at every threshold; H1\'s complete separation holds '
-          'over P33–P67), and only the best among near-tied methods shifts.'),
+          'methods, we swept it over P25–P75: the comparisons behind H1 and H2 '
+          'never reverse at any threshold (H2\'s population-side gains hold at '
+          '$p$=0.001 throughout; H1\'s complete separation holds over P33–P67 and '
+          'only weakens—without reversing—at the extremes).'),
     ('h2', '4.4 Overall Scoreboard and Integration of Results'),
     ('p', 'We survey the structures established by H1 and H2 on the **overall '
           'scoreboard** of 7 methods × 8 scenarios × 3 metrics (Figure 6), '
