@@ -34,18 +34,18 @@ pip install numpy scipy matplotlib deap
 
 ## リポジトリ構成
 
-### コアモジュール（リポジトリ直下）
+### コアモジュール（[`src/`](src/)）
 
 | ファイル | 役割 |
 | --- | --- |
-| [`job_shop_scheduling.py`](job_shop_scheduling.py) | 問題定義（`problems/*.txt`）とシナリオ（`scenarios/*.json`）の読み込み・保持 |
-| [`gantt_chart_operation.py`](gantt_chart_operation.py) | 遺伝子 ↔ ガントチャートのデコード／エンコード、外乱検出、リスケ対象の切り出し |
-| [`evaluation.py`](evaluation.py) | 共通の評価関数（安定性＝順列偏差、メイクスパン、正規化、重み付き目的関数）。GA/ILS 間の**公平な比較**を担保 |
-| [`genetic_operation.py`](genetic_operation.py) | 交叉（PPX）・突然変異（inversion）・選択（トーナメント）・個体生成 |
-| [`ga_scheduling.py`](ga_scheduling.py) | GA ソルバー（ベースライン） |
-| [`ils_scheduling.py`](ils_scheduling.py) | ILS ソルバー（N5 近傍局所探索、Taillard 加速、repair/PR キック） |
-| [`memetic_scheduling.py`](memetic_scheduling.py) | Memetic GA ソルバー（GA 広域探索 × N5 局所探索 × repair/PR キック） |
-| [`analysis.py`](analysis.py) | ガントチャート・散布図などの可視化 |
+| [`job_shop_scheduling.py`](src/job_shop_scheduling.py) | 問題定義（`problems/*.txt`）とシナリオ（`scenarios/*.json`）の読み込み・保持 |
+| [`gantt_chart_operation.py`](src/gantt_chart_operation.py) | 遺伝子 ↔ ガントチャートのデコード／エンコード、外乱検出、リスケ対象の切り出し |
+| [`evaluation.py`](src/evaluation.py) | 共通の評価関数（安定性＝順列偏差、メイクスパン、正規化、重み付き目的関数）。GA/ILS 間の**公平な比較**を担保 |
+| [`genetic_operation.py`](src/genetic_operation.py) | 交叉（PPX）・突然変異（inversion）・選択（トーナメント）・個体生成 |
+| [`ga_scheduling.py`](src/ga_scheduling.py) | GA ソルバー（ベースライン） |
+| [`ils_scheduling.py`](src/ils_scheduling.py) | ILS ソルバー（N5 近傍局所探索、Taillard 加速、repair/PR キック） |
+| [`memetic_scheduling.py`](src/memetic_scheduling.py) | Memetic GA ソルバー（GA 広域探索 × N5 局所探索 × repair/PR キック） |
+| [`analysis.py`](src/analysis.py) | ガントチャート・散布図などの可視化 |
 
 **探索手法の全体像（7 手法）**: `GA` / `ILS-baseline` / `ILS+repair` / `ILS+PR` /
 `Memetic-LS` / `Memetic+repair` / `Memetic+PR`。
@@ -57,7 +57,7 @@ GA 遺伝子（GT 法のジョブ列）と ILS の machine-order 表現を相互
 - [`scenarios/`](scenarios/) — 初期ガントチャートと外乱後ガントチャートの組（`*.json`）。
   外乱規模の異なる `la36_small/middle/large`、`ta21_high` などを含む
 - [`tools/`](tools/) — シナリオ生成（`generate_scenario.py`, `generate_multi_delay_scenario.py`）、
-  headroom 測定（`measure_headroom.py`）などの補助スクリプト
+  headroom 測定（`measure_headroom.py`）、単発動作確認（`test_taillard_rerun.py`）などの補助スクリプト
 
 ### 実験
 
@@ -104,7 +104,7 @@ python figures_v3.py            # 図の生成
 ### 単発の動作確認
 
 ```bash
-python test_taillard_rerun.py   # mt10 で ILS を逐次実行し挙動確認
+python tools/test_taillard_rerun.py   # mt10 で ILS を逐次実行し挙動確認
 ```
 
 ---

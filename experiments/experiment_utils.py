@@ -6,6 +6,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 
@@ -163,6 +164,7 @@ def run_memetic(weights, seed, ngen, norm_params=None, problem_name=None, scenar
     import sys as _sys
     import os as _os
     _sys.path.insert(0, _os.path.join(_os.path.dirname(__file__), '..'))
+    _sys.path.insert(0, _os.path.join(_os.path.dirname(__file__), '..', 'src'))
     from memetic_scheduling import MemeticGASolver
 
     jm_table, fixed_gantt, reschedule_gantt, reschedule_time = get_problem(

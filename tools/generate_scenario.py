@@ -17,6 +17,7 @@ import random
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import job_shop_scheduling
 import gantt_chart_operation

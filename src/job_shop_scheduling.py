@@ -12,9 +12,12 @@ import json
 import os
 
 # problems/ と scenarios/ のデフォルトパス
+# 本モジュールは src/ 配下にあるが、データ (problems/, scenarios/) は
+# リポジトリルート直下に置いているため、src/ の親を基準に解決する。
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PROBLEMS_DIR = os.path.join(_BASE_DIR, "problems")
-SCENARIOS_DIR = os.path.join(_BASE_DIR, "scenarios")
+_REPO_ROOT = os.path.dirname(_BASE_DIR)
+PROBLEMS_DIR = os.path.join(_REPO_ROOT, "problems")
+SCENARIOS_DIR = os.path.join(_REPO_ROOT, "scenarios")
 
 
 def load_problem(problem_name, problems_dir=None):

@@ -25,6 +25,7 @@ import statistics as st
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, '..'))
+sys.path.insert(0, os.path.join(_HERE, '..', 'src'))
 
 import job_shop_scheduling
 import gantt_chart_operation

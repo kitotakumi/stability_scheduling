@@ -9,8 +9,8 @@ import random
 import json
 import time
 
-sys.path.insert(0, os.path.dirname(__file__))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'experiments'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'experiments'))
 
 import job_shop_scheduling
 import gantt_chart_operation
