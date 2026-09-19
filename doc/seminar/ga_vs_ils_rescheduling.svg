@@ -24,8 +24,8 @@
   }
 </style>
 
-<text x="200.00" y="20" class="ptitle" text-anchor="middle">GA（遺伝的アルゴリズム）</text>
-<text x="620.00" y="20" class="ptitle" text-anchor="middle">ILS（反復局所探索）</text>
+<text x="200.00" y="20" class="ptitle" text-anchor="middle">集団ベース（GA・Memetic）</text>
+<text x="620.00" y="20" class="ptitle" text-anchor="middle">軌道ベース（ILS）</text>
 
 <g transform="translate(0, 30)">
   <rect class="panel-bg" x="0" y="0" width="400" height="360" rx="12"/>

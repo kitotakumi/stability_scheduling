@@ -28,3 +28,6 @@ env/
 # 参考文献PDF（著作権物のため git 管理外）
 *.pdf
 doc/references/
+
+# 助成金申請（個人情報を含む書類のため git 管理外）
+doc/paper_apiems2026/助成金申請/

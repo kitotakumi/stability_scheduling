@@ -296,7 +296,7 @@ def fig_mech_pr():
 # ---------- Fig: scoreboard — 3 stacked heatmap panels ----------
 
 SB_TITLES = {'union': '(a) Union HV (overall quality)',
-             'highstab': '(b) High-stability HV (filling near $S_p$)',
+             'highstab': '(b) High-stability HV (quality near $S_p$)',
              'aoc': '(c) AOC (anytime performance)'}
 
 

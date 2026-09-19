@@ -1,21 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""APIEMS 2026 原稿 v2 の図 1〜5 をすべて生成する。
+"""APIEMS 2026 原稿 v2 の図 1〜4 をすべて生成する。
 
 データソースは main_v1 の _summary_data.pkl と raw JSON、ヘルパーは analyze_v3（v1 の
-make_figures_en.py と同じ）。本ディレクトリだけで v2 の図が揃うよう、図 4・図 5 も含める:
+make_figures_en.py と同じ）。本ディレクトリだけで v2 の図が揃う:
 
-  fig_v2_concept_en.png      図1 (D, MS) 平面の模式図（H1/H2 を結果と同じ座標系で描く）
-  fig_v2_front_en.png        図2 実 Pareto フロント（ta21S / ta21L, ILS-b・Mem-LS・Mem+PR）
-  fig_v2_interaction_en.png  図3 演算子 none/repair/PR × 探索構造の高安定 HV
-  fig_v2_mech_pr_en.png      図4 PR 経路統計（始点ごとの経路長 d0 と経路上に改善解が残る割合）
-  fig_v2_scoreboard_en.png   図5 総合スコアボード（7 手法 × 8 シナリオ × 3 指標）
+  fig_v2_concept_en.png             図1 (D, MS) 平面の模式図（H1/H2 を結果と同じ座標系で描く）
+  fig_v2_front_en.png               図2 実 Pareto フロント（ta21S / ta21L, ILS-b・Mem-LS・Mem+PR）
+  fig_v2_interaction_en.png         図3 演算子 none/repair/PR × 探索構造の高安定 HV
+  fig_v2_anytime_en.png             図4 アンタイム統合 HV 曲線（ta21S / la36L, 6 手法）
 
-訪問密度差マップ（fig_density → fig_v2_density_en.png）は本文で使わない検討用で、既定の実行では生成しない。
+検討用（本文では使わない。--review で生成）:
+  fig_v2_interaction_union_aoc_en.png  統合 HV・AOC の交互作用図（RPD%。図4 の旧案）
+  fig_v2_scoreboard_en.png   総合スコアボード（7 手法 × 8 シナリオ × 3 指標のヒートマップ）
+  fig_v2_mech_pr_en.png      PR 経路統計（始点ごとの経路長 d0 と経路上に改善解が残る割合）
+  fig_v2_density_en.png      訪問密度差マップ（fig_density。--review でも生成しない）
 出力先は本スクリプトと同じディレクトリの figures/。
 
-usage: python make_figures_v2.py            # 図 1〜5
+usage: python make_figures_v2.py            # 図 1〜4
+       python make_figures_v2.py --review   # 検討用（統合HV/AOC交互作用図・スコアボード・PR 経路統計）
        python make_figures_v2.py --select   # 図 2 のシナリオ選定用シート（論文には載せない）
+       python make_figures_v2.py --gray     # 生成済みの図から白黒校正だけ作り直す
 """
 import os
 import sys
@@ -54,8 +59,15 @@ plt.rcParams.update({
 
 FULLW = 6.93  # 本文幅 (in): A4 - 左右余白, 2 段ぶち抜き
 
-C_ILS, C_MEM, C_MPR = 'tab:orange', 'tab:green', 'tab:brown'
-BAND_COLOR = 'gold'
+# 白黒印刷と色覚多様性に耐えるよう、意味は必ず 2 チャネル以上で表す:
+#   探索構造 = 色相 ＋ グレー明度 ＋ マーカー形状（ILS: 橙/○、Memetic: 緑/□、演算子の経路: 茶/◇）
+#   演算子   = 線種（なし: 実線、repair: 長破線、PR: 丸点線）
+# 明度は L601=0.299R+0.587G+0.114B（PIL の convert('L') と同じ式）で、3 色の間隔を 34 以上あける。
+# グレースケール版を figures/_gray/ に自動出力するので、投稿前にそちらで可読性を確認する。
+C_ILS, C_MEM, C_MPR = 'tab:orange', '#1b7837', '#4a2c17'  # L601 = 152 / 85 / 51
+M_ILS, M_MEM, M_MPR = 'o', 's', 'D'
+# 高安定領域: 塗りは L601=231（紙白より 9.5% 暗い）。alpha ではなく実色で置き、白黒でも面として残す
+BAND_FACE, BAND_EDGE = '#f2e7c8', '#8a6d1f'
 
 
 def load_pkl():
@@ -132,9 +144,10 @@ def fig_concept():
     xs = np.linspace(0, 1, 200)
 
     def base(ax, title):
-        ax.axvspan(0, band_hi, color=BAND_COLOR, alpha=0.18, lw=0)
+        ax.axvspan(0, band_hi, facecolor=BAND_FACE, lw=0, zorder=0)
+        ax.axvline(band_hi, color=BAND_EDGE, lw=0.7, ls=':', zorder=1)
         ax.text(band_hi / 2, 0.075, 'high-stability\nregion (near $S_p$)', ha='center', va='bottom',
-                fontsize=6.5, color='darkgoldenrod')
+                fontsize=6.5, color=BAND_EDGE)
         ax.plot(xs, _front_curve(xs), ls='--', color='gray', lw=0.9, zorder=1)
         # 回転テキストは rotation_mode='anchor' で基準点を文頭に固定し、破線のすぐ下に沿わせる
         ax.text(0.52, _front_curve(0.52) - 0.02, 'attainable trade-off front', fontsize=6.2,
@@ -165,8 +178,8 @@ def fig_concept():
     my = mem_front(mx) + rng.uniform(0.045, 0.185, 15)
 
     def draw_mem(ax_, a_front, a_dom):
-        ax_.scatter(mx, my, s=10, color=C_MEM, alpha=a_dom, zorder=3)
-        ax_.scatter(mem_fx, mem_fy, s=12, color=C_MEM, alpha=a_front, zorder=4)
+        ax_.scatter(mx, my, s=9, marker=M_MEM, color=C_MEM, alpha=a_dom, zorder=3)
+        ax_.scatter(mem_fx, mem_fy, s=12, marker=M_MEM, color=C_MEM, alpha=a_front, zorder=4)
 
     # (a) 演算子なし: H1
     ax = axes[0]
@@ -186,15 +199,15 @@ def fig_concept():
                          zorder=5)
 
     def ils_chain(ax_, alpha):
-        ax_.scatter(ix, iy, s=16, color=C_ILS, alpha=alpha, zorder=4)
+        ax_.scatter(ix, iy, s=16, marker=M_ILS, color=C_ILS, alpha=alpha, zorder=4)
         arrow_chain(ax_, np.r_[0.0, ix], np.r_[0.95, iy], C_ILS, alpha)  # 星（S_RSR）から出発
 
     draw_mem(ax, 0.95, 0.55)
     ils_chain(ax, 1.0)
-    ax.text(0.03, 0.50, 'ILS (trajectory search):\nsmall moves from $S_p$\nfill the region step by step',
+    ax.text(0.03, 0.50, 'ILS (trajectory search, circles):\nsmall moves from $S_p$\nfill the region step by step',
             fontsize=6.5, color=C_ILS, ha='left', va='top')
-    ax.text(0.42, 0.93, 'Memetic (population search): offspring scattered by\ncrossover; stops short of small $D$ and is clearly worse\nin $MS$ where it does reach; low $MS$ only at large $D$',
-            fontsize=6.5, color='darkgreen', ha='left', va='top')
+    ax.text(0.42, 0.93, 'Memetic (population search, squares): offspring scattered\nby crossover; stops short of small $D$ and is clearly worse\nin $MS$ where it does reach; low $MS$ only at large $D$',
+            fontsize=6.5, color=C_MEM, ha='left', va='top')
 
     # (b) 集団に演算子を載せる: H2
     ax = axes[1]
@@ -207,10 +220,11 @@ def fig_concept():
     # 経路上の解は Memetic 自身のフロントより下（良い側）に来るようオフセットを決める
     pr_x = np.array([0.62, 0.50, 0.39, 0.29, 0.20, 0.115])
     pr_y = _front_curve(pr_x) + np.array([0.210, 0.115, 0.150, 0.130, 0.165, 0.032])
-    ax.scatter(pr_x[1:], pr_y[1:], s=13, color=C_MPR, zorder=5)
-    ax.scatter([pr_x[0]], [pr_y[0]], s=16, color=C_MEM, edgecolor='black', lw=0.5, zorder=5)
+    ax.scatter(pr_x[1:], pr_y[1:], s=15, marker=M_MPR, color=C_MPR, zorder=5)
+    ax.scatter([pr_x[0]], [pr_y[0]], s=16, marker=M_MEM, color=C_MEM, edgecolor='black', lw=0.5,
+               zorder=5)
     arrow_chain(ax, pr_x, pr_y, C_MPR)
-    ax.text(0.40, 0.93, 'Operator: swap the current solution back toward $S_p$,\nopposite to the ILS direction;\nsolutions on the path (brown) fill the region',
+    ax.text(0.40, 0.93, 'Operator (diamonds): swap the current solution back toward\n$S_p$, opposite to the ILS direction;\nsolutions on the path fill the region',
             fontsize=6.5, color=C_MPR, ha='left', va='top')
     ax.text(0.03, 0.46, 'ILS: region already filled,\nlittle left to add',
             fontsize=6.5, color=C_ILS, ha='left', va='top')
@@ -225,18 +239,25 @@ def fig_concept():
 
 # ---------- 図2: 実 Pareto フロント（ta21 対） ----------
 
-FRONT_PROBS = ['ta21_ta21_delay97', 'ta21_ta21_high']  # ta21 対（同一 S_p, ρ 32%→82%）
+FRONT_PROBS = ['ta21_ta21_delay97', 'ta21_ta21_high']  # ta21 対（同一 S_p, 外乱の規模のみ異なる）
 SHOW_ALL_TRIALS = False  # True にすると中央値 trial 以外の非劣解も薄い点で重ねる（本稿では非表示）
-FRONT_METHODS = [('ils_baseline', 'ILS-baseline', C_ILS, 'o', 2.3, '-'),
-                 ('memetic_ls', 'Memetic-LS', C_MEM, 's', 1.4, '-'),
-                 ('memetic_pr', 'Memetic+PR', C_MPR, '^', 1.1, '--')]
+# 色＋マーカー形状で探索構造（橙/○: ILS、緑/□: Memetic）、線種で演算子（実線: なし、点線: PR）。
+# 演算子なしは太く淡い帯、＋PR は細く濃い点線として帯の上に重ねる。主役は「＋PR がさらに $S_p$ 側へ
+# 踏み込むか」なので、参照側の 2 手法にインクを使わず、重なる区間は帯の中を点線が走る形で読ませる。
+# 非劣解の数は演算子なしの 2 手法でしか数えないので、マーカーもその 2 手法にだけ付ける。
+# ＋PR の 2 本は高安定領域でしばしば完全に重なるので、同じ点線パターンを半周期ずらして交互に出す。
+PR_DASH = (1.2, 2.4)
+FRONT_METHODS = [('ils_baseline', 'ILS-baseline', C_ILS, M_ILS, 3.0, '-'),
+                 ('ils_pr', 'ILS+PR', C_ILS, None, 1.7, (0.0, PR_DASH)),
+                 ('memetic_ls', 'Memetic-LS', C_MEM, M_MEM, 3.0, '-'),
+                 ('memetic_pr', 'Memetic+PR', C_MEM, None, 1.7, (1.8, PR_DASH))]
 
 
 def _draw_front_panel(ax, S, prob, panel_tag=None, band_label='wide', legend=True,
                       star_label=True):
     """1 シナリオ分の実フロントパネルを描く（fig_front と選定用シートで共用）。
 
-    x 軸は中央値 trial のフロント（3 手法）の最大 D で切る。全 trial の薄い点はその範囲内のみ表示
+    x 軸は中央値 trial のフロント（全手法）の最大 D で切る。全 trial の薄い点はその範囲内のみ表示
     （範囲外に伸びる一部 trial の非劣解を追って軸を伸ばすと、右側が情報のない横線だけになるため）。
     """
     thr = S[prob]['thresholds']
@@ -252,18 +273,21 @@ def _draw_front_panel(ax, S, prob, panel_tag=None, band_label='wide', legend=Tru
     xlim_hi = xmax_med * 1.08
     for pfs, pf, label, color, mk, lw, ls in drawn:
         ymin = min(ymin, pf[:, 0].min())
-        if SHOW_ALL_TRIALS:
+        if SHOW_ALL_TRIALS and mk:
             allpf = np.concatenate([p for p in pfs if len(p)])
             allpf = allpf[allpf[:, 1] <= xlim_hi]
             ymin = min(ymin, allpf[:, 0].min())
             ax.scatter(allpf[:, 1], allpf[:, 0], s=7, marker=mk, color=color, alpha=0.22,
                        lw=0, zorder=2)
         ax.step(np.r_[pf[:, 1], xlim_hi], np.r_[pf[:, 0], pf[-1, 0]], where='post',
-                color=color, lw=lw, ls=ls, zorder=3)
-        ax.scatter(pf[:, 1], pf[:, 0], s=16, marker=mk, color=color, edgecolor='black',
-                   lw=0.4, zorder=4, label=label)
-    ax.axvspan(-1e9, p50, color=BAND_COLOR, alpha=0.18, lw=0, zorder=0)
-    ax.axvline(p50, color='darkgoldenrod', lw=0.7, ls=':', zorder=1)
+                color=color, lw=lw, ls=ls, alpha=0.40 if mk else 1.0,
+                solid_capstyle='butt', dash_capstyle='round',
+                zorder=3 if mk else 5, label=None if mk else label)
+        if mk:
+            ax.scatter(pf[:, 1], pf[:, 0], s=16, marker=mk, color=color, edgecolor='black',
+                       lw=0.3, zorder=6, label=label)
+    ax.axvspan(-1e9, p50, facecolor=BAND_FACE, lw=0, zorder=0)
+    ax.axvline(p50, color=BAND_EDGE, lw=0.8, ls=':', zorder=1)
     ax.plot([0], [init_ms], marker='*', ms=9, color='black', zorder=6)
     span = init_ms - ymin
     if star_label:
@@ -273,10 +297,10 @@ def _draw_front_panel(ax, S, prob, panel_tag=None, band_label='wide', legend=Tru
     ax.set_ylim(ymin - 0.06 * span, init_ms + 0.10 * span)
     if band_label == 'wide':
         ax.text(p50 / 2, ymin - 0.045 * span, 'high-stability region ($D<P_{50}$)',
-                ha='center', va='bottom', fontsize=6.2, color='darkgoldenrod')
+                ha='center', va='bottom', fontsize=6.2, color=BAND_EDGE)
     elif band_label == 'narrow':
         ax.text(p50 * 0.2, ymin - 0.04 * span, 'high-stab. ($D<P_{50}$)',
-                ha='center', va='bottom', fontsize=5.8, color='darkgoldenrod', rotation=90)
+                ha='center', va='bottom', fontsize=5.8, color=BAND_EDGE, rotation=90)
     tag = f'({panel_tag}) ' if panel_tag else ''
     ax.set_title(f'{tag}{A.problem_short_tag(prob)} ($\\rho$={rho_pct(prob)}%, '
                  f'$P_{{50}}$={p50:.0f})', loc='left')
@@ -382,49 +406,101 @@ def fig_density(S, nbins=44):
 
 # ---------- 図3: 交互作用型プロット（none / repair / PR × ホスト） ----------
 
-HOSTS = [('ILS', ['ils_baseline', 'ils_repair', 'ils_pr'], C_ILS, 'o'),
-         ('Memetic', ['memetic_ls', 'memetic_repair', 'memetic_pr'], C_MEM, 's')]
+HOSTS = [('ILS', ['ils_baseline', 'ils_repair', 'ils_pr'], C_ILS, M_ILS),
+         ('Memetic', ['memetic_ls', 'memetic_repair', 'memetic_pr'], C_MEM, M_MEM)]
+
+
+def _rpd_scale(S, prob, key):
+    """そのシナリオの最良手法（全 7 手法の trial 中央値の最大）を返す。RPD%=(1-v/best)*100 の基準。
+
+    表 2 の ARPD% と同じ基準にそろえるため、図に描かない GA も含めて最良をとる
+    （実データでは GA が最良になるシナリオはないので、描画対象 6 手法での最良と一致する）。
+    """
+    meds = [np.median(np.asarray(v, float)) for v in S[prob][key].values() if len(v)]
+    return max(meds)
+
+
+def _interaction_block(axes, S, probs, key, ylabel, legend_loc='lower right',
+                       norm='abs', ylim=None):
+    """2×4 のパネル（シナリオ×1）に、演算子 none/repair/PR を横軸、構造を線として指標 key を描く。
+
+    点は trial 中央値、ひげは四分位範囲。記号は演算子なしに対する両側 Mann–Whitney U
+    （trial 間の対応は乱数シード番号だけで結果は連動しないため、対応なし検定）。検定は
+    どちらの norm でも生の trial 値で行う（RPD 変換はシナリオ内で単調なので順位は不変）。
+
+    norm='abs': 指標の生値。縦軸は 0 始まり（高安定 HV のように「0＝届いていない」が
+        意味を持つ指標向け）。
+    norm='rpd': そのシナリオの最良手法からの相対偏差 RPD%（0＝最良）。縦軸を反転して
+        上を良とし、全パネルで同じ範囲を使う。統合 HV・AOC のように全手法が同程度の
+        絶対値に密集する指標では、0 始まりの生値だと数 % の差が潰れるため。
+    """
+    x = np.arange(3)
+    inv = norm == 'rpd'
+    for i, (ax, prob) in enumerate(zip(axes.flat, probs)):
+        per = S[prob][key]
+        best = _rpd_scale(S, prob, key) if inv else None
+        def t(v):  # noqa: E306  表示用の変換（RPD は単調減少なので四分位は入れ替わる）
+            return (1.0 - np.asarray(v, float) / best) * 100.0 if inv else np.asarray(v, float)
+        vals = {host: [np.asarray(per.get(k, []), float) for k in keys]
+                for host, keys, _c, _m in HOSTS}
+        meds = {host: t([np.median(v) for v in vs]) for host, vs in vals.items()}
+        stars = []  # 縦軸を決めてから描く（軸の縁にかかる記号を内側へ折り返すため）
+        for host, keys, color, mk in HOSTS:
+            med = meds[host]
+            lo = t([np.percentile(v, 75 if inv else 25) for v in vals[host]])
+            hi = t([np.percentile(v, 25 if inv else 75) for v in vals[host]])
+            ax.errorbar(x, med, yerr=[med - lo, hi - med], marker=mk, ms=4.2, color=color,
+                        mec='white', mew=0.5, lw=1.3, capsize=2, elinewidth=0.7, label=host)
+            other = next(m for h, m in meds.items() if h != host)
+            for j, k in enumerate(keys[1:], start=1):
+                p = mannwhitneyu(vals[host][j], vals[host][0], alternative='two-sided').pvalue
+                if p is not None and np.isfinite(p) and p < 0.05:
+                    # 記号は相手の線から遠い側（画面上で外側）に置き、線との重なりを避ける
+                    if med[j] != other[j]:
+                        above = (med[j] > other[j]) != inv
+                    else:
+                        above = host.startswith('Memetic')
+                    stars.append((x[j], med[j], above, color,
+                                  '*' if p >= 0.01 else ('**' if p >= 0.001 else '***')))
+        ax.set_title(f'{A.problem_short_tag(prob)} ($\\rho$={rho_pct(prob)}%)', fontsize=7.5)
+        ax.set_xticks(x)
+        ax.set_xticklabels(['none', 'repair', 'PR'])
+        ax.set_xlim(-0.4, 2.4)
+        if inv:
+            top = ylim if ylim else max(
+                float(np.max(t([np.median(np.asarray(per.get(k, [0.0]), float))
+                                for k in h[1]]))) for h in HOSTS)
+            ax.set_ylim(top * 1.30, -top * 0.22)  # 反転（0＝最良を上に）。上下に記号の余白
+        else:
+            ymax = max(float(np.max(np.asarray(per.get(k, [0.0]), float)))
+                       for h in HOSTS for k in h[1])
+            ax.set_ylim(0, ymax * 1.28)
+        lo_lim, hi_lim = ax.get_ylim()
+        span = abs(hi_lim - lo_lim)  # 軸の縁に近い記号は内側へ折り返す（下側は文字高のぶん広めに）
+        for xs, ys, above, color, txt in stars:
+            if above and abs(ys - hi_lim) < 0.08 * span:
+                above = False
+            elif not above and abs(ys - lo_lim) < 0.20 * span:
+                above = True
+            ax.annotate(txt, (xs, ys), xytext=(0, 3 if above else -8),
+                        textcoords='offset points', ha='center',
+                        va='bottom' if above else 'top', fontsize=6, color=color)
+        ax.tick_params(labelsize=6)
+        ax.yaxis.set_major_locator(plt.MaxNLocator(4))
+        ax.grid(axis='y', alpha=0.25)
+        if i % 4 == 0:
+            ax.set_ylabel(ylabel)
+        if i == 0 and legend_loc:
+            ax.legend(loc='lower left' if inv else legend_loc,
+                      frameon=False, handletextpad=0.3)
+    for ax in axes[1]:
+        ax.set_xlabel('Stability-inducing operator')
 
 
 def fig_interaction(S):
     probs = A.order_prob_labels(S.keys())
     fig, axes = plt.subplots(2, 4, figsize=(FULLW, 2.75))
-    x = np.arange(3)
-    for i, (ax, prob) in enumerate(zip(axes.flat, probs)):
-        high = S[prob]['highstab_hv_pt']
-        for host, keys, color, mk in HOSTS:
-            vals = [np.asarray(high.get(k, []), float) for k in keys]
-            med = np.array([np.median(v) for v in vals])
-            q1 = np.array([np.percentile(v, 25) for v in vals])
-            q3 = np.array([np.percentile(v, 75) for v in vals])
-            ax.errorbar(x, med, yerr=[med - q1, q3 - med], marker=mk, ms=3.2, color=color,
-                        lw=1.2, capsize=2, elinewidth=0.7, label=host)
-            # baseline に対する両側 Mann–Whitney U。
-            # trial 間の対応は乱数シード番号だけで結果は連動しないため、対応なし検定を使う
-            above = host.startswith('Memetic')
-            for j, k in enumerate(keys[1:], start=1):
-                p = mannwhitneyu(vals[j], vals[0], alternative='two-sided').pvalue
-                if p is not None and np.isfinite(p) and p < 0.05:
-                    ax.annotate('*' if p >= 0.01 else ('**' if p >= 0.001 else '***'),
-                                (x[j], med[j]), xytext=(0, 4 if above else -10),
-                                textcoords='offset points', ha='center',
-                                va='bottom' if above else 'top', fontsize=6, color=color)
-        ax.set_title(f'{A.problem_short_tag(prob)} ($\\rho$={rho_pct(prob)}%)', fontsize=7.5)
-        ax.set_xticks(x)
-        ax.set_xticklabels(['none', 'repair', 'PR'])
-        ax.set_xlim(-0.4, 2.4)
-        ymax = max(float(np.max(np.asarray(high.get(k, [0.0]), float)))
-                   for h in HOSTS for k in h[1])
-        ax.set_ylim(0, ymax * 1.28)
-        ax.tick_params(labelsize=6)
-        ax.yaxis.set_major_locator(plt.MaxNLocator(4))
-        ax.grid(axis='y', alpha=0.25)
-        if i % 4 == 0:
-            ax.set_ylabel('High-stability HV')
-        if i == 0:
-            ax.legend(loc='lower right', frameon=False, handletextpad=0.3)
-    for ax in axes[1]:
-        ax.set_xlabel('Stability-inducing operator')
+    _interaction_block(axes, S, probs, 'highstab_hv_pt', 'High-stability HV')
     fig.tight_layout(pad=0.4, h_pad=0.8, w_pad=0.8)
     out = os.path.join(OUT, 'fig_v2_interaction_en.png')
     fig.savefig(out, dpi=350)
@@ -432,7 +508,129 @@ def fig_interaction(S):
     print(' ->', out)
 
 
-# ---------- 図4: PR 経路統計（構造差と非対称の機序） ----------
+# ---------- 検討用（本文では不使用）: 統合 HV と AOC の交互作用図（図4 の旧案） ----------
+
+def fig_interaction_union_aoc(S, norm='rpd', out=None):
+    probs = A.order_prob_labels(S.keys())
+    fig = plt.figure(figsize=(FULLW, 5.7))
+    subs = fig.subfigures(2, 1, hspace=0.06)
+    suffix = ' — RPD% from the best method (0 = best)' if norm == 'rpd' else ''
+    blocks = [('(a) Union HV (overall quality)', 'union_hv_pt', 'Union HV'),
+              ('(b) AOC (anytime performance)', 'aoc_pt', 'AOC')]
+    for sub, (title, key, ylabel) in zip(subs, blocks):
+        axes = sub.subplots(2, 4)
+        ylim = None
+        if norm == 'rpd':
+            # 行内（同じ指標の 8 パネル）で縦軸を共有し、シナリオ間で差の大きさを比較できるようにする
+            ylim = max(100.0 * (1 - np.median(np.asarray(S[p][key][k], float))
+                                / _rpd_scale(S, p, key))
+                       for p in probs for h in HOSTS for k in h[1])
+        _interaction_block(axes, S, probs, key, ylabel + (' RPD%' if norm == 'rpd' else ''),
+                           norm=norm, ylim=ylim)
+        sub.suptitle(title + suffix, fontsize=8.5, y=0.995)
+        sub.subplots_adjust(left=0.075, right=0.995, top=0.86, bottom=0.17,
+                            hspace=0.62, wspace=0.34)
+    out = out or os.path.join(OUT, 'fig_v2_interaction_union_aoc_en.png')
+    fig.savefig(out, dpi=350)
+    plt.close(fig)
+    print(' ->', out)
+
+
+# ---------- 図4: アンタイム統合 HV 曲線（統合 HV＝終点 と AOC＝立ち上がり を 1 枚で見せる） ----------
+
+# 線種で演算子、色＋明度で探索構造を表す（図2・図3 と同じ約束）。既定の '--' / ':' は白黒だと
+# 細って見分けにくいため、長破線と丸点線で signature を強くとる（パターンは線幅で自動的に拡大される）
+OP_LS = {'none': '-', 'repair': (0.0, (4.2, 1.5)), 'pr': (0.0, (0.55, 1.9))}
+ANYTIME_STYLE = [('ils_baseline', C_ILS, OP_LS['none']), ('ils_repair', C_ILS, OP_LS['repair']),
+                 ('ils_pr', C_ILS, OP_LS['pr']),
+                 ('memetic_ls', C_MEM, OP_LS['none']), ('memetic_repair', C_MEM, OP_LS['repair']),
+                 ('memetic_pr', C_MEM, OP_LS['pr'])]
+ANYTIME_PROBS = ('ta21_ta21_delay97', 'la36_la36_large')
+RAW_PAT = __import__('re').compile(r'__(w\d+_\d+)__t(\d+)\.json$')
+
+
+def _runs_by_trial(prob, method):
+    """{trial: {w_label: data}} を返す。"""
+    out = {}
+    for p in glob.glob(os.path.join(RESULTS, prob, 'raw', f'{method}__*.json')):
+        m = RAW_PAT.search(os.path.basename(p))
+        if not m:
+            continue
+        out.setdefault(int(m.group(2)), {})[m.group(1)] = json.load(open(p, encoding='utf-8'))
+    return out
+
+
+def _anytime_curves(prob, methods, n_t=40, mode='union'):
+    """各手法のアンタイム HV 曲線を trial ごとに作り、中央値と四分位を返す。
+
+    mode='union': 時刻 t までに 10 重みの探索が訪問した点をすべて合併した HV(t)。
+        終点が per-trial 統合 HV（表 2・本文の統合 HV）に一致する。
+    mode='mean': 各重みの HV(t) を全重みで平均。AOC は各重みの HV(t) を対数時間で平均し
+        全重みで平均した値なので（§3.4）、この曲線の対数時間平均が AOC にあたる。
+    """
+    norm = A.make_norm(np.concatenate([all_points_raw(prob, m) for m in methods]))
+    runs = {m: _runs_by_trial(prob, m) for m in methods}
+    info = []
+    for m in methods:
+        hs, ps = [], []
+        for _t, by_w in sorted(runs[m].items()):
+            for _wl, d in sorted(by_w.items()):
+                hs.append(A.get_anytime(d))
+                ps.append(A.get_uea_points_xyt(d, 0))
+        info.append((m, hs, ps, 'ils', _baselines_of(next(iter(next(iter(runs[m].values())).values())))))
+    t_grid = A._build_t_grid(info, n_pts=n_t)
+    tl = t_grid.tolist()
+    out = {}
+    for m in methods:
+        bl_n = A.normalize_baseline(_baselines_of(next(iter(next(iter(runs[m].values())).values()))), norm)
+        per_trial = []
+        for _t, by_w in sorted(runs[m].items()):
+            hs = [A.get_anytime(d) for _wl, d in sorted(by_w.items())]
+            ps = [A.normalize_pts(A.get_uea_points_xyt(d, 0), norm)
+                  for _wl, d in sorted(by_w.items())]
+            if mode == 'union':  # 10 重みの点を合併（終点＝per-trial 統合 HV）
+                per_trial.append(np.asarray(
+                    A._worker_union_hv_curve((hs, ps, 'ils', tl, bl_n, A.NORM_REF)), float))
+            else:                # 各重みの HV(t) を全重み平均（対数時間平均＝AOC）
+                per_trial.append(np.mean(np.asarray(
+                    [A._worker_trial_hv_curve((h, p, 'ils', tl, bl_n, A.NORM_REF))
+                     for h, p in zip(hs, ps)], float), axis=0))
+        arr = np.asarray(per_trial, float)
+        out[m] = (np.median(arr, axis=0), np.percentile(arr, 25, axis=0),
+                  np.percentile(arr, 75, axis=0))
+    return t_grid, out
+
+
+def fig_anytime(S, probs=ANYTIME_PROBS, band=False, mode='union', out=None):
+    # band=True で演算子なし 2 手法の四分位範囲を重ねる（検討用。本稿では中央値のみ）
+    methods = [k for k, _c, _s in ANYTIME_STYLE]
+    fig, axes = plt.subplots(1, 2, figsize=(FULLW, 2.45))
+    for ax, prob, tag in zip(axes, probs, '(a) (b)'.split()):
+        t, cur = _anytime_curves(prob, list(dict.fromkeys(methods + ['ga'])), mode=mode)
+        for m, color, ls in ANYTIME_STYLE:
+            med, q1, q3 = cur[m]
+            ax.plot(t, med, color=color, ls=ls, lw=1.45, dash_capstyle='round',
+                    label=A.METHOD_LABELS.get(m, m))
+            if band and ls == '-':
+                ax.fill_between(t, q1, q3, color=color, alpha=0.13, lw=0)
+        ax.set_xscale('log')
+        ax.set_xlim(t[0], t[-1])
+        ax.set_ylim(0, None)
+        ax.set_xlabel('CPU time (s, log)')
+        ax.set_title(f'{tag} {A.problem_short_tag(prob)} ($\\rho$={rho_pct(prob)}%)', fontsize=8)
+        ax.grid(alpha=0.25)
+        ax.tick_params(labelsize=6.5)
+    axes[0].set_ylabel('Union HV' if mode == 'union' else 'HV (mean over weights)')
+    axes[1].legend(fontsize=5.8, frameon=False, loc='lower right', ncol=2,
+                   handlelength=2.9, handletextpad=0.4, columnspacing=0.8)
+    fig.tight_layout(pad=0.4, w_pad=1.0)
+    out = out or os.path.join(OUT, 'fig_v2_anytime_en.png')
+    fig.savefig(out, dpi=350)
+    plt.close(fig)
+    print(' ->', out)
+
+
+# ---------- 検討用（本文では不使用）: PR 経路統計（始点ごとの経路長と改善解が残る割合） ----------
 
 ILS_FIRST_KICK, ILS_LATER_KICK = 400, 10  # 表 1: 無改善 400 反復で初回、以降は 10 反復
 # シナリオ名ラベルの位置 (dx, dy [pt], ha)。点が密集する d0≈7〜13 で重ならないよう個別に置く
@@ -538,7 +736,7 @@ def fig_mech_pr():
     print(' ->', out)
 
 
-# ---------- 図5: 総合スコアボード（3 指標のヒートマップを縦に 3 段） ----------
+# ---------- 検討用（本文では不使用）: 総合スコアボード（3 指標のヒートマップを縦に 3 段） ----------
 
 SB_TITLES = {'union': '(a) Union HV (overall quality)',
              'highstab': '(b) High-stability HV (quality near $S_p$)',
@@ -627,14 +825,38 @@ def fig_scoreboard(S):
     print(' ->', out)
 
 
+# ---------- 白黒校正: 生成済みの図をグレースケールに落として figures/_gray/ に置く ----------
+
+def make_gray_proofs():
+    """投稿用の図はカラー 1 種類だけ作り、白黒での可読性はこの校正で確認する。
+
+    PIL の convert('L') は L601=0.299R+0.587G+0.114B で、モノクロ印刷のグレー変換と同じ式。
+    """
+    from PIL import Image
+    gdir = os.path.join(OUT, '_gray')
+    os.makedirs(gdir, exist_ok=True)
+    for src in sorted(glob.glob(os.path.join(OUT, 'fig_v2_*.png'))):
+        dst = os.path.join(gdir, os.path.basename(src))
+        Image.open(src).convert('RGB').convert('L').save(dst)
+        print(' ->', dst)
+
+
 if __name__ == '__main__':
+    if '--gray' in sys.argv:  # 生成済みの図から白黒校正だけ作り直す
+        make_gray_proofs()
+        sys.exit(0)
     S = load_pkl()
     if '--select' in sys.argv:
         fig_front_all8(S)
         sys.exit(0)
+    if '--review' in sys.argv:
+        fig_interaction_union_aoc(S)
+        fig_scoreboard(S)
+        fig_mech_pr()
+        sys.exit(0)
     fig_concept()
     fig_front(S)
     fig_interaction(S)
-    fig_mech_pr()
-    fig_scoreboard(S)
+    fig_anytime(S)
+    make_gray_proofs()
     print('done.')
