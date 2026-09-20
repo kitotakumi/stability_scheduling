@@ -69,20 +69,20 @@ def section_a(S, probs, methods=('ils_baseline', 'memetic_ls', 'memetic_pr')):
                 n_low = int(((d > 0) & (d < p50)).sum())
                 mind.append(pos.min()); low.append(n_low)
                 share.append(100 * n_low / len(pos))
-            print(f'{A.problem_short_tag(prob):7s}{p50:5.0f}  {M.A.METHOD_LABELS.get(m, m):13s}'
+            print(f'{A.problem_short_tag(prob):7s}{p50:5.0f}  {M.METHOD_LABELS.get(m, m):13s}'
                   f'{_fmt(mind):>12s}{_fmt(low):>20s}{_fmt(share, "{:.1f}"):>16s}')
             span[m]['mind'].append(np.median(mind)); span[m]['low'].append(np.median(low))
             span[m]['share'].append(np.median(share))
     print('  8 シナリオの trial 中央値の範囲:')
     for m in methods:
         s = span[m]
-        print(f'    {M.A.METHOD_LABELS.get(m, m):13s} min D {min(s["mind"]):.0f}-{max(s["mind"]):.0f} / '
+        print(f'    {M.METHOD_LABELS.get(m, m):13s} min D {min(s["mind"]):.0f}-{max(s["mind"]):.0f} / '
               f'distinct {min(s["low"]):.0f}-{max(s["low"]):.0f} / share {min(s["share"]):.1f}-{max(s["share"]):.1f}%')
 
 
 def section_b(S, probs, base='ils_baseline', ops=('memetic_pr', 'memetic_repair')):
     print('\n[B] §4.3 全域 HV: 演算子込み Memetic の ILS-baseline に対する差（trial 中央値の比, %）')
-    print(f'{"scen":7s}' + ''.join(f'{M.A.METHOD_LABELS.get(m, m):>18s}' for m in ops))
+    print(f'{"scen":7s}' + ''.join(f'{M.METHOD_LABELS.get(m, m):>18s}' for m in ops))
     for prob in probs:
         b = np.median(S[prob]['union_hv_pt'][base])
         cells = ''.join(f'{100 * (np.median(S[prob]["union_hv_pt"][m]) / b - 1):+17.1f}%' for m in ops)
@@ -179,12 +179,12 @@ def section_e(S, probs):
     for j, m in enumerate(TABLE_ORDER):
         cells = [f'{ar[j]:.2f} ／ {am[j]:.0f} ／ {nb[m]}'
                  for _k, (ar, _pos, am, _amed, _p, _W, nb) in cols.items()]
-        print(f'| {M.A.METHOD_LABELS.get(m, m)} | ' + ' | '.join(cells) + ' |')
+        print(f'| {M.METHOD_LABELS.get(m, m)} | ' + ' | '.join(cells) + ' |')
     print('  平均順位の小さい順: ' + '; '.join(
-        f'{METRIC_LABELS[k]} ' + ', '.join(M.A.METHOD_LABELS[TABLE_ORDER[j]]
+        f'{METRIC_LABELS[k]} ' + ', '.join(M.METHOD_LABELS[TABLE_ORDER[j]]
                                            for j in np.argsort(cols[k][0])) for k in cols))
     print('  ARPD% 中央値: ' + '; '.join(
-        f'{METRIC_LABELS[k]} ' + ', '.join(f'{M.A.METHOD_LABELS[m]} {cols[k][3][j]:.0f}'
+        f'{METRIC_LABELS[k]} ' + ', '.join(f'{M.METHOD_LABELS[m]} {cols[k][3][j]:.0f}'
                                            for j, m in enumerate(TABLE_ORDER)) for k in cols))
 
 
@@ -238,7 +238,7 @@ def export_csv(S, probs, path=None):
             for m in TABLE_ORDER:
                 vals = [np.asarray(S[prob][arr_key][m], float) for arr_key, _k in keys]
                 for t in range(len(vals[0])):
-                    f.write(f'{tag},{prob},{rho},{p50:.0f},{M.A.METHOD_LABELS[m]},{t},'
+                    f.write(f'{tag},{prob},{rho},{p50:.0f},{M.METHOD_LABELS[m]},{t},'
                             + ','.join(f'{v[t]:.6f}' for v in vals) + chr(10))
                     n += 1
     print(f'  -> {path}  ({n} 行 = {len(probs)} シナリオ x {len(TABLE_ORDER)} 手法 x 10 trial)')

@@ -41,6 +41,11 @@ CORE = os.path.normpath(os.path.join(HERE, '..', '..', 'experiments', 'core_comp
 sys.path.insert(0, CORE)
 import analyze_v3 as A  # noqa: E402
 
+# v2 論文だけの表示名。memetic は定義上すでに局所探索を含むため、演算子なしの版は
+# 軌道側の ILS-baseline と接尾辞を揃えて Memetic-baseline と呼ぶ（母艦の analyze_v3 側は従来表記のまま）。
+METHOD_LABELS = dict(A.METHOD_LABELS)
+METHOD_LABELS['memetic_ls'] = 'Memetic-baseline'
+
 RESULTS = os.path.join(CORE, 'results', 'main_v1')
 OUT = os.path.join(HERE, 'figures')
 os.makedirs(OUT, exist_ok=True)
@@ -275,7 +280,7 @@ def _pr_dash(lw, phase=0.0):
 PR_LW_ILS, PR_LW_MEM = 2.3, 1.5
 FRONT_METHODS = [('ils_baseline', 'ILS-baseline', C_ILS, M_ILS, 3.0, '-'),
                  ('ils_pr', 'ILS+PR', C_ILS, None, PR_LW_ILS, _pr_dash(PR_LW_ILS, 0.0)),
-                 ('memetic_ls', 'Memetic-LS', C_MEM, M_MEM, 3.0, '-'),
+                 ('memetic_ls', 'Memetic-baseline', C_MEM, M_MEM, 3.0, '-'),
                  ('memetic_pr', 'Memetic+PR', C_MEM, None, PR_LW_MEM, _pr_dash(PR_LW_MEM, 0.5))]
 
 
@@ -635,7 +640,7 @@ def fig_anytime(S, probs=ANYTIME_PROBS, band=False, mode='union', out=None):
         for m, color, ls in ANYTIME_STYLE:
             med, q1, q3 = cur[m]
             ax.plot(t, med, color=color, ls=ls, lw=1.45, dash_capstyle='round',
-                    label=A.METHOD_LABELS.get(m, m))
+                    label=METHOD_LABELS.get(m, m))
             if band and ls == '-':
                 ax.fill_between(t, q1, q3, color=color, alpha=0.13, lw=0)
         ax.set_xscale('log')
@@ -785,7 +790,7 @@ def _per_problem_rpd(M):
 def fig_scoreboard(S):
     order_m = ['ga', 'memetic_ls', 'memetic_repair', 'memetic_pr',
                'ils_baseline', 'ils_repair', 'ils_pr']
-    lbl = dict(A.METHOD_LABELS)
+    lbl = dict(METHOD_LABELS)
     prob_labels = A.order_prob_labels(S.keys())
     present = set()
     for pl in prob_labels:

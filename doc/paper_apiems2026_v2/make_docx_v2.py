@@ -36,7 +36,7 @@ OUT = os.path.join(HERE, 'APIEMS2026_draft_v2_ja.docx')
 
 # 本文の範囲（作業メモ・ページ予算・v1→v2 対応表を除く）
 BODY_START = '## Title / Authors / Abstract / Keywords'
-BODY_END = '## v1 → v2 の対応表'
+BODY_END = '# 付録: 計画メモ'  # 付録見出し自体も本文から除く（旧 '## v1 → v2 の対応表' では見出し 1 行が docx に漏れていた）
 
 AUTHORS = ['Takumi Kito']
 AFFIL = ['早稲田大学大学院 創造理工学研究科 経営システム工学専攻, 東京, 日本',
