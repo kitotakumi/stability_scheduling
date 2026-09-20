@@ -89,16 +89,86 @@ _MATH_ITALIC = re.compile(r'[A-Za-zα-ωΑ-Ω]')
 _UPRIGHT_WORDS = {'min', 'max', 'log', 'ops', 'P50'}
 
 
+# $...$ 内の LaTeX マクロ → 文字。名前は完全一致で引く（\le と \left を取り違えない）
+_TEX_SYMBOLS = {
+    'lambda': 'λ', 'theta': 'θ', 'delta': 'δ', 'Delta': 'Δ', 'rho': 'ρ',
+    'alpha': 'α', 'beta': 'β', 'mu': 'μ', 'sigma': 'σ', 'pi': 'π',
+    'tau': 'τ', 'epsilon': 'ε', 'phi': 'φ', 'omega': 'ω',
+    'le': '≤', 'leq': '≤', 'ge': '≥', 'geq': '≥', 'neq': '≠', 'ne': '≠',
+    'in': '∈', 'notin': '∉', 'subset': '⊂', 'cup': '∪', 'cap': '∩',
+    'times': '×', 'cdot': '·', 'pm': '±', 'approx': '≈', 'infty': '∞',
+    'sum': '∑', 'prod': '∏', 'ldots': '…', 'dots': '…', 'to': '→',
+    'lvert': '|', 'rvert': '|', 'vert': '|', 'mid': '|', 'lVert': '‖',
+    'rVert': '‖', 'langle': '⟨', 'rangle': '⟩',
+    'min': 'min', 'max': 'max', 'log': 'log', 'exp': 'exp',
+    'left': '', 'right': '', 'quad': '  ', 'qquad': '    ',
+}
+
+# 引数を取らない非英字エスケープ
+_TEX_PUNCT = [
+    ('\\{', '{'), ('\\}', '}'), ('\\,', ' '), ('\\;', ' '),
+    ('\\:', ' '), ('\\!', ''), ('\\ ', ' '), ('\\%', '%'), ('\\&', '&'),
+    ('\\_', '_'), ('\\#', '#'),
+]
+
+_TEX_ARG = re.compile(r'\\(text|mathrm|mathcal|mathbf|operatorname|hat|widehat)'
+                      r'\{([^{}]*)\}')
+_HAT_MACRO = re.compile(r'\\(?:hat|widehat)\\([A-Za-z]+)')
+_HAT_CHAR = re.compile(r'\\(?:hat|widehat)(.)')
+_COMB_HAT = '̂'   # 結合アクセント（直前の文字に載る）
+
+
+def _tex_expand(expr):
+    """LaTeX マクロを文字に開き、立体で出す語の集合を併せて返す。
+
+    未知のマクロはバックスラッシュだけ落として名前を残す（黙って消さない）。
+    """
+    upright = set()
+
+    def _arg(m):
+        name, body = m.group(1), m.group(2)
+        if name in ('text', 'mathrm', 'operatorname'):
+            upright.add(body)
+            return body
+        if name in ('mathcal', 'mathbf'):
+            return body          # 表示数式の omml_eq1 も O_opt は素の O で出す
+        return (body[0] + _COMB_HAT + body[1:]) if body else body
+
+    def _sym(m):
+        # 制御綴の直後の空白 1 個は TeX と同じく区切りとして食う
+        return _TEX_SYMBOLS.get(m.group(1), m.group(0))
+
+    # シンボル系を先に開く。引数付き（\mathcal{O} 等）を先に開くと
+    # \in\mathcal{O} が \inO に化けてマクロ名を取り違える
+    expr = re.sub(r'\\([A-Za-z]+) ?', _sym, expr)
+    prev = None
+    while prev != expr:          # 入れ子（\hat{\mathrm{x}} 等）を内側から解く
+        prev = expr
+        expr = _TEX_ARG.sub(_arg, expr)
+    expr = _HAT_MACRO.sub(
+        lambda m: _TEX_SYMBOLS.get(m.group(1), m.group(1)) + _COMB_HAT, expr)
+    expr = _HAT_CHAR.sub(lambda m: m.group(1) + _COMB_HAT, expr)
+    for k, v in _TEX_PUNCT:
+        expr = expr.replace(k, v)
+    expr = re.sub(r'\\([A-Za-z]+)', lambda m: m.group(1), expr)
+    return expr, upright
+
+
 def _math_runs(expr, east_asia=None, bold=False):
     """$...$ の中身を runs に。_x/_{...} 下付き, ^x/^{...} 上付き, 英字イタリック。
     下付き/上付き内の 2 文字以上の英字列（opt, res, RSR, adj 等のラベル）と
-    min/max 等の関数語は立体にする。"""
+    min/max 等の関数語は立体にする。LaTeX マクロは _tex_expand で文字に開く。"""
     out = []
+    expr, upright = _tex_expand(expr)
 
     def emit(seg, vert=None):
-        for tok in re.findall(r'[A-Za-z]+|[α-ωΑ-Ω]|.', seg, re.S):
+        if vert is not None:     # 下付き/上付きの中の _/^ は同じ高さへ畳む
+            seg = re.sub(r'[_^]\{([^{}]*)\}|[_^](.)',
+                         lambda m: m.group(1) or m.group(2) or '', seg)
+        for tok in re.findall(r'[A-Za-z]+[̀-ͯ]?|.[̀-ͯ]?',
+                              seg, re.S):
             if tok.isalpha() and len(tok) > 1 and re.match(r'[A-Za-z]', tok):
-                if vert is not None or tok in _UPRIGHT_WORDS:
+                if vert is not None or tok in _UPRIGHT_WORDS or tok in upright:
                     out.append(_run(tok, bold=bold, vert=vert,
                                     east_asia=east_asia))
                 else:
