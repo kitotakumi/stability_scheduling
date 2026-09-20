@@ -111,7 +111,8 @@ _TEX_PUNCT = [
     ('\\_', '_'), ('\\#', '#'),
 ]
 
-_TEX_ARG = re.compile(r'\\(text|mathrm|mathcal|mathbf|operatorname|hat|widehat)'
+# 先頭の ([_^]?) は添字記号の直後に来たマクロを検出するため（p_\text{adj} 対策）
+_TEX_ARG = re.compile(r'([_^]?)\\(text|mathrm|mathcal|mathbf|operatorname|hat|widehat)'
                       r'\{([^{}]*)\}')
 _HAT_MACRO = re.compile(r'\\(?:hat|widehat)\\([A-Za-z]+)')
 _HAT_CHAR = re.compile(r'\\(?:hat|widehat)(.)')
@@ -126,13 +127,16 @@ def _tex_expand(expr):
     upright = set()
 
     def _arg(m):
-        name, body = m.group(1), m.group(2)
+        sub, name, body = m.group(1), m.group(2), m.group(3)
         if name in ('text', 'mathrm', 'operatorname'):
             upright.add(body)
-            return body
-        if name in ('mathcal', 'mathbf'):
-            return body          # 表示数式の omml_eq1 も O_opt は素の O で出す
-        return (body[0] + _COMB_HAT + body[1:]) if body else body
+            out = body
+        elif name in ('mathcal', 'mathbf'):
+            out = body           # 表示数式の omml_eq1 も O_opt は素の O で出す
+        else:
+            out = (body[0] + _COMB_HAT + body[1:]) if body else body
+        # 添字記号の直後なら {…} で括り、展開後も 1 グループとして添字にする
+        return sub + ('{' + out + '}' if sub else out)
 
     def _sym(m):
         # 制御綴の直後の空白 1 個は TeX と同じく区切りとして食う
@@ -194,6 +198,13 @@ def _math_runs(expr, east_asia=None, bold=False):
                 seg = expr[i]
                 i += 1
             emit(seg, vert)
+            continue
+        # 英字列は語単位で渡す（\\text{best}・\\min 等を立体で出すため。
+        # 通常の多文字記号 MS 等は emit 内で従来どおり 1 文字ずつイタリック）
+        m = re.match(r'[A-Za-z]+', expr[i:])
+        if m:
+            emit(m.group(0))
+            i += len(m.group(0))
             continue
         emit(ch)
         i += 1
