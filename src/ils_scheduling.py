@@ -812,10 +812,15 @@ class ILSSolver:
         目的: Memetic+repair/PR の利得が「S_p 方向への誘導（安定性誘導）」由来か、
         「収束集団への一般的な多様化」由来かを分離する。同強度・ランダム方向のこの対照が
         repair/PR と同等の利得を出すなら多様化一般の効果、出さないなら S_p 誘導の効果。
+
+        実際に適用できた手数は self._last_random_applied に記録する（strength 通り
+        適用できるとは限らない: 実行可能な swap が尽きて max_attempts で打ち切ることが
+        ある。要求強度と実適用強度がズレていないかを事後に監査できるようにするため）。
         """
         new_orders = self._copy_orders(machine_orders)
         machines = [m for m in new_orders if len(new_orders[m]) >= 2]
         if not machines:
+            self._last_random_applied = 0
             return new_orders
         applied = 0
         attempts = 0
@@ -830,6 +835,7 @@ class ILSSolver:
                 applied += 1
             else:
                 ops[i], ops[q] = ops[q], ops[i]  # 実行不可なので戻す
+        self._last_random_applied = applied
         return new_orders
 
     # ========== Path Relinking ==========

@@ -159,8 +159,12 @@ def run_ils(weights, seed, perturb_method, max_iterations, norm_params=None,
 def run_memetic(weights, seed, ngen, norm_params=None, problem_name=None, scenario_name=None,
                 kick_mode='none', kick_prob=0.3, repair_strength=0,
                 track_population=False, ls_strategy='best', pr_step_strategy='random',
-                pr_ls_top_k=3, pop_size=None, cxpb=0.85, mutpb=0.1):  # 既定 top-k=3（memetic呼び出し時, RESULTS.md §1）
-    """Memetic GA (GA × N5 LS × kick) の実行"""
+                pr_ls_top_k=3, pop_size=None, cxpb=0.85, mutpb=0.1,
+                random_depth_pool=None):  # 既定 top-k=3（memetic呼び出し時, RESULTS.md §1）
+    """Memetic GA (GA × N5 LS × kick) の実行
+
+    random_depth_pool : kick_mode='random_matched' 専用（[[memetic_scheduling.MemeticGASolver]] 参照）。
+    """
     import sys as _sys
     import os as _os
     _sys.path.insert(0, _os.path.join(_os.path.dirname(__file__), '..'))
@@ -176,7 +180,8 @@ def run_memetic(weights, seed, ngen, norm_params=None, problem_name=None, scenar
         cxpb=cxpb, mutpb=mutpb,
         kick_mode=kick_mode, kick_prob=kick_prob,
         repair_strength=repair_strength, ls_strategy=ls_strategy,
-        pr_step_strategy=pr_step_strategy, pr_ls_top_k=pr_ls_top_k)
+        pr_step_strategy=pr_step_strategy, pr_ls_top_k=pr_ls_top_k,
+        random_depth_pool=random_depth_pool)
     _, ms, st, conv_info, history = solver.run(
         ngen=ngen, verbose=False, norm_params=norm_params,
         track_population=track_population)
@@ -189,7 +194,8 @@ def run_memetic(weights, seed, ngen, norm_params=None, problem_name=None, scenar
             'baseline_score': solver.baseline_active_score,
             # 機構統計は内部 ILS solver に蓄積される（PR/repair とも _ils 経由で発動）
             'pr_stats': getattr(solver._ils, 'pr_call_stats', []),
-            'repair_stats': getattr(solver._ils, 'repair_call_stats', [])}
+            'repair_stats': getattr(solver._ils, 'repair_call_stats', []),
+            'random_applied_stats': getattr(solver._ils, 'random_applied_stats', [])}
 
 
 # ========== 可視化ユーティリティ ==========

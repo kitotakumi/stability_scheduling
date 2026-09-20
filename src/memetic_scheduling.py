@@ -34,12 +34,25 @@ class MemeticGASolver:
         'pr'     : LS → path relinking → LS
         'random' : LS → ランダム方向 direct swap → LS（repair の強度を揃えた方向ランダム
                    対照。利得が S_p 誘導由来か一般的多様化由来かを分離する内的妥当性の対照）
+        'random_matched' : 'random' と同じ direct swap だが、深さ k を現在解の n_diff
+                   （cap=n_diff）からではなく random_depth_pool（外部から与える repair
+                   の実測深さ分布）から引く。'random' の cap=n_diff は S_p 方向への誘導
+                   （n_diff を縮める）と方向ランダム（n_diff を縮めない/広げうる）とで
+                   非対称な正のフィードバックを生み、ランダム側の深さが自己増幅して計算
+                   コスト比較が歪む（2026-09-20 判明）。深さの抽選元を現在状態から切り
+                   離すことでこのフィードバックを断ち、同強度比較を成立させる。
     kick_prob : float
         キックを各個体に確率的に適用する確率。
     repair_strength : int
-        kick_mode='repair' 時の direct swap 回数を [1, cap] で一様サンプリングする際の cap の天井。
-        cap は基本「経路長（improved→初期解の不一致数）」。repair_strength<=0（デフォルト）なら
-        cap=経路長（フル）、>0 なら cap=min(経路長, repair_strength)（深さを制限）。
+        kick_mode='repair'/'random' 時の direct swap 回数を [1, cap] で一様サンプリング
+        する際の cap の天井。cap は基本「経路長（improved→初期解の不一致数）」。
+        repair_strength<=0（デフォルト）なら cap=経路長（フル）、>0 なら
+        cap=min(経路長, repair_strength)（深さを制限）。kick_mode='random_matched' では
+        使わない（深さは random_depth_pool から引く）。
+    random_depth_pool : list[int] or None
+        kick_mode='random_matched' 専用。深さ k の抽選元となる整数プール（通常は同一
+        シナリオ・同一重みで別途実行した repair の実測 depth 列）。各キック発動時に
+        random.choice で 1 つ引く。
     """
 
     def __init__(self, jm_table, fixed_gantt, reschedule_gantt, reschedule_time, weights,
@@ -47,7 +60,8 @@ class MemeticGASolver:
                  cxpb=0.85, mutpb=0.1, pop_size=50,
                  kick_mode='repair', kick_prob=0.5,
                  repair_strength=0, ls_strategy='best', pr_step_strategy='random',
-                 pr_ls_top_k=3):  # 既定: PRキックは top-k=3（2026-06-12確定, param_sweep_v1/RESULTS.md §1。kick_mode='pr'時のみ作用）
+                 pr_ls_top_k=3,  # 既定: PRキックは top-k=3（2026-06-12確定, param_sweep_v1/RESULTS.md §1。kick_mode='pr'時のみ作用）
+                 random_depth_pool=None):
         self.jm_table = jm_table
         self.fixed_gantt = fixed_gantt
         self.reschedule_time = reschedule_time
@@ -61,6 +75,7 @@ class MemeticGASolver:
         self.ls_strategy = ls_strategy
         self.pr_step_strategy = pr_step_strategy
         self.pr_ls_top_k = pr_ls_top_k
+        self.random_depth_pool = random_depth_pool
 
         # GA: crossover / mutation / selection の toolbox と original_individual を借りる
         self._ga = GASolver(
@@ -178,6 +193,28 @@ class MemeticGASolver:
                     self._ils.repair_call_stats = []
                 self._ils.repair_call_stats.append((n_diff, depth))
                 kicked = self._ils._perturb_random_swap(improved, depth)
+                if not hasattr(self._ils, 'random_applied_stats'):
+                    self._ils.random_applied_stats = []
+                self._ils.random_applied_stats.append(self._ils._last_random_applied)
+            elif self.kick_mode == 'random_matched':
+                # 'random' の cap=n_diff は S_p 方向誘導（n_diff を縮める→cap 自己制限）と
+                # 方向ランダム（n_diff を縮めない→cap 増大）の間に非対称な正のフィードバック
+                # を作り、ランダム側の実効深さが発散してコスト比較が歪む（2026-09-20 判明）。
+                # ここでは深さを現在状態（n_diff）から切り離し、外部の random_depth_pool
+                # （同一シナリオ・同一重みで実測した repair の深さ分布）から引く。
+                n_diff = self._ils._count_diffs(improved, self._ils.initial_machine_orders)  # 記録用のみ・cap には使わない
+                if not self.random_depth_pool:
+                    raise ValueError("kick_mode='random_matched' には random_depth_pool が必要")
+                depth = random.choice(self.random_depth_pool)
+                if not hasattr(self._ils, 'repair_call_stats'):
+                    self._ils.repair_call_stats = []
+                self._ils.repair_call_stats.append((n_diff, depth))
+                kicked = self._ils._perturb_random_swap(improved, depth)
+                # 実際に適用できた手数（strength 通り適用できるとは限らない）も記録し、
+                # 要求深さとのズレを事後監査できるようにする。
+                if not hasattr(self._ils, 'random_applied_stats'):
+                    self._ils.random_applied_stats = []
+                self._ils.random_applied_stats.append(self._ils._last_random_applied)
             else:  # 'pr'
                 # 集団ベースの memetic では path_relinking はデフォルト
                 # (return_intermediate=False = 始点 S_best を返す) のままで良い。

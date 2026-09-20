@@ -106,6 +106,17 @@ METHODS = {
         'repair_strength': 0,     # 0 = 経路長フル: depth ∈ [1, 経路長]（repair と同じ強度分布）
         'label': 'Memetic+random',  # 内的妥当性の対照（同強度・ランダム方向）
     },
+    'memetic_random_matched': {
+        'kind': 'memetic',
+        'kick_mode': 'random_matched',
+        'kick_prob': 0.3,          # repair と同条件（発火確率を揃える）
+        'label': 'Memetic+random(matched)',  # 内的妥当性の対照（同"実測"強度・ランダム方向）。
+        # 'memetic_random' の cap=n_diff は S_p 方向誘導との間に非対称な正のフィードバック
+        # を生み計算コスト比較が歪む（2026-09-20 判明）。深さを外部プール（同一シナリオ・
+        # 同一重みで別途実行した repair の実測 depth 分布）から引くことでこれを断つ。
+        # プールは _run_one_task 内で random_depth_pool_path から読み込む
+        # （task 側で method 別に注入。METHODS 定義には持たせない＝実行時解決）。
+    },
 }
 
 DEFAULT_METHODS = ['ga', 'ils_baseline', 'ils_repair', 'ils_pr',
@@ -247,6 +258,22 @@ def _slim_anytime(history, kind):
 
 # ========== 個別実行関数（並列用・モジュールレベル必須） ==========
 
+_RANDOM_POOL_CACHE = {}  # {path: {w_label: [int, ...]}}  worker プロセス内でファイル読込を使い回す
+
+
+def _load_random_pool(path, w_label):
+    """random_matched 用の深さプール（JSON, {w_label: [depth,...]}）を読み込みキャッシュする。"""
+    pools = _RANDOM_POOL_CACHE.get(path)
+    if pools is None:
+        with open(path, 'r', encoding='utf-8') as f:
+            pools = json.load(f)
+        _RANDOM_POOL_CACHE[path] = pools
+    pool = pools.get(w_label)
+    if not pool:
+        raise ValueError(f"random_depth_pool に重み {w_label} のプールが無い: {path}")
+    return pool
+
+
 def _run_one_task(task):
     """1 run を実行して JSON に保存。既存ファイルはスキップ。"""
     out_path = task['out_path']
@@ -284,6 +311,10 @@ def _run_one_task(task):
                         problem_name=problem_name, scenario_name=scenario_name,
                         track_population=True)
         elif cfg['kind'] == 'memetic':
+            random_depth_pool = None
+            if cfg.get('kick_mode') == 'random_matched':
+                random_depth_pool = _load_random_pool(
+                    task['random_depth_pool_path'], _weight_label(weights))
             r = _run_memetic(
                 weights, seed, task['memetic_ngen'], norm_params,
                 problem_name=problem_name, scenario_name=scenario_name,
@@ -291,6 +322,7 @@ def _run_one_task(task):
                 kick_prob=cfg.get('kick_prob', 0.5),
                 repair_strength=cfg.get('repair_strength', 0),  # 0 = 経路長フル（天井なし）
                 pr_ls_top_k=cfg.get('pr_ls_top_k', 1),
+                random_depth_pool=random_depth_pool,
                 track_population=True)
             kind = 'ga'  # pop_points 形式は GA と同じ
         else:
@@ -316,6 +348,7 @@ def _run_one_task(task):
         # repair_*: (発動時経路長, 適用depth)。GA/キックなし手法は空配列。
         pr_stats = r.get('pr_stats') or []
         repair_stats = r.get('repair_stats') or []
+        random_applied_stats = r.get('random_applied_stats') or []
         mech_stats = {
             'n_pr_calls': len(pr_stats),
             'pr_d0':       [int(s[0]) for s in pr_stats],
@@ -324,6 +357,9 @@ def _run_one_task(task):
             'n_repair_calls': len(repair_stats),
             'repair_path_len': [int(s[0]) for s in repair_stats],
             'repair_depth':    [int(s[1]) for s in repair_stats],
+            # random/random_matched 専用: 要求 depth（=repair_depth）に対する実適用 swap 数
+            # （実行可能な swap が尽きて打ち切られることがあるため要求と一致するとは限らない）
+            'random_applied':  [int(x) for x in random_applied_stats],
         }
 
         save_data = {
@@ -412,6 +448,10 @@ def main():
         '--memetic-ngen', type=int, default=MEMETIC_NGEN,
         help=f'Memetic GA 世代数 (デフォルト: {MEMETIC_NGEN})')
     parser.add_argument(
+        '--random-depth-pool', type=str, default=None,
+        help='memetic_random_matched 用の深さプール JSON ({w_label: [depth,...]})。'
+             '同手法を含む場合は必須。')
+    parser.add_argument(
         '--output-dir', type=str, default=None,
         help='出力先 (デフォルト: results/core_v3_<timestamp>). '
              '同じ dir を指定すれば resume になる。')
@@ -428,6 +468,9 @@ def main():
         weights_list = [[float(x) for x in w.split(',')] for ws in args.weights for w in ws.split()]
     else:
         weights_list = DEFAULT_WEIGHTS
+
+    if 'memetic_random_matched' in args.methods and not args.random_depth_pool:
+        parser.error("--methods memetic_random_matched には --random-depth-pool が必須")
 
     # 出力先
     if args.output_dir:
@@ -525,6 +568,7 @@ def main():
                         'repair_strength': args.repair_strength,
                         'relink_trigger': args.relink_trigger,
                         'kick_trigger_first': args.kick_trigger_first,
+                        'random_depth_pool_path': args.random_depth_pool,
                     })
 
     pending = [t for t in all_tasks if not os.path.exists(t['out_path'])]
