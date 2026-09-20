@@ -631,10 +631,23 @@ def _anytime_curves(prob, methods, n_t=40, mode='union'):
     return t_grid, out
 
 
+def _anytime_cut(t, cur, frac=0.995, margin=1.25):
+    """描画する全手法が最終値の frac に達した時刻（以降は平坦）。横軸はここで打ち切る。
+
+    GA は曲線を描かない（正規化の母集団としてのみ使う）ので打ち切り時刻にも含めない。
+    """
+    tc = t[0]
+    for m, _c, _s in ANYTIME_STYLE:
+        med = np.asarray(cur[m][0], float)
+        if med[-1] > 0:
+            tc = max(tc, float(t[int(np.argmax(med >= frac * med[-1]))]))
+    return min(float(t[-1]), tc * margin)
+
+
 def fig_anytime(S, probs=ANYTIME_PROBS, band=False, mode='union', out=None):
     # band=True で演算子なし 2 手法の四分位範囲を重ねる（検討用。本稿では中央値のみ）
     methods = [k for k, _c, _s in ANYTIME_STYLE]
-    fig, axes = plt.subplots(1, 2, figsize=(FULLW, 2.45))
+    fig, axes = plt.subplots(1, 2, figsize=(FULLW, 2.25))
     for ax, prob, tag in zip(axes, probs, '(a) (b)'.split()):
         t, cur = _anytime_curves(prob, list(dict.fromkeys(methods + ['ga'])), mode=mode)
         for m, color, ls in ANYTIME_STYLE:
@@ -644,7 +657,7 @@ def fig_anytime(S, probs=ANYTIME_PROBS, band=False, mode='union', out=None):
             if band and ls == '-':
                 ax.fill_between(t, q1, q3, color=color, alpha=0.13, lw=0)
         ax.set_xscale('log')
-        ax.set_xlim(t[0], t[-1])
+        ax.set_xlim(t[0], _anytime_cut(t, cur))
         ax.set_ylim(0, None)
         ax.set_xlabel('CPU time (s, log)')
         ax.set_title(f'{tag} {A.problem_short_tag(prob)} ($\\rho$={rho_pct(prob)}%)', fontsize=8)
