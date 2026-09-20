@@ -618,7 +618,7 @@ def wilcoxon_paired(x, y, alternative='less'):
 
 
 def cliffs_delta(x, y):
-    """Cliff's delta: (P(x<y) - P(x>y)). 負 = x が y より小さい傾向。"""
+    """Cliff's delta: (P(x<y) - P(x>y)). 負 = x が y より大きい傾向。"""
     x, y = np.asarray(x, dtype=float), np.asarray(y, dtype=float)
     x = x[np.isfinite(x)]
     y = y[np.isfinite(y)]

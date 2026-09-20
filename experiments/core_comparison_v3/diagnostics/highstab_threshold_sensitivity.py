@@ -7,7 +7,7 @@
 本スクリプトは analyze_v3 本体と同一の前処理（baseline 除外・正規化アンカー・per-trial
 union PF・region_hv）を再利用し、分割点だけを P25/P33/P50/P67/P75 に振って:
   1. 各パーセンタイルでの手法順位（高安定 HV 中央値の降順）と首位手法
-  2. 主要ペアの Wilcoxon p / Cliff's δ（機構・軌道vs集団・PR vs repair）
+  2. 主要ペアの Mann-Whitney p / Cliff's δ（機構・軌道vs集団・PR vs repair）
 を出力する。順位・有意性が P に対して不変であれば「P50 の内生性は結論を左右しない」ことの
 証拠になる。analyze_v3 は一切書き換えない（読み取り専用の診断）。
 
@@ -19,6 +19,7 @@ union PF・region_hv）を再利用し、分割点だけを P25/P33/P50/P67/P75 
 import os
 import sys
 import numpy as np
+from scipy.stats import mannwhitneyu
 
 HERE = os.path.dirname(__file__)
 sys.path.insert(0, os.path.join(HERE, '..'))  # core_comparison_v3/ を import パスに
@@ -196,8 +197,8 @@ def main(results_dir, scenarios):
         print(f'  → 首位{"不変" if len(win_set)==1 else "変化あり"} / '
               f'順位{"完全不変" if not any_rank_change else "一部変動(*印)"}')
 
-        # ---- 2. 主要ペアの Wilcoxon p / Cliff's δ を各パーセンタイルで ----
-        print('  --- 主要ペア Wilcoxon p (A>B) / Cliff δ（列=分割パーセンタイル）---')
+        # ---- 2. 主要ペアの Mann-Whitney p / Cliff's δ を各パーセンタイルで ----
+        print('  --- 主要ペア Mann-Whitney p（両側）/ Cliff δ（δ<0 は左が大。列=分割パーセンタイル）---')
         for fam_key, pairs in FAMILIES.items():
             print(f'    [{A.FAMILY_LABELS.get(fam_key, fam_key)}]')
             for (a, b) in pairs:
@@ -209,12 +210,15 @@ def main(results_dir, scenarios):
                     thr = float(np.percentile(stab, P))
                     hs = highstab_hv_per_trial(pf_by_method, methods, thr, global_ref0, norm)
                     xa, xb = hs[a], hs[b]
-                    p = A.wilcoxon_paired(xa, xb, alternative='greater')[1]
+                    # 論文 §3.4 と同一プロトコル: 対応なし両側 Mann-Whitney U。
+                    # 旧実装は対応あり片側 Wilcoxon で、n=10 の下限 p=1/2^10~0.001 に
+                    # 張り付いた値を出していた（完全分離の強さを表さない）。
+                    p = mannwhitneyu(xa, xb, alternative='two-sided').pvalue
                     d = A.cliffs_delta(xa, xb)
                     sig_flags.append(bool(np.isfinite(p) and p < 0.05))
                     cells += f'{_fmt_p(p)}/{d:+.2f}  '
                 inv = 'sig不変' if len(set(sig_flags)) == 1 else 'sig変動!'
-                lab = f'{A.METHOD_LABELS.get(a,a)}>{A.METHOD_LABELS.get(b,b)}'
+                lab = f'{A.METHOD_LABELS.get(a,a)} vs {A.METHOD_LABELS.get(b,b)}'
                 print(f'      {lab:<32}{cells}[{inv}]')
 
 
