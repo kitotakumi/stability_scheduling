@@ -5,10 +5,10 @@
 図の生成（make_figures_v2.py）と同じデータ・同じ前処理を使い、図に出ていない本文の数値だけを
 まとめて出す。解析単位は trial（1 trial = 10 重みの掃引全体）で、代表値は trial の中央値。
 
-  [B] §4.3 統合 HV：演算子込み Memetic と ILS-baseline の差（%）
+  [B] §4.3 全域 HV：演算子込み Memetic と ILS-baseline の差（%）
   [C] §4.1 計算時間：1 run の壁時計時間と Memetic+PR / ILS-baseline の比
   [E] 表 2：Friedman 平均順位と ARPD%（7 手法 × 3 指標）を markdown で出力
-  [F] §4.3 の検定数：統合 HV・AOC について、構造内（演算子 vs なし）・構造間（同じ演算子で
+  [F] §4.3 の検定数：全域 HV・AOC について、構造内（演算子 vs なし）・構造間（同じ演算子で
       ILS vs Memetic）・Memetic 内（repair vs PR）の両側 Mann–Whitney U と Cliff's δ
 
 検討用（本文では使わない。--review で出力）:
@@ -81,7 +81,7 @@ def section_a(S, probs, methods=('ils_baseline', 'memetic_ls', 'memetic_pr')):
 
 
 def section_b(S, probs, base='ils_baseline', ops=('memetic_pr', 'memetic_repair')):
-    print('\n[B] §4.3 統合 HV: 演算子込み Memetic の ILS-baseline に対する差（trial 中央値の比, %）')
+    print('\n[B] §4.3 全域 HV: 演算子込み Memetic の ILS-baseline に対する差（trial 中央値の比, %）')
     print(f'{"scen":7s}' + ''.join(f'{M.A.METHOD_LABELS.get(m, m):>18s}' for m in ops))
     for prob in probs:
         b = np.median(S[prob]['union_hv_pt'][base])
@@ -131,7 +131,7 @@ def section_d(probs):
 
 TABLE_ORDER = ['ils_baseline', 'ils_repair', 'ils_pr',
                'ga', 'memetic_ls', 'memetic_repair', 'memetic_pr']
-METRIC_LABELS = {'union_hv_pt': '統合 HV', 'highstab_hv_pt': '高安定 HV', 'aoc_pt': 'AOC'}
+METRIC_LABELS = {'union_hv_pt': '全域 HV', 'highstab_hv_pt': '高安定 HV', 'aoc_pt': 'AOC'}
 
 
 def _cliffs_delta(a, b):
@@ -165,7 +165,7 @@ def _near_best_counts(S, probs, key):
 
 
 def section_e(S, probs):
-    print(chr(10) + '[E] 表 2: 平均順位／ARPD%（平均）／最良群シナリオ数。列は 統合 HV / 高安定 HV / AOC')
+    print(chr(10) + '[E] 表 2: 平均順位／ARPD%（平均）／最良群シナリオ数。列は 全域 HV / 高安定 HV / AOC')
     cols = {}
     for key in ('union_hv_pt', 'highstab_hv_pt', 'aoc_pt'):
         Mx = A._metric_matrix(S, probs, TABLE_ORDER, key)

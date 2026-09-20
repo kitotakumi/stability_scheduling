@@ -8,17 +8,17 @@ make_figures_en.py と同じ）。本ディレクトリだけで v2 の図が揃
   fig_v2_concept_en.png             図1 (D, MS) 平面の模式図（H1/H2 を結果と同じ座標系で描く）
   fig_v2_front_en.png               図2 実 Pareto フロント（ta21S / ta21L, ILS-b・Mem-LS・Mem+PR）
   fig_v2_interaction_en.png         図3 演算子 none/repair/PR × 探索構造の高安定 HV
-  fig_v2_anytime_en.png             図4 アンタイム統合 HV 曲線（ta21S / la36L, 6 手法）
+  fig_v2_anytime_en.png             図4 アンタイム全域 HV 曲線（ta21S / la36L, 6 手法）
 
 検討用（本文では使わない。--review で生成）:
-  fig_v2_interaction_union_aoc_en.png  統合 HV・AOC の交互作用図（RPD%。図4 の旧案）
+  fig_v2_interaction_union_aoc_en.png  全域 HV・AOC の交互作用図（RPD%。図4 の旧案）
   fig_v2_scoreboard_en.png   総合スコアボード（7 手法 × 8 シナリオ × 3 指標のヒートマップ）
   fig_v2_mech_pr_en.png      PR 経路統計（始点ごとの経路長 d0 と経路上に改善解が残る割合）
   fig_v2_density_en.png      訪問密度差マップ（fig_density。--review でも生成しない）
 出力先は本スクリプトと同じディレクトリの figures/。
 
 usage: python make_figures_v2.py            # 図 1〜4
-       python make_figures_v2.py --review   # 検討用（統合HV/AOC交互作用図・スコアボード・PR 経路統計）
+       python make_figures_v2.py --review   # 検討用（全域HV/AOC交互作用図・スコアボード・PR 経路統計）
        python make_figures_v2.py --select   # 図 2 のシナリオ選定用シート（論文には載せない）
        python make_figures_v2.py --gray     # 生成済みの図から白黒校正だけ作り直す
 """
@@ -62,12 +62,15 @@ FULLW = 6.93  # 本文幅 (in): A4 - 左右余白, 2 段ぶち抜き
 # 白黒印刷と色覚多様性に耐えるよう、意味は必ず 2 チャネル以上で表す:
 #   探索構造 = 色相 ＋ グレー明度 ＋ マーカー形状（ILS: 橙/○、Memetic: 緑/□、演算子の経路: 茶/◇）
 #   演算子   = 線種（なし: 実線、repair: 長破線、PR: 丸点線）
-# 明度は L601=0.299R+0.587G+0.114B（PIL の convert('L') と同じ式）で、3 色の間隔を 34 以上あける。
+# 明度は L601=0.299R+0.587G+0.114B（PIL の convert('L') と同じ式）。3 色の間隔を 32 以上あけたうえで、
+# 全色を L601<=130 に収める: 明度差はベタ面（帯・マーカー）には効くが、点線の点や有意記号のような
+# 細い描画には効かず、明るい色はグレー化すると白地に埋もれるため。
 # グレースケール版を figures/_gray/ に自動出力するので、投稿前にそちらで可読性を確認する。
-C_ILS, C_MEM, C_MPR = 'tab:orange', '#1b7837', '#4a2c17'  # L601 = 152 / 85 / 51
+C_ILS, C_MEM, C_MPR = '#e06c00', '#0f5c28', '#2e1a0e'  # L601 = 130 / 63 / 31
 M_ILS, M_MEM, M_MPR = 'o', 's', 'D'
+T_ILS = C_ILS  # 図1 の直接ラベル（橙自体が本文として読める明度なのでそのまま使う）
 # 高安定領域: 塗りは L601=231（紙白より 9.5% 暗い）。alpha ではなく実色で置き、白黒でも面として残す
-BAND_FACE, BAND_EDGE = '#f2e7c8', '#8a6d1f'
+BAND_FACE, BAND_EDGE = '#f5ebd0', '#7a5c12'
 
 
 def load_pkl():
@@ -177,9 +180,13 @@ def fig_concept():
     mx = rng.uniform(0.29, 1.0, 15)
     my = mem_front(mx) + rng.uniform(0.045, 0.185, 15)
 
-    def draw_mem(ax_, a_front, a_dom):
-        ax_.scatter(mx, my, s=9, marker=M_MEM, color=C_MEM, alpha=a_dom, zorder=3)
-        ax_.scatter(mem_fx, mem_fy, s=12, marker=M_MEM, color=C_MEM, alpha=a_front, zorder=4)
+    def draw_mem(ax_, alpha):
+        # 集団は 1 つの点群として同じ大きさ・同じ濃さで描く。非劣解かどうかで大きさを変えると、
+        # 本文もキャプションも説明していない区別を強調することになり（白黒ではなおさら）読み手が
+        # 意味を探して迷う。ここでの主張は点群の広がり——小さい $D$ に届かず、下端が到達可能
+        # フロント（破線）より上にある——が担っており、どの点が非劣解かは使っていない
+        ax_.scatter(np.r_[mx, mem_fx], np.r_[my, mem_fy], s=12, marker=M_MEM, color=C_MEM,
+                    alpha=alpha, zorder=3)
 
     # (a) 演算子なし: H1
     ax = axes[0]
@@ -202,17 +209,17 @@ def fig_concept():
         ax_.scatter(ix, iy, s=16, marker=M_ILS, color=C_ILS, alpha=alpha, zorder=4)
         arrow_chain(ax_, np.r_[0.0, ix], np.r_[0.95, iy], C_ILS, alpha)  # 星（S_RSR）から出発
 
-    draw_mem(ax, 0.95, 0.55)
+    draw_mem(ax, 0.90)
     ils_chain(ax, 1.0)
     ax.text(0.03, 0.50, 'ILS (trajectory search, circles):\nsmall moves from $S_p$\nfill the region step by step',
-            fontsize=6.5, color=C_ILS, ha='left', va='top')
+            fontsize=6.5, color=T_ILS, ha='left', va='top')
     ax.text(0.42, 0.93, 'Memetic (population search, squares): offspring scattered\nby crossover; stops short of small $D$ and is clearly worse\nin $MS$ where it does reach; low $MS$ only at large $D$',
             fontsize=6.5, color=C_MEM, ha='left', va='top')
 
     # (b) 集団に演算子を載せる: H2
     ax = axes[1]
     base(ax, '(b) With the operator on the population search')
-    draw_mem(ax, 0.32, 0.20)
+    draw_mem(ax, 0.26)
     ils_chain(ax, 0.32)
     # 引き戻し経路（ILS と逆向き）: 散った個体から S_p へ向かい、経路上の中間解が領域内フロントに落ちる。
     # 経路は ILS の最左点と同水準に到達する。PR と repair の違い（辿り切るか途中で止まるか）は §3.3 に譲り描かない
@@ -220,6 +227,10 @@ def fig_concept():
     # 経路上の解は Memetic 自身のフロントより下（良い側）に来るようオフセットを決める
     pr_x = np.array([0.62, 0.50, 0.39, 0.29, 0.20, 0.115])
     pr_y = _front_curve(pr_x) + np.array([0.210, 0.115, 0.150, 0.130, 0.165, 0.032])
+    # 始点は集団の点そのものでなければならない（散った個体を引き戻す絵なので）。想定位置に
+    # いちばん近い子個体にスナップし、経路の先頭をその実座標に置き換える
+    i0 = int(np.argmin(np.hypot(mx - pr_x[0], my - pr_y[0])))
+    pr_x[0], pr_y[0] = mx[i0], my[i0]
     ax.scatter(pr_x[1:], pr_y[1:], s=15, marker=M_MPR, color=C_MPR, zorder=5)
     ax.scatter([pr_x[0]], [pr_y[0]], s=16, marker=M_MEM, color=C_MEM, edgecolor='black', lw=0.5,
                zorder=5)
@@ -227,7 +238,7 @@ def fig_concept():
     ax.text(0.40, 0.93, 'Operator (diamonds): swap the current solution back toward\n$S_p$, opposite to the ILS direction;\nsolutions on the path fill the region',
             fontsize=6.5, color=C_MPR, ha='left', va='top')
     ax.text(0.03, 0.46, 'ILS: region already filled,\nlittle left to add',
-            fontsize=6.5, color=C_ILS, ha='left', va='top')
+            fontsize=6.5, color=T_ILS, ha='left', va='top')
 
     axes[0].set_ylabel('Makespan $MS$')
     fig.tight_layout(pad=0.4, w_pad=1.0)
@@ -246,11 +257,26 @@ SHOW_ALL_TRIALS = False  # True にすると中央値 trial 以外の非劣解�
 # 踏み込むか」なので、参照側の 2 手法にインクを使わず、重なる区間は帯の中を点線が走る形で読ませる。
 # 非劣解の数は演算子なしの 2 手法でしか数えないので、マーカーもその 2 手法にだけ付ける。
 # ＋PR の 2 本は高安定領域でしばしば完全に重なるので、同じ点線パターンを半周期ずらして交互に出す。
-PR_DASH = (1.2, 2.4)
+PR_PERIOD_PT = 6.3  # ＋PR の点線の周期 (pt)。2 本で揃えたうえで半周期ずらすと点が交互に出る
+
+
+def _pr_dash(lw, phase=0.0):
+    """線幅に依らず周期 PR_PERIOD_PT・直径＝線幅の丸点になる点線パターンを返す。
+
+    matplotlib は点線パターンを線幅で拡大するので、pt 指定の周期をパターン単位に割り戻す。
+    on を 0 に近づけ round cap に任せると、両端の張り出し（線幅ぶん）だけが残って円になる。
+    """
+    per = PR_PERIOD_PT / lw
+    return (phase * per, (0.05, per - 0.05))
+
+
+# ＋PR の 2 本は明度（橙 L=130 / 緑 L=63）に加えて点の大きさでも分ける。淡いほうを大きくすると
+# 視覚的な重みが釣り合い、白黒では「大きく淡い点＝ILS+PR、小さく濃い点＝Memetic+PR」と読める
+PR_LW_ILS, PR_LW_MEM = 2.3, 1.5
 FRONT_METHODS = [('ils_baseline', 'ILS-baseline', C_ILS, M_ILS, 3.0, '-'),
-                 ('ils_pr', 'ILS+PR', C_ILS, None, 1.7, (0.0, PR_DASH)),
+                 ('ils_pr', 'ILS+PR', C_ILS, None, PR_LW_ILS, _pr_dash(PR_LW_ILS, 0.0)),
                  ('memetic_ls', 'Memetic-LS', C_MEM, M_MEM, 3.0, '-'),
-                 ('memetic_pr', 'Memetic+PR', C_MEM, None, 1.7, (1.8, PR_DASH))]
+                 ('memetic_pr', 'Memetic+PR', C_MEM, None, PR_LW_MEM, _pr_dash(PR_LW_MEM, 0.5))]
 
 
 def _draw_front_panel(ax, S, prob, panel_tag=None, band_label='wide', legend=True,
@@ -431,7 +457,7 @@ def _interaction_block(axes, S, probs, key, ylabel, legend_loc='lower right',
     norm='abs': 指標の生値。縦軸は 0 始まり（高安定 HV のように「0＝届いていない」が
         意味を持つ指標向け）。
     norm='rpd': そのシナリオの最良手法からの相対偏差 RPD%（0＝最良）。縦軸を反転して
-        上を良とし、全パネルで同じ範囲を使う。統合 HV・AOC のように全手法が同程度の
+        上を良とし、全パネルで同じ範囲を使う。全域 HV・AOC のように全手法が同程度の
         絶対値に密集する指標では、0 始まりの生値だと数 % の差が潰れるため。
     """
     x = np.arange(3)
@@ -451,16 +477,13 @@ def _interaction_block(axes, S, probs, key, ylabel, legend_loc='lower right',
             hi = t([np.percentile(v, 25 if inv else 75) for v in vals[host]])
             ax.errorbar(x, med, yerr=[med - lo, hi - med], marker=mk, ms=4.2, color=color,
                         mec='white', mew=0.5, lw=1.3, capsize=2, elinewidth=0.7, label=host)
-            other = next(m for h, m in meds.items() if h != host)
             for j, k in enumerate(keys[1:], start=1):
                 p = mannwhitneyu(vals[host][j], vals[host][0], alternative='two-sided').pvalue
                 if p is not None and np.isfinite(p) and p < 0.05:
-                    # 記号は相手の線から遠い側（画面上で外側）に置き、線との重なりを避ける
-                    if med[j] != other[j]:
-                        above = (med[j] > other[j]) != inv
-                    else:
-                        above = host.startswith('Memetic')
-                    stars.append((x[j], med[j], above, color,
+                    # 置き場所は手法で固定する（ILS は線の上、Memetic は線の下）。どちらの線が
+                    # 上かで決めると、演算子を載せた後の中央値がほぼ一致するシナリオでは誤差
+                    # 程度の差で上下が入れ替わり、読み手が対応を取れなくなる
+                    stars.append((x[j], med[j], host == 'ILS', color,
                                   '*' if p >= 0.01 else ('**' if p >= 0.001 else '***')))
         ax.set_title(f'{A.problem_short_tag(prob)} ($\\rho$={rho_pct(prob)}%)', fontsize=7.5)
         ax.set_xticks(x)
@@ -476,15 +499,17 @@ def _interaction_block(axes, S, probs, key, ylabel, legend_loc='lower right',
                        for h in HOSTS for k in h[1])
             ax.set_ylim(0, ymax * 1.28)
         lo_lim, hi_lim = ax.get_ylim()
-        span = abs(hi_lim - lo_lim)  # 軸の縁に近い記号は内側へ折り返す（下側は文字高のぶん広めに）
+        span = abs(hi_lim - lo_lim)
         for xs, ys, above, color, txt in stars:
-            if above and abs(ys - hi_lim) < 0.08 * span:
-                above = False
-            elif not above and abs(ys - lo_lim) < 0.20 * span:
-                above = True
+            # 上下は手法で決まっているので折り返さない（折り返すと規則が崩れる）。軸からはみ出す
+            # 位置になったら黙って詰めずに知らせる: 縦軸の余白 (ylim) を広げて直す
+            room = (hi_lim - ys) if above else (ys - lo_lim)
+            if room < 0.10 * span:
+                print(f'   [warn] {A.problem_short_tag(prob)} の有意記号が軸の縁に近い '
+                      f'({"上" if above else "下"}, 余白 {room / span * 100:.0f}%)')
             ax.annotate(txt, (xs, ys), xytext=(0, 3 if above else -8),
                         textcoords='offset points', ha='center',
-                        va='bottom' if above else 'top', fontsize=6, color=color)
+                        va='bottom' if above else 'top', fontsize=6.8, color=color)
         ax.tick_params(labelsize=6)
         ax.yaxis.set_major_locator(plt.MaxNLocator(4))
         ax.grid(axis='y', alpha=0.25)
@@ -508,14 +533,14 @@ def fig_interaction(S):
     print(' ->', out)
 
 
-# ---------- 検討用（本文では不使用）: 統合 HV と AOC の交互作用図（図4 の旧案） ----------
+# ---------- 検討用（本文では不使用）: 全域 HV と AOC の交互作用図（図4 の旧案） ----------
 
 def fig_interaction_union_aoc(S, norm='rpd', out=None):
     probs = A.order_prob_labels(S.keys())
     fig = plt.figure(figsize=(FULLW, 5.7))
     subs = fig.subfigures(2, 1, hspace=0.06)
     suffix = ' — RPD% from the best method (0 = best)' if norm == 'rpd' else ''
-    blocks = [('(a) Union HV (overall quality)', 'union_hv_pt', 'Union HV'),
+    blocks = [('(a) Overall HV (whole trade-off)', 'union_hv_pt', 'Overall HV'),
               ('(b) AOC (anytime performance)', 'aoc_pt', 'AOC')]
     for sub, (title, key, ylabel) in zip(subs, blocks):
         axes = sub.subplots(2, 4)
@@ -536,7 +561,7 @@ def fig_interaction_union_aoc(S, norm='rpd', out=None):
     print(' ->', out)
 
 
-# ---------- 図4: アンタイム統合 HV 曲線（統合 HV＝終点 と AOC＝立ち上がり を 1 枚で見せる） ----------
+# ---------- 図4: アンタイム全域 HV 曲線（全域 HV＝終点 と AOC＝立ち上がり を 1 枚で見せる） ----------
 
 # 線種で演算子、色＋明度で探索構造を表す（図2・図3 と同じ約束）。既定の '--' / ':' は白黒だと
 # 細って見分けにくいため、長破線と丸点線で signature を強くとる（パターンは線幅で自動的に拡大される）
@@ -564,7 +589,7 @@ def _anytime_curves(prob, methods, n_t=40, mode='union'):
     """各手法のアンタイム HV 曲線を trial ごとに作り、中央値と四分位を返す。
 
     mode='union': 時刻 t までに 10 重みの探索が訪問した点をすべて合併した HV(t)。
-        終点が per-trial 統合 HV（表 2・本文の統合 HV）に一致する。
+        終点が per-trial 全域 HV（表 2・本文の全域 HV）に一致する。
     mode='mean': 各重みの HV(t) を全重みで平均。AOC は各重みの HV(t) を対数時間で平均し
         全重みで平均した値なので（§3.4）、この曲線の対数時間平均が AOC にあたる。
     """
@@ -588,7 +613,7 @@ def _anytime_curves(prob, methods, n_t=40, mode='union'):
             hs = [A.get_anytime(d) for _wl, d in sorted(by_w.items())]
             ps = [A.normalize_pts(A.get_uea_points_xyt(d, 0), norm)
                   for _wl, d in sorted(by_w.items())]
-            if mode == 'union':  # 10 重みの点を合併（終点＝per-trial 統合 HV）
+            if mode == 'union':  # 10 重みの点を合併（終点＝per-trial 全域 HV）
                 per_trial.append(np.asarray(
                     A._worker_union_hv_curve((hs, ps, 'ils', tl, bl_n, A.NORM_REF)), float))
             else:                # 各重みの HV(t) を全重み平均（対数時間平均＝AOC）
@@ -620,7 +645,7 @@ def fig_anytime(S, probs=ANYTIME_PROBS, band=False, mode='union', out=None):
         ax.set_title(f'{tag} {A.problem_short_tag(prob)} ($\\rho$={rho_pct(prob)}%)', fontsize=8)
         ax.grid(alpha=0.25)
         ax.tick_params(labelsize=6.5)
-    axes[0].set_ylabel('Union HV' if mode == 'union' else 'HV (mean over weights)')
+    axes[0].set_ylabel('Overall HV' if mode == 'union' else 'HV (mean over weights)')
     axes[1].legend(fontsize=5.8, frameon=False, loc='lower right', ncol=2,
                    handlelength=2.9, handletextpad=0.4, columnspacing=0.8)
     fig.tight_layout(pad=0.4, w_pad=1.0)
@@ -738,7 +763,7 @@ def fig_mech_pr():
 
 # ---------- 検討用（本文では不使用）: 総合スコアボード（3 指標のヒートマップを縦に 3 段） ----------
 
-SB_TITLES = {'union': '(a) Union HV (overall quality)',
+SB_TITLES = {'union': '(a) Overall HV (whole trade-off)',
              'highstab': '(b) High-stability HV (quality near $S_p$)',
              'aoc': '(c) AOC (anytime performance)'}
 
