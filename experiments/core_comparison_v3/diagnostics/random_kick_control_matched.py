@@ -28,8 +28,23 @@ sys.path.insert(0, os.path.join(_HERE, '..'))
 sys.path.insert(0, os.path.join(_HERE, '..', '..', '..'))
 
 import numpy as np
+from scipy.stats import mannwhitneyu
 
 import analyze_v3 as A
+
+
+def mwu_two_sided(x, y):
+    """論文 §3.4 と同一プロトコルの検定: 対応なし両側 Mann-Whitney U。
+
+    手法間は構造が異なり乱数列が直ちに分岐するため対応を用いない。n=10 対 10 の
+    完全分離では両側 p = 2 / C(20,10) ~ 1.1e-5 で、対応ありの符号付順位検定
+    （n=10 片側の下限 p=1/2^10~0.001）のような下限には当たらない。
+    """
+    x = np.asarray(x, dtype=float); y = np.asarray(y, dtype=float)
+    x = x[np.isfinite(x)]; y = y[np.isfinite(y)]
+    if len(x) == 0 or len(y) == 0:
+        return float('nan')
+    return float(mannwhitneyu(x, y, alternative='two-sided').pvalue)
 
 
 def load_all(prob_dir):
@@ -129,14 +144,16 @@ def main():
             v = np.array(table[m], dtype=float)
             v = v[np.isfinite(v)]
             print(f'{m:<24}{np.median(v):>10.4f}{np.mean(v):>10.4f}{len(v):>4d}')
-        print('  -- 対照検定 (paired Wilcoxon, 片側 + Cliff δ) --')
+        print('  -- 対照検定 (両側 Mann-Whitney U = 論文プロトコル, 参考で片側 Wilcoxon) --')
         for a, b, desc in comparisons:
             xa, xb = np.array(table[a]), np.array(table[b])
-            _, p = A.wilcoxon_paired(xa, xb, alternative='less')
+            p_u = mwu_two_sided(xa, xb)
+            _, p_w = A.wilcoxon_paired(xa, xb, alternative='less')
             d = A.cliffs_delta(xa, xb)
             print(f'    {desc}')
             print(f'        median {a}={np.median(xa):.4f}  {b}={np.median(xb):.4f}  '
-                  f'Δ={np.median(xb)-np.median(xa):+.4f}  p={p:.4f}  δ={d:+.3f} ({A.effect_label(d)})')
+                  f'Δ={np.median(xb)-np.median(xa):+.4f}  p_U={p_u:.3e}  '
+                  f'(参考 p_wilcoxon={p_w:.4f})  δ={d:+.3f} ({A.effect_label(d)})')
 
     for rk, rname in [('high', f'高安定領域 (D<P50={thr["P50"]:.1f})'),
                        ('low',  f'低安定領域 (D>=P50)')]:
@@ -145,14 +162,16 @@ def main():
         for m in methods:
             v = np.array([x for x in rhv[m][rk] if np.isfinite(x)])
             print(f'{m:<24}{np.median(v):>10.4f}{np.mean(v):>10.4f}')
-        print('  -- 対照検定 --')
+        print('  -- 対照検定 (両側 Mann-Whitney U = 論文プロトコル, 参考で片側 Wilcoxon) --')
         for a, b, desc in comparisons:
             xa = np.array(rhv[a][rk]); xb = np.array(rhv[b][rk])
-            _, p = A.wilcoxon_paired(xa, xb, alternative='less')
+            p_u = mwu_two_sided(xa, xb)
+            _, p_w = A.wilcoxon_paired(xa, xb, alternative='less')
             d = A.cliffs_delta(xa, xb)
             print(f'    {desc}')
             print(f'        median {a}={np.median(xa):.4f}  {b}={np.median(xb):.4f}  '
-                  f'Δ={np.median(xb)-np.median(xa):+.4f}  p={p:.4f}  δ={d:+.3f} ({A.effect_label(d)})')
+                  f'Δ={np.median(xb)-np.median(xa):+.4f}  p_U={p_u:.3e}  '
+                  f'(参考 p_wilcoxon={p_w:.4f})  δ={d:+.3f} ({A.effect_label(d)})')
 
     # ===== 計算コスト =====
     print('\n=== 計算コスト (total_cpu_time, 全重み s/run) ===')
