@@ -659,7 +659,7 @@ def fig_anytime(S, probs=ANYTIME_PROBS, band=False, mode='union', out=None):
         ax.set_xscale('log')
         ax.set_xlim(t[0], _anytime_cut(t, cur))
         ax.set_ylim(0, None)
-        ax.set_xlabel('CPU time (s, log)')
+        ax.set_xlabel('Elapsed time (s, log)')
         ax.set_title(f'{tag} {A.problem_short_tag(prob)} ($\\rho$={rho_pct(prob)}%)', fontsize=8)
         ax.grid(alpha=0.25)
         ax.tick_params(labelsize=6.5)
