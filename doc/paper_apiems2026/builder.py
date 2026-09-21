@@ -326,9 +326,11 @@ def para_sect_break(cols):
             f'<w:rPr><w:sz w:val="2"/></w:rPr></w:pPr></w:p>')
 
 
-def para_caption(text, ea):
+def para_caption(text, ea, keep_next=False):
+    # keep_next: 表キャプション用。直後の表と同じ段・ページに置く
+    kn = '<w:keepNext/>' if keep_next else ''
     return p_xml(rich_runs(text, ea),
-                 LINE_EXACT + '<w:jc w:val="center"/>'
+                 kn + LINE_EXACT + '<w:jc w:val="center"/>'
                  '<w:ind w:left="284" w:right="284"/>')
 
 
@@ -357,7 +359,7 @@ def table_xml(header, rows, widths, ea, total_w=COL_W, fs=16):
     """widths: 比率リスト。fs: half-points（16=8pt）。"""
     tw = [int(total_w * w / sum(widths)) for w in widths]
 
-    def cell(text, w, bold=False, top=False, bottom=False):
+    def cell(text, w, bold=False, top=False, bottom=False, keep_next=True):
         borders = '<w:tcBorders>'
         if top:
             borders += '<w:top w:val="single" w:sz="8" w:space="0" w:color="000000"/>'
@@ -366,8 +368,9 @@ def table_xml(header, rows, widths, ea, total_w=COL_W, fs=16):
         borders += '</w:tcBorders>'
         runs = rich_runs(text, ea, base_bold=bold).replace(
             '</w:rPr>', f'<w:sz w:val="{fs}"/><w:szCs w:val="{fs}"/></w:rPr>')
+        kn = '<w:keepNext/>' if keep_next else ''
         return (f'<w:tc><w:tcPr><w:tcW w:w="{w}" w:type="dxa"/>{borders}</w:tcPr>'
-                f'<w:p><w:pPr><w:spacing w:line="180" w:lineRule="exact"/></w:pPr>'
+                f'<w:p><w:pPr>{kn}<w:spacing w:line="180" w:lineRule="exact"/></w:pPr>'
                 f'{runs}</w:p></w:tc>')
 
     xml = (f'<w:tbl {NS_W}><w:tblPr><w:tblW w:w="{total_w}" w:type="dxa"/>'
@@ -378,8 +381,9 @@ def table_xml(header, rows, widths, ea, total_w=COL_W, fs=16):
         for j, h in enumerate(header)) + '</w:tr>'
     for i, row in enumerate(rows):
         last = i == len(rows) - 1
-        xml += '<w:tr>' + ''.join(
-            cell(c, tw[j], bottom=last) for j, c in enumerate(row)) + '</w:tr>'
+        xml += '<w:tr><w:trPr><w:cantSplit/></w:trPr>' + ''.join(
+            cell(c, tw[j], bottom=last, keep_next=not last)
+            for j, c in enumerate(row)) + '</w:tr>'
     xml += '</w:tbl>'
     return xml
 
@@ -498,7 +502,7 @@ def build(template_path, out_path, blocks, east_asia=None, fig_dir='',
                                 width=Emu(w_emu), height=Emu(h_emu))
                 add(para_caption(caption, ea))
         elif kind == 'table':
-            add(para_caption(blk[4], ea))  # 表キャプションは上
+            add(para_caption(blk[4], ea, keep_next=True))  # 表キャプションは上・表と同じ段に
             add(table_xml(blk[1], blk[2], blk[3], ea))
             add(para_empty(ea))
         elif kind == 'ref':
