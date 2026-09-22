@@ -271,7 +271,8 @@ def para_keywords(label, text, ea):
 def para_heading(text, ea):
     runs = rich_runs(text, ea).replace(
         '</w:rPr>', '<w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>')
-    return p_xml(runs, '<w:pStyle w:val="2"/>'
+    # 見出しは次段落と同じ段に置き、見出し自身も段・ページで割らない
+    return p_xml(runs, '<w:pStyle w:val="2"/><w:keepNext/><w:keepLines/>'
                        '<w:spacing w:before="90" w:after="20"'
                        ' w:line="240" w:lineRule="exact"/>')
 
@@ -326,12 +327,13 @@ def para_sect_break(cols):
             f'<w:rPr><w:sz w:val="2"/></w:rPr></w:pPr></w:p>')
 
 
-def para_caption(text, ea, keep_next=False):
-    # keep_next: 表キャプション用。直後の表と同じ段・ページに置く
-    kn = '<w:keepNext/>' if keep_next else ''
+def para_caption(text, ea, keep_next=False, indent=True):
+    # keep_next: 表キャプション用。直後の表と同じ段・ページに置き、キャプション自体も割らない
+    # indent: 全幅の図キャプションは左右を詰める。段幅の表キャプションは詰めない（行数を増やさない）
+    kn = '<w:keepNext/><w:keepLines/>' if keep_next else ''
+    ind = '<w:ind w:left="284" w:right="284"/>' if indent else ''
     return p_xml(rich_runs(text, ea),
-                 kn + LINE_EXACT + '<w:jc w:val="center"/>'
-                 '<w:ind w:left="284" w:right="284"/>')
+                 kn + LINE_EXACT + '<w:jc w:val="center"/>' + ind)
 
 
 def para_equation(omml, number):
@@ -502,7 +504,7 @@ def build(template_path, out_path, blocks, east_asia=None, fig_dir='',
                                 width=Emu(w_emu), height=Emu(h_emu))
                 add(para_caption(caption, ea))
         elif kind == 'table':
-            add(para_caption(blk[4], ea, keep_next=True))  # 表キャプションは上・表と同じ段に
+            add(para_caption(blk[4], ea, keep_next=True, indent=False))  # 表キャプションは上・表と同じ段に
             add(table_xml(blk[1], blk[2], blk[3], ea))
             add(para_empty(ea))
         elif kind == 'ref':
