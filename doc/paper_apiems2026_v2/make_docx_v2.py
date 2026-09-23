@@ -36,6 +36,12 @@ import builder  # noqa: E402
 TEMPLATE = os.path.join(V1, 'APIEMS FullPaperTemplate.docx')
 FIG_DIR = os.path.join(HERE, 'figures')
 
+# 本文幅いっぱいに引き伸ばさない図の配置倍率。
+# make_figures_v2.py のレンダリング幅 / FULLW を入れると、図中の文字は他の図と同じ大きさで組まれる。
+FIG_SCALE = {'fig_v2_concept_en.png': 5.80 / 6.93,
+             'fig_v2_interaction_en.png': 6.40 / 6.93,
+             'fig_v2_anytime_en.png': 5.90 / 6.93}
+
 # 本文の範囲（作業メモ・ページ予算・付録を除く）
 BODY_START = '## Title / Authors / Abstract / Keywords'
 
@@ -134,7 +140,8 @@ def parse(cfg):
         m = re.match(r'!\[(.*)\]\((.*)\)\s*$', s, re.S)
         if m:
             cap, path = m.group(1), m.group(2)
-            blocks.append(('fig', os.path.basename(path), cap, 'full', 1.0))
+            base = os.path.basename(path)
+            blocks.append(('fig', base, cap, 'full', FIG_SCALE.get(base, 1.0)))
             i += 1
             continue
 

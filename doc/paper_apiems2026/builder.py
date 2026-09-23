@@ -537,7 +537,7 @@ def _add_float_figure(doc, body, img_path, w_emu, h_emu, caption, ea):
         '<w:right w:w="0" w:type="dxa"/></w:tblCellMar>'
         f'</w:tblPr><w:tblGrid><w:gridCol w:w="{TEXT_W}"/></w:tblGrid>'
         f'<w:tr><w:tc><w:tcPr><w:tcW w:w="{TEXT_W}" w:type="dxa"/></w:tcPr>'
-        '<w:p><w:pPr><w:spacing w:after="60" w:line="240" w:lineRule="auto"/>'
+        '<w:p><w:pPr><w:spacing w:after="20" w:line="240" w:lineRule="auto"/>'
         '<w:jc w:val="center"/></w:pPr></w:p></w:tc></w:tr>'
         f'<w:tr><w:tc><w:tcPr><w:tcW w:w="{TEXT_W}" w:type="dxa"/></w:tcPr>'
         f'<w:p><w:pPr>{LINE_EXACT}<w:jc w:val="center"/>'

@@ -35,6 +35,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch
 from matplotlib.colors import LinearSegmentedColormap
 from scipy.stats import mannwhitneyu
+from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CORE = os.path.normpath(os.path.join(HERE, '..', '..', 'experiments', 'core_comparison_v3'))
@@ -63,6 +64,14 @@ plt.rcParams.update({
 })
 
 FULLW = 6.93  # 本文幅 (in): A4 - 左右余白, 2 段ぶち抜き
+# 図1 だけは本文幅より狭く描く（模式図なので横に引き伸ばす意味がない）。
+# make_docx_v2.py の FIG_SCALE で CONCEPT_W/FULLW を配置倍率に使い、レンダリング幅と配置幅を 1:1 に保つ
+# ＝図中の文字は幅を変えても紙面上で同じ大きさのままになる
+CONCEPT_W = 5.80
+# 図3・図4 も同じ理由で本文幅より狭く描く。パネル数が少ない図を本文幅いっぱいに引き伸ばすと、
+# 中身の情報量に対して紙面を食うだけで読みやすくはならない（縦も比例して要る）。
+INTERACT_W = 6.40
+ANYTIME_W = 5.90
 
 # 白黒印刷と色覚多様性に耐えるよう、意味は必ず 2 チャネル以上で表す:
 #   探索構造 = 色相 ＋ グレー明度 ＋ マーカー形状（ILS: 橙/○、Memetic: 緑/□、演算子の経路: 茶/◇）
@@ -139,6 +148,27 @@ def median_trial(S, prob, method):
     return int(np.argsort(hv, kind='stable')[len(hv) // 2])
 
 
+def _save(fig, out, dpi=350):
+    """保存してから PNG の上下の余白を 1pt に切り詰める。
+
+    tight_layout の余白に加えて、軸ラベルやタイトルの文字の bbox には
+    フォントのアセント/ディセント分の空白が入るため、紙面では図とキャプションの
+    間が開きすぎる。**横幅は切らない**：docx 側は幅で配置倍率を決めているので
+    （FIG_SCALE = レンダリング幅 / FULLW）、左右を切ると図中の文字の大きさが変わる。
+    """
+    fig.savefig(out, dpi=dpi)
+    im = Image.open(out)
+    a = np.asarray(im.convert('L'))
+    rows = np.where((a < 250).any(axis=1))[0]
+    if len(rows):
+        m = max(1, round(dpi / 72.0))  # 1pt
+        top = max(0, rows[0] - m)
+        bot = min(a.shape[0], rows[-1] + 1 + m)
+        if (top, bot) != (0, a.shape[0]):
+            im.crop((0, top, im.width, bot)).save(out, dpi=(dpi, dpi))
+    print(' ->', out)
+
+
 # ---------- 図1: (D, MS) 平面の模式図 ----------
 
 def _front_curve(x):
@@ -147,7 +177,7 @@ def _front_curve(x):
 
 def fig_concept():
     rng = np.random.default_rng(7)
-    fig, axes = plt.subplots(1, 2, figsize=(FULLW, 2.05), sharey=True)
+    fig, axes = plt.subplots(1, 2, figsize=(CONCEPT_W, 1.62), sharey=True)
     band_hi = 0.30
     xs = np.linspace(0, 1, 200)
 
@@ -159,9 +189,9 @@ def fig_concept():
         ax.plot(xs, _front_curve(xs), ls='--', color='gray', lw=0.9, zorder=1)
         # 回転テキストは rotation_mode='anchor' で基準点を文頭に固定し、破線のすぐ下に沿わせる
         ax.text(0.52, _front_curve(0.52) - 0.02, 'attainable trade-off front', fontsize=6.2,
-                color='gray', rotation=-22, rotation_mode='anchor', ha='left', va='top')
+                color='gray', rotation=-18, rotation_mode='anchor', ha='left', va='top')
         ax.plot([0], [0.95], marker='*', ms=9, color='black', zorder=6)
-        ax.text(0.03, 0.975, '$S_{RSR}$: order of $S_p$ kept ($D=0$)', fontsize=6.5, va='bottom')
+        ax.text(0.03, 0.975, 'order of $S_p$ kept ($D=0$)', fontsize=6.5, va='bottom')
         ax.set_xlim(-0.02, 1.02)
         ax.set_ylim(0.05, 1.08)
         ax.set_xticks([0])
@@ -216,10 +246,10 @@ def fig_concept():
 
     draw_mem(ax, 0.90)
     ils_chain(ax, 1.0)
-    ax.text(0.03, 0.50, 'ILS (trajectory search, circles):\nsmall moves from $S_p$\nfill the region step by step',
-            fontsize=6.5, color=T_ILS, ha='left', va='top')
-    ax.text(0.42, 0.93, 'Memetic (population search, squares): offspring scattered\nby crossover; stops short of small $D$ and is clearly worse\nin $MS$ where it does reach; low $MS$ only at large $D$',
-            fontsize=6.5, color=C_MEM, ha='left', va='top')
+    # 注釈は系列を同定するラベルに徹する。点群の広がりと矢印の向きが主張を担っており、
+    # それを文で重ねると §1 の箇条書きと二重になる
+    ax.text(0.03, 0.46, 'ILS (trajectory search)', fontsize=6.5, color=T_ILS, ha='left', va='top')
+    ax.text(0.46, 0.99, 'Memetic (population search)', fontsize=6.5, color=C_MEM, ha='left', va='bottom')
 
     # (b) 集団に演算子を載せる: H2
     ax = axes[1]
@@ -240,17 +270,14 @@ def fig_concept():
     ax.scatter([pr_x[0]], [pr_y[0]], s=16, marker=M_MEM, color=C_MEM, edgecolor='black', lw=0.5,
                zorder=5)
     arrow_chain(ax, pr_x, pr_y, C_MPR)
-    ax.text(0.40, 0.93, 'Operator (diamonds): swap the current solution back toward\n$S_p$, opposite to the ILS direction;\nsolutions on the path fill the region',
-            fontsize=6.5, color=C_MPR, ha='left', va='top')
-    ax.text(0.03, 0.46, 'ILS: region already filled,\nlittle left to add',
-            fontsize=6.5, color=T_ILS, ha='left', va='top')
+    ax.text(0.42, 0.99, 'Operator: back toward $S_p$', fontsize=6.5, color=C_MPR, ha='left',
+            va='bottom')
 
     axes[0].set_ylabel('Makespan $MS$')
     fig.tight_layout(pad=0.4, w_pad=1.0)
     out = os.path.join(OUT, 'fig_v2_concept_en.png')
-    fig.savefig(out, dpi=350)
+    _save(fig, out, dpi=350)
     plt.close(fig)
-    print(' ->', out)
 
 
 # ---------- 図2: 実 Pareto フロント（ta21 対） ----------
@@ -343,15 +370,16 @@ def _draw_front_panel(ax, S, prob, panel_tag=None, band_label='wide', legend=Tru
 
 
 def fig_front(S):
-    fig, axes = plt.subplots(1, len(FRONT_PROBS), figsize=(FULLW, 2.1))
+    fig, axes = plt.subplots(1, len(FRONT_PROBS), figsize=(FULLW, 1.55))
     for k, (ax, prob) in enumerate(zip(axes, FRONT_PROBS)):
-        _draw_front_panel(ax, S, prob, panel_tag='ab'[k], band_label='wide' if k == 0 else 'narrow')
+        # 帯ラベルは (a) だけ。2 枚は同じ座標・同じ帯なので (b) の縦書きラベルは重複で、
+        # 図を低くすると pt 固定の文字が軸内を占める割合が増えて P50 の点線とデータに食い込む
+        _draw_front_panel(ax, S, prob, panel_tag='ab'[k], band_label='wide' if k == 0 else 'none')
     axes[0].set_ylabel('Makespan $MS$')
     fig.tight_layout(pad=0.4, w_pad=1.0)
     out = os.path.join(OUT, 'fig_v2_front_en.png')
-    fig.savefig(out, dpi=350)
+    _save(fig, out, dpi=350)
     plt.close(fig)
-    print(' ->', out)
 
 
 def fig_front_all8(S):
@@ -367,9 +395,8 @@ def fig_front_all8(S):
             ax.set_ylabel('Makespan $MS$')
     fig.tight_layout(pad=0.5)
     out = os.path.join(OUT, 'sel_front_all8.png')
-    fig.savefig(out, dpi=220)
+    _save(fig, out, dpi=220)
     plt.close(fig)
-    print(' ->', out)
 
 
 # ---------- 検討用（本文では不使用）: 訪問密度差マップ（D 横 / MS 縦） ----------
@@ -430,9 +457,8 @@ def fig_density(S, nbins=44):
         cb.set_label('Density diff.\n(orange: ILS, green: Memetic)', fontsize=6)
         cb.ax.tick_params(labelsize=5.5)
     out = os.path.join(OUT, 'fig_v2_density_en.png')
-    fig.savefig(out, dpi=350)
+    _save(fig, out, dpi=350)
     plt.close(fig)
-    print(' ->', out)
 
 
 # ---------- 図3: 交互作用型プロット（none / repair / PR × ホスト） ----------
@@ -529,13 +555,14 @@ def _interaction_block(axes, S, probs, key, ylabel, legend_loc='lower right',
 
 def fig_interaction(S):
     probs = A.order_prob_labels(S.keys())
-    fig, axes = plt.subplots(2, 4, figsize=(FULLW, 2.75))
+    fig, axes = plt.subplots(2, 4, figsize=(INTERACT_W, 2.15))
     _interaction_block(axes, S, probs, 'highstab_hv_pt', 'High-stability HV')
-    fig.tight_layout(pad=0.4, h_pad=0.8, w_pad=0.8)
+    for ax in axes[0]:  # 横軸の目盛は 2 行で共通なので下段だけに出す（上段のぶん 1 行ぶん縮む）
+        ax.tick_params(labelbottom=False)
+    fig.tight_layout(pad=0.4, h_pad=0.6, w_pad=0.7)
     out = os.path.join(OUT, 'fig_v2_interaction_en.png')
-    fig.savefig(out, dpi=350)
+    _save(fig, out, dpi=350)
     plt.close(fig)
-    print(' ->', out)
 
 
 # ---------- 検討用（本文では不使用）: 全域 HV と AOC の交互作用図（図4 の旧案） ----------
@@ -561,9 +588,8 @@ def fig_interaction_union_aoc(S, norm='rpd', out=None):
         sub.subplots_adjust(left=0.075, right=0.995, top=0.86, bottom=0.17,
                             hspace=0.62, wspace=0.34)
     out = out or os.path.join(OUT, 'fig_v2_interaction_union_aoc_en.png')
-    fig.savefig(out, dpi=350)
+    _save(fig, out, dpi=350)
     plt.close(fig)
-    print(' ->', out)
 
 
 # ---------- 図4: アンタイム全域 HV 曲線（全域 HV＝終点 と AOC＝立ち上がり を 1 枚で見せる） ----------
@@ -647,7 +673,7 @@ def _anytime_cut(t, cur, frac=0.995, margin=1.25):
 def fig_anytime(S, probs=ANYTIME_PROBS, band=False, mode='union', out=None):
     # band=True で演算子なし 2 手法の四分位範囲を重ねる（検討用。本稿では中央値のみ）
     methods = [k for k, _c, _s in ANYTIME_STYLE]
-    fig, axes = plt.subplots(1, 2, figsize=(FULLW, 2.25))
+    fig, axes = plt.subplots(1, 2, figsize=(ANYTIME_W, 1.52))
     for ax, prob, tag in zip(axes, probs, '(a) (b)'.split()):
         t, cur = _anytime_curves(prob, list(dict.fromkeys(methods + ['ga'])), mode=mode)
         for m, color, ls in ANYTIME_STYLE:
@@ -668,9 +694,8 @@ def fig_anytime(S, probs=ANYTIME_PROBS, band=False, mode='union', out=None):
                    handlelength=2.9, handletextpad=0.4, columnspacing=0.8)
     fig.tight_layout(pad=0.4, w_pad=1.0)
     out = out or os.path.join(OUT, 'fig_v2_anytime_en.png')
-    fig.savefig(out, dpi=350)
+    _save(fig, out, dpi=350)
     plt.close(fig)
-    print(' ->', out)
 
 
 # ---------- 検討用（本文では不使用）: PR 経路統計（始点ごとの経路長と改善解が残る割合） ----------
@@ -774,9 +799,8 @@ def fig_mech_pr():
     ax.legend(frameon=False, loc='upper right', handletextpad=0.2)
     fig.tight_layout(pad=0.4)
     out = os.path.join(OUT, 'fig_v2_mech_pr_en.png')
-    fig.savefig(out, dpi=350)
+    _save(fig, out, dpi=350)
     plt.close(fig)
-    print(' ->', out)
 
 
 # ---------- 検討用（本文では不使用）: 総合スコアボード（3 指標のヒートマップを縦に 3 段） ----------
@@ -863,9 +887,8 @@ def fig_scoreboard(S):
         cb.ax.tick_params(labelsize=5.5)
     fig.tight_layout(pad=0.5)
     out = os.path.join(OUT, 'fig_v2_scoreboard_en.png')
-    fig.savefig(out, dpi=350)
+    _save(fig, out, dpi=350)
     plt.close(fig)
-    print(' ->', out)
 
 
 # ---------- 白黒校正: 生成済みの図をグレースケールに落として figures/_gray/ に置く ----------
