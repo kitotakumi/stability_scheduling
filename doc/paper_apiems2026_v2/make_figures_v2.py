@@ -191,13 +191,13 @@ def fig_concept():
         ax.text(0.52, _front_curve(0.52) - 0.02, 'attainable trade-off front', fontsize=6.2,
                 color='gray', rotation=-18, rotation_mode='anchor', ha='left', va='top')
         ax.plot([0], [0.95], marker='*', ms=9, color='black', zorder=6)
-        ax.text(0.03, 0.975, 'order of $S_p$ kept ($D=0$)', fontsize=6.5, va='bottom')
+        ax.text(0.03, 0.975, 'sequence of $S_p$ kept ($D=0$)', fontsize=6.5, va='bottom')
         ax.set_xlim(-0.02, 1.02)
         ax.set_ylim(0.05, 1.08)
         ax.set_xticks([0])
         ax.set_xticklabels(['$D=0$'])
         ax.set_yticks([])
-        ax.set_xlabel('Sequence deviation $D$ from $S_p$ (change of plan)')
+        ax.set_xlabel('Sequence deviation $D$ from $S_p$ (amount of change)')
         ax.set_title(title, loc='left')
         for s in ('top', 'right'):
             ax.spines[s].set_visible(False)
@@ -225,7 +225,7 @@ def fig_concept():
 
     # (a) 演算子なし: H1
     ax = axes[0]
-    base(ax, '(a) Without the operator')
+    base(ax, '(a) The two search structures')
     # ILS の軌道: S_p から右下へ 7 点。点の間隔を広くとり、各区間に矢印を置いて進行方向を見せる。
     # フロント線上に張り付かせず、はっきりジグザグさせる。最左点は星（S_RSR）から少し離す
     # ＝この点が「PR も最終的に辿り着く水準」を表す
@@ -248,12 +248,14 @@ def fig_concept():
     ils_chain(ax, 1.0)
     # 注釈は系列を同定するラベルに徹する。点群の広がりと矢印の向きが主張を担っており、
     # それを文で重ねると §1 の箇条書きと二重になる
-    ax.text(0.03, 0.46, 'ILS (trajectory search)', fontsize=6.5, color=T_ILS, ha='left', va='top')
-    ax.text(0.46, 0.99, 'Memetic (population search)', fontsize=6.5, color=C_MEM, ha='left', va='bottom')
+    ax.text(0.02, 0.44, 'ILS (trajectory-based search)', fontsize=6.5, color=T_ILS,
+            ha='left', va='top')
+    ax.text(0.50, 0.99, 'Memetic (population-based search)', fontsize=6.5, color=C_MEM,
+            ha='left', va='bottom')
 
     # (b) 集団に演算子を載せる: H2
     ax = axes[1]
-    base(ax, '(b) With the operator on the population search')
+    base(ax, '(b) Operators on population-based search')
     draw_mem(ax, 0.26)
     ils_chain(ax, 0.32)
     # 引き戻し経路（ILS と逆向き）: 散った個体から S_p へ向かい、経路上の中間解が領域内フロントに落ちる。
@@ -270,7 +272,7 @@ def fig_concept():
     ax.scatter([pr_x[0]], [pr_y[0]], s=16, marker=M_MEM, color=C_MEM, edgecolor='black', lw=0.5,
                zorder=5)
     arrow_chain(ax, pr_x, pr_y, C_MPR)
-    ax.text(0.42, 0.99, 'Operator: back toward $S_p$', fontsize=6.5, color=C_MPR, ha='left',
+    ax.text(0.50, 0.99, 'Operators: pull back toward $S_p$', fontsize=6.5, color=C_MPR, ha='left',
             va='bottom')
 
     axes[0].set_ylabel('Makespan $MS$')
