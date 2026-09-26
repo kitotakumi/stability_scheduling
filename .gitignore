@@ -31,3 +31,6 @@ doc/references/
 
 # 助成金申請（個人情報を含む書類のため git 管理外）
 doc/paper_apiems2026/助成金申請/
+
+# Office の一時ロックファイル
+~$*
