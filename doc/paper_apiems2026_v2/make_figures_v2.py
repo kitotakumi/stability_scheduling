@@ -7,7 +7,7 @@ make_figures_en.py と同じ）。本ディレクトリだけで v2 の図が揃
 
   fig_v2_concept_en.png             図1 (D, MS) 平面の模式図（H1/H2 を結果と同じ座標系で描く）
   fig_v2_front_en.png               図2 実 Pareto フロント（ta21S / ta21L, ILS-b・Mem-LS・Mem+PR）
-  fig_v2_interaction_en.png         図3 演算子 none/repair/PR × 探索構造の高安定 HV
+  fig_v2_interaction_en.png         図3 演算子 none/PR-k/PR × 探索構造の高安定 HV
   fig_v2_anytime_en.png             図4 アンタイム全域 HV 曲線（ta21S / la36L, 6 手法）
 
 検討用（本文では使わない。--review で生成）:
@@ -46,6 +46,9 @@ import analyze_v3 as A  # noqa: E402
 # 軌道側の ILS-baseline と接尾辞を揃えて Memetic-baseline と呼ぶ（母艦の analyze_v3 側は従来表記のまま）。
 METHOD_LABELS = dict(A.METHOD_LABELS)
 METHOD_LABELS['memetic_ls'] = 'Memetic-baseline'
+# 打ち切り版の表示名は PR-k（解析コード側のキー *_repair は analyze_v3 と共有するため改名しない）。
+METHOD_LABELS['ils_repair'] = 'ILS+PR-$k$'
+METHOD_LABELS['memetic_repair'] = 'Memetic+PR-$k$'
 
 RESULTS = os.path.join(CORE, 'results', 'main_v1')
 OUT = os.path.join(HERE, 'figures')
@@ -75,7 +78,7 @@ ANYTIME_W = 5.90
 
 # 白黒印刷と色覚多様性に耐えるよう、意味は必ず 2 チャネル以上で表す:
 #   探索構造 = 色相 ＋ グレー明度 ＋ マーカー形状（ILS: 橙/○、Memetic: 緑/□、演算子の経路: 茶/◇）
-#   演算子   = 線種（なし: 実線、repair: 長破線、PR: 丸点線）
+#   演算子   = 線種（なし: 実線、PR-k: 長破線、PR: 丸点線）
 # 明度は L601=0.299R+0.587G+0.114B（PIL の convert('L') と同じ式）。3 色の間隔を 32 以上あけたうえで、
 # 全色を L601<=130 に収める: 明度差はベタ面（帯・マーカー）には効くが、点線の点や有意記号のような
 # 細い描画には効かず、明るい色はグレー化すると白地に埋もれるため。
@@ -259,7 +262,7 @@ def fig_concept():
     draw_mem(ax, 0.26)
     ils_chain(ax, 0.32)
     # 引き戻し経路（ILS と逆向き）: 散った個体から S_p へ向かい、経路上の中間解が領域内フロントに落ちる。
-    # 経路は ILS の最左点と同水準に到達する。PR と repair の違い（辿り切るか途中で止まるか）は §3.3 に譲り描かない
+    # 経路は ILS の最左点と同水準に到達する。PR と PR-k の違い（辿り切るか途中で止まるか）は §3.3 に譲り描かない
     # オフセットを単調減少にせず軽く上下させ、経路にもジグザグを持たせる（最終点で ILS の水準に到達）
     # 経路上の解は Memetic 自身のフロントより下（良い側）に来るようオフセットを決める
     pr_x = np.array([0.62, 0.50, 0.39, 0.29, 0.20, 0.115])
@@ -463,7 +466,7 @@ def fig_density(S, nbins=44):
     plt.close(fig)
 
 
-# ---------- 図3: 交互作用型プロット（none / repair / PR × ホスト） ----------
+# ---------- 図3: 交互作用型プロット（none / PR-k / PR × ホスト） ----------
 
 HOSTS = [('ILS', ['ils_baseline', 'ils_repair', 'ils_pr'], C_ILS, M_ILS),
          ('Memetic', ['memetic_ls', 'memetic_repair', 'memetic_pr'], C_MEM, M_MEM)]
@@ -481,7 +484,7 @@ def _rpd_scale(S, prob, key):
 
 def _interaction_block(axes, S, probs, key, ylabel, legend_loc='lower right',
                        norm='abs', ylim=None):
-    """2×4 のパネル（シナリオ×1）に、演算子 none/repair/PR を横軸、構造を線として指標 key を描く。
+    """2×4 のパネル（シナリオ×1）に、演算子 none/PR-k/PR を横軸、構造を線として指標 key を描く。
 
     点は trial 中央値、ひげは四分位範囲。記号は演算子なしに対する両側 Mann–Whitney U
     （trial 間の対応は乱数シード番号だけで結果は連動しないため、対応なし検定）。検定は
@@ -520,7 +523,7 @@ def _interaction_block(axes, S, probs, key, ylabel, legend_loc='lower right',
                                   '*' if p >= 0.01 else ('**' if p >= 0.001 else '***')))
         ax.set_title(f'{A.problem_short_tag(prob)} ($\\rho$={rho_pct(prob)}%)', fontsize=7.5)
         ax.set_xticks(x)
-        ax.set_xticklabels(['none', 'repair', 'PR'])
+        ax.set_xticklabels(['none', 'PR-$k$', 'PR'])
         ax.set_xlim(-0.4, 2.4)
         if inv:
             top = ylim if ylim else max(
