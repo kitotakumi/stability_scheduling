@@ -74,7 +74,7 @@ def save(fig, out):
 def draw_interaction(out='fig_highstab_ja.png'):
     d = pickle.load(open(PKL, 'rb'))
     x = np.arange(3)
-    fig, axes = plt.subplots(2, 4, figsize=(3.15, 1.66), dpi=400)
+    fig, axes = plt.subplots(2, 4, figsize=(3.15, 1.32), dpi=400)
     for i, (ax, (key, tag)) in enumerate(zip(axes.flat, ORDER)):
         per = d[key]['highstab_hv_pt']
         ymax, stars = 0.0, []
