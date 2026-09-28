@@ -51,8 +51,8 @@ LANG = {
         out=os.path.join(HERE, 'APIEMS2026_draft_v2_ja.docx'),
         # 付録見出し自体も本文から除く（旧 '## v1 → v2 の対応表' では見出し 1 行が docx に漏れていた）
         body_end='# 付録: 計画メモ',
-        authors=['Takumi Kito'],
-        affil=['早稲田大学大学院 創造理工学研究科 経営システム工学専攻, 東京, 日本',
+        authors=['鬼頭拓海, 谷水義隆, 渡邉るりこ'],
+        affil=['早稲田大学 経営システム工学, 東京, 日本',
                'Tel: (+81) 80-4756-3741, Email: kito@toki.waseda.jp'],
         east_asia='ＭＳ 明朝',
         demote_bold=False,   # 日本語レビュー版は太字強調のまま（イタリック邦文は非慣用）
@@ -63,9 +63,8 @@ LANG = {
         md=os.path.join(HERE, 'apiems2026_manuscript_v2_en.md'),
         out=os.path.join(HERE, 'APIEMS2026_manuscript_v2_en.docx'),
         body_end='# Appendix',
-        authors=['Takumi Kito'],
+        authors=['Takumi Kito, Yoshitaka Tanimizu, and Ruriko Watanabe'],
         affil=['Department of Industrial and Management Systems Engineering,',
-               'Graduate School of Creative Science and Engineering, '
                'Waseda University, Tokyo, Japan',
                'Tel: (+81) 80-4756-3741, Email: kito@toki.waseda.jp'],
         east_asia=None,

@@ -354,8 +354,8 @@ def _draw_front_panel(ax, S, prob, panel_tag=None, band_label='wide', legend=Tru
     ax.plot([0], [init_ms], marker='*', ms=9, color='black', zorder=6)
     span = init_ms - ymin
     if star_label:
-        ax.text(0.03 * xlim_hi, init_ms, '$S_{RSR}$ ($D=0$)', fontsize=6.5, va='center',
-                ha='left')
+        ax.text(0.03 * xlim_hi, init_ms, 'sequence of $S_p$ kept ($D=0$)', fontsize=6.5,
+                va='center', ha='left')
     ax.set_xlim(-0.03 * xlim_hi, xlim_hi)
     ax.set_ylim(ymin - 0.06 * span, init_ms + 0.10 * span)
     if band_label == 'wide':
