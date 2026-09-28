@@ -8,7 +8,7 @@
 APIEMS v2 の図3（doc/paper_apiems2026_v2/make_figures_v2.py の fig_interaction）を
 段幅 1 段に収めた版。符号化は v2 と揃える:
   探索構造 = 色相＋グレー明度＋マーカー形状（単点探索: 橙 L601=130・○／多点探索: 緑 L601=63・□）
-  演算子   = 横軸の 3 水準（なし／repair／PR）
+  演算子   = 横軸の 3 水準（なし／PR-k／PR）
 有意記号は演算子なしに対する両側 Mann-Whitney U 検定（多重比較補正なし）。置き場所は
 構造で固定する（単点探索は線の上・多点探索は線の下）。どちらが上かで決めると、演算子を
 載せた後の中央値がほぼ一致するシナリオで上下が入れ替わり、読み手が対応を取れなくなるため。
@@ -95,7 +95,7 @@ def draw_interaction(out='fig_highstab_ja.png'):
         ax.set_title(tag, pad=1.5)
         ax.set_xticks(x)
         # 目盛ラベルが隣と触れるので、x 方向の余白を詰めて 3 水準の間隔を広げる
-        ax.set_xticklabels(['なし', 'repair', 'PR'], fontsize=4.8)
+        ax.set_xticklabels(['なし', 'PR-$k$', 'PR'], fontsize=4.8)
         ax.set_xlim(-0.36, 2.36)
         ax.set_ylim(0, ymax * 1.34)
         for xs, ys, above, color, txt in stars:

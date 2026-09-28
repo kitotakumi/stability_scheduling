@@ -185,22 +185,34 @@ def build(template_path, out_path, blocks, fig_dir=''):
         pic_p.add_run().add_picture(os.path.join(fig_dir, path),
                                     width=Emu(w_emu), height=Emu(h_emu))
 
+    # 題目部の所属行は行数が可変（全員同一所属なら 1 行）なので、最終行が
+    # 決まるまで溜めてから出す
+    affil_lines = []
+
+    def flush_title():
+        for i, (style, text) in enumerate(affil_lines):
+            last = i == len(affil_lines) - 1
+            # 規定（本文は第 6 行目以降）に合わせ、所属行のあとの空きを 1 行に抑える
+            add(para_style(text, style,
+                           '<w:spacing w:afterLines="50" w:after="50"/>' if last else ''))
+        affil_lines.clear()
+        # 題目部（1 段セクション）をここで閉じる
+        p = add(f'<w:p {NS_W}><w:pPr>'
+                f'<w:spacing w:line="14" w:lineRule="exact"/>'
+                f'<w:rPr><w:sz w:val="2"/></w:rPr></w:pPr></w:p>')
+        p.find(qn('w:pPr')).append(title_sect)
+
     first_h1 = True
     for blk in blocks:
         kind = blk[0]
+        if kind in ('affil_star', 'affil'):
+            affil_lines.append(('ima002' if kind == 'affil_star' else 'ima003',
+                                blk[1]))
+            continue
+        if affil_lines:
+            flush_title()
         if kind == 'title':
             add(para_style(blk[1], 'ima001'))
-        elif kind == 'affil_star':
-            add(para_style(blk[1], 'ima002'))
-        elif kind == 'affil':
-            # 規定（本文は第 6 行目以降）に合わせ、所属行のあとの空きを 1 行に抑える
-            add(para_style(blk[1], 'ima003',
-                           '<w:spacing w:afterLines="50" w:after="50"/>'))
-            # 題目部（1 段セクション）をここで閉じる
-            p = add(f'<w:p {NS_W}><w:pPr>'
-                    f'<w:spacing w:line="14" w:lineRule="exact"/>'
-                    f'<w:rPr><w:sz w:val="2"/></w:rPr></w:pPr></w:p>')
-            p.find(qn('w:pPr')).append(title_sect)
         elif kind == 'h1':
             add(para_h1(blk[1], first=first_h1))
             first_h1 = False
@@ -243,7 +255,7 @@ def build(template_path, out_path, blocks, fig_dir=''):
                            '<w:snapToGrid w:val="0"/>'
                            '<w:spacing w:line="200" w:lineRule="exact"/>'
                            '<w:ind w:left="420" w:hanging="420"/>'
-                           '<w:jc w:val="left"/>',
+                           '<w:jc w:val="both"/>',
                            size=REF_SZ))
         else:
             raise ValueError(f'unknown block: {kind}')
