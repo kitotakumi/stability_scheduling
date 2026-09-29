@@ -528,7 +528,7 @@ def _add_float_figure(doc, body, img_path, w_emu, h_emu, caption, ea):
         f'<w:tbl {NS_W} {NS_M}><w:tblPr>'
         f'<w:tblW w:w="{TEXT_W}" w:type="dxa"/>'
         '<w:tblpPr w:leftFromText="141" w:rightFromText="141"'
-        ' w:topFromText="141" w:bottomFromText="200"'
+        ' w:topFromText="141" w:bottomFromText="120"'
         ' w:vertAnchor="margin" w:horzAnchor="margin"'
         ' w:tblpXSpec="center" w:tblpYSpec="top"/>'
         '<w:tblOverlap w:val="never"/>'
