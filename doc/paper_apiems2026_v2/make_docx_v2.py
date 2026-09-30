@@ -5,11 +5,12 @@
 v1 は content_ja.py に本文を手で転記する方式だったが、v2 は markdown を直接
 builder のブロック列へ変換する。原稿を直したら再実行するだけで docx が出る。
 
-usage: python make_docx_v2.py [--lang ja|en] [--pages]
+usage: python make_docx_v2.py [--lang ja|en] [--no-pdf [--pages]]
        --lang   ja（既定）= 日本語原稿 → APIEMS2026_draft_v2_ja.docx
                 en        = 英語原稿   → APIEMS2026_manuscript_v2_en.docx
                             （テンプレ準拠: 文中の **強調** はイタリックに落とす）
-       --pages  Word で開いてページ数を数える（Windows + Word 必須）
+       既定で Word で開いてページ数を数え、同名の .pdf も書き出す（Windows + Word 必須）
+       --no-pdf PDF を書き出さない（--pages を付けたときだけページ数を数える）
 
 対応する markdown:
   ## N. 見出し            -> h1
@@ -51,12 +52,12 @@ LANG = {
         out=os.path.join(HERE, 'APIEMS2026_draft_v2_ja.docx'),
         # 付録見出し自体も本文から除く（旧 '## v1 → v2 の対応表' では見出し 1 行が docx に漏れていた）
         body_end='# 付録: 計画メモ',
-        authors=['鬼頭拓海, 谷水義隆, 渡邉るりこ'],
-        affil=['早稲田大学 経営システム工学, 東京, 日本',
+        authors=['鬼頭拓海，谷水義隆，渡邉るりこ'],
+        affil=['早稲田大学 経営システム工学，東京，日本',
                'Email: kito@toki.waseda.jp; tanimizu@waseda.jp; r.watanabe@aoni.waseda.jp'],
         east_asia='ＭＳ 明朝',
         demote_bold=False,   # 日本語レビュー版は太字強調のまま（イタリック邦文は非慣用）
-        table_caption=lambda n, cap: f'表 {n}. {cap}',
+        table_caption=lambda n, cap: f'表 {n}．{cap}',
         bullet='・',
     ),
     'en': dict(
@@ -196,8 +197,8 @@ def resolve_eqs(blocks):
     return out
 
 
-def page_count(path):
-    """Word で開いてページ数を返す（Windows + Word が要る）。"""
+def page_count(path, pdf=None):
+    """Word で開いてページ数を返す（Windows + Word が要る）。pdf を渡すとその場で PDF にも書き出す。"""
     import win32com.client
     word = win32com.client.Dispatch('Word.Application')
     word.Visible = False
@@ -205,6 +206,8 @@ def page_count(path):
         doc = word.Documents.Open(os.path.abspath(path), ReadOnly=True)
         doc.Repaginate()
         n = doc.ComputeStatistics(2)  # wdStatisticPages
+        if pdf:
+            doc.ExportAsFixedFormat(os.path.abspath(pdf), 17)  # wdExportFormatPDF
         doc.Close(False)
         return n
     finally:
@@ -225,5 +228,10 @@ if __name__ == '__main__':
         kinds[b[0]] = kinds.get(b[0], 0) + 1
     print(f'built: {cfg["out"]}')
     print('blocks:', ', '.join(f'{k}={v}' for k, v in sorted(kinds.items())))
-    if '--pages' in sys.argv:
-        print(f'pages: {page_count(cfg["out"])}')
+    if '--no-pdf' in sys.argv:
+        if '--pages' in sys.argv:
+            print(f'pages: {page_count(cfg["out"])}')
+    else:
+        pdf = os.path.splitext(cfg['out'])[0] + '.pdf'
+        print(f'pages: {page_count(cfg["out"], pdf)}')
+        print(f'pdf: {pdf}')

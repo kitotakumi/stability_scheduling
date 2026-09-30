@@ -7,7 +7,7 @@
 
   [B] §4.3 全域 HV：演算子込み Memetic と ILS-baseline の差（%）
   [C] §4.1 計算時間：1 run の壁時計時間と Memetic+PR / ILS-baseline の比
-  [E] 表 2：Friedman 平均順位と ARPD%（7 手法 × 3 指標）を markdown で出力
+  [E] 表 2：Friedman 平均順位と ARPD%、最良に並ぶシナリオ数（7 手法 × 3 指標）を markdown で出力
   [F] §4.3 の検定数：全域 HV・AOC について、構造内（演算子 vs なし）・構造間（同じ演算子で
       ILS vs Memetic）・Memetic 内（repair vs PR）の両側 Mann–Whitney U と Cliff's δ
 
@@ -146,26 +146,28 @@ def _mwu(a, b):
     return mannwhitneyu(a, b, alternative='two-sided').pvalue, _cliffs_delta(a, b)
 
 
-def _near_best_counts(S, probs, key):
-    """各手法について「そのシナリオの最良手法と有意差がない」シナリオ数を返す（両側 MWU, alpha=0.05）。
+NEAR_BEST_PCT = 2.0  # 「最良に並ぶ」＝中央値が最良手法の中央値から 2% 以内（表 2 キャプションで定義。§4.2 の帯と同じ閾値）
 
-    最良＝trial 中央値が最大の手法。最良手法自身も 1 と数える。多重比較の補正はかけない
-    （横断の記述統計として扱う）。
+
+def _near_best_counts(S, probs, key):
+    """各手法について「そのシナリオで最良に並ぶ」シナリオ数を返す。
+
+    最良＝trial 中央値が最大の手法。中央値が最良の中央値から NEAR_BEST_PCT % 以内なら並ぶと数える
+    （最良手法自身も含む）。検定は使わない：「最良と有意差なし」は多重比較の補正をかけるほど
+    判定が甘くなり、並ぶと数えるシナリオが増えてしまうため。
     """
     cnt = {m: 0 for m in TABLE_ORDER}
     for prob in probs:
         per = S[prob][key]
         med = {m: np.median(np.asarray(per[m], float)) for m in TABLE_ORDER}
-        best = max(med, key=med.get)
+        best = max(med.values())
         for m in TABLE_ORDER:
-            cnt[m] += (m == best) or (
-                mannwhitneyu(np.asarray(per[m], float), np.asarray(per[best], float),
-                             alternative='two-sided').pvalue >= 0.05)
+            cnt[m] += med[m] >= best * (1 - NEAR_BEST_PCT / 100)
     return cnt
 
 
 def section_e(S, probs):
-    print(chr(10) + '[E] 表 2: 平均順位／ARPD%（平均）／最良群シナリオ数。列は 全域 HV / 高安定 HV / AOC')
+    print(chr(10) + '[E] 表 2: 平均順位／ARPD%（平均）／最良に並ぶ（2% 以内）シナリオ数。列は 全域 HV / 高安定 HV / AOC')
     cols = {}
     for key in ('union_hv_pt', 'highstab_hv_pt', 'aoc_pt'):
         Mx = A._metric_matrix(S, probs, TABLE_ORDER, key)
