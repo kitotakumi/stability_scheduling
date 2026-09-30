@@ -53,7 +53,7 @@ LANG = {
         body_end='# 付録: 計画メモ',
         authors=['鬼頭拓海, 谷水義隆, 渡邉るりこ'],
         affil=['早稲田大学 経営システム工学, 東京, 日本',
-               'Tel: (+81) 80-4756-3741, Email: kito@toki.waseda.jp'],
+               'Email: kito@toki.waseda.jp; tanimizu@waseda.jp; r.watanabe@aoni.waseda.jp'],
         east_asia='ＭＳ 明朝',
         demote_bold=False,   # 日本語レビュー版は太字強調のまま（イタリック邦文は非慣用）
         table_caption=lambda n, cap: f'表 {n}. {cap}',
@@ -64,9 +64,9 @@ LANG = {
         out=os.path.join(HERE, 'APIEMS2026_manuscript_v2_en.docx'),
         body_end='# Appendix',
         authors=['Takumi Kito, Yoshitaka Tanimizu, and Ruriko Watanabe'],
-        affil=['Department of Industrial and Management Systems Engineering,',
-               'Waseda University, Tokyo, Japan',
-               'Tel: (+81) 80-4756-3741, Email: kito@toki.waseda.jp'],
+        affil=['Department of Industrial and Management Systems Engineering',
+               'School of Creative Science and Engineering, Waseda University, Tokyo, Japan',
+               'Email: kito@toki.waseda.jp; tanimizu@waseda.jp; r.watanabe@aoni.waseda.jp'],
         east_asia=None,
         demote_bold=True,    # 投稿版はテンプレ準拠: 文中強調をイタリック化
         table_caption=lambda n, cap: f'Table {n}: {cap}',
