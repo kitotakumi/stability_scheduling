@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-"""APIEMS2026 原稿からゼミ発表用 pptx を生成する（深い青テーマ / 洗練シンプル版）。
+"""学会発表（JIMA2026 秋・15 分）用 pptx を生成する（深い青テーマ）。
+
+構成は仮説の提示までを JIMA 予稿、その後を APIEMS v2 原稿（実験計画 → 指標ごとの結果 → 結論）に合わせる。
 
 デザイン方針:
   - テーマカラーは「深い青」の単色系。装飾を足さず余白で見せる。
@@ -8,8 +10,8 @@
     キーメッセージは各スライドの“主張そのもの”を1文で置く。
   - 図は seminar/ の原図をそのまま使用（SVGは render_assets.py で忠実にPNG化）。
 
-前提:  python render_assets.py を先に実行（概念図PNGを生成）。
-再生成:  python build_pptx.py
+前提:  python make_talk_figures.py を先に実行（assets/ に図を生成）。
+再生成:  python build_pptx.py          （pptx と同名の PDF も書き出す．PDF 不要なら --no-pdf）
 """
 import os
 import re as _re
@@ -30,7 +32,7 @@ DOC = os.path.dirname(HERE)
 SEM = os.path.join(DOC, "seminar")
 ASSETS = os.path.join(HERE, "assets")
 os.makedirs(ASSETS, exist_ok=True)
-OUT = os.path.join(HERE, "APIEMS2026_ゼミ発表.pptx")
+OUT = os.path.join(HERE, "JIMA2026fall_発表.pptx")
 
 def sem(name):  return os.path.join(SEM, name)
 def asset(name): return os.path.join(ASSETS, name)
@@ -346,7 +348,7 @@ def _cell_border(cell, edges=("bottom",), color="D6DEE7", w_pt=0.75):
         fill.append(clr); ln.append(fill); tcPr.append(ln)
 
 
-def render_table(slide, rows, x, y, w, col_w=None, size=12.5, header=True, align=None):
+def render_table(slide, rows, x, y, w, col_w=None, size=12.5, header=True, align=None, row_h=0.33):
     nr, nc = len(rows), len(rows[0])
     gshape = slide.shapes.add_table(nr, nc, Inches(x), Inches(y), Inches(w), Inches(0.4 * nr))
     tbl = gshape.table
@@ -362,7 +364,7 @@ def render_table(slide, rows, x, y, w, col_w=None, size=12.5, header=True, align
         for i, c in enumerate(tbl.columns):
             c.width = Inches(w * col_w[i] / tot)
     for ri, row in enumerate(rows):
-        tbl.rows[ri].height = Inches(0.33)
+        tbl.rows[ri].height = Inches(row_h)
         is_head = header and ri == 0
         for ci, val in enumerate(row):
             cell = tbl.cell(ri, ci)
@@ -375,12 +377,17 @@ def render_table(slide, rows, x, y, w, col_w=None, size=12.5, header=True, align
             cell.text_frame.word_wrap = True
             if align and align[ci] == 'c':
                 p.alignment = PP_ALIGN.CENTER
+            elif align and align[ci] == 'l':
+                p.alignment = PP_ALIGN.LEFT
             elif ci == 0:
                 p.alignment = PP_ALIGN.LEFT
             else:
                 p.alignment = PP_ALIGN.CENTER
-            _add_runs(p, str(val), size, color=(WHITE if is_head else INK),
-                      bold=is_head, emph=(WHITE if is_head else BLUE))
+            for li, line in enumerate(str(val).split("\n")):
+                q = p if li == 0 else cell.text_frame.add_paragraph()
+                q.alignment = p.alignment
+                _add_runs(q, line, size, color=(WHITE if is_head else INK),
+                          bold=is_head, emph=(WHITE if is_head else BLUE))
             if not is_head:
                 _cell_border(cell, edges=("bottom",))
     return 0.33 * nr + 0.05
@@ -521,114 +528,43 @@ def divider_slide(no, title, subtitle=None):
     _hline(slide, 2.78, 4.28, 5.2, color=BLUESOFT, weight=1.25)
     return slide
 
-# ================================================================ 作図（1〜2章のビジュアル）
 
-def diag_taxonomy(slide, x, y, w):
-    """1.1：外乱対応の分類フロー（静的/動的 → 予測リアクティブ → 作業遅延）"""
-    bh = 0.60; sy = y + 0.10; dy = y + 0.98
-    _boxtext(slide, x + 0.05, y + 0.34, 1.85, 0.90, [("外乱への\n対応", 13, WHITE, True)],
-             fill=BLUE, radius=0.12)
-    _boxtext(slide, x + 2.45, sy, 3.0, bh, [("静的（事前耐性設計）", 12, MUTE, False)],
-             fill=FILL, line=CARDLINE)
-    _boxtext(slide, x + 2.45, dy, 3.0, bh, [("動的（事後修正）＝再スケジューリング", 11, BLUE, True)],
-             fill=FILL, line=BLUE)
-    _boxtext(slide, x + 5.85, dy, 3.1, bh, [("予測リアクティブ再スケジューリング", 11.5, WHITE, True)],
-             fill=BLUE)
-    _boxtext(slide, x + 9.35, dy, 2.6, bh, [("作業遅延に着目", 12.5, BLUE, True)],
-             fill=WHITE, line=BLUE)
-    _boxtext(slide, x + 6.55, dy - 0.34, 1.7, 0.32, [("★ 本研究の対象", 10.5, WHITE, True)],
-             fill=BLUESOFT, radius=0.30)
-    _connector(slide, x + 1.90, y + 0.62, x + 2.45, sy + bh / 2, arrow=False)
-    _connector(slide, x + 1.90, y + 1.08, x + 2.45, dy + bh / 2, arrow=False)
-    _connector(slide, x + 5.45, dy + bh / 2, x + 5.85, dy + bh / 2)
-    _connector(slide, x + 8.95, dy + bh / 2, x + 9.35, dy + bh / 2)
-    return 1.78
+CHAPTERS = [("1", "研究背景と仮説", "外乱と再スケジューリング・先行研究と課題・仮説"),
+            ("2", "問題設定と実験計画", "問題設定・評価指標・探索構造・安定性誘導演算子・仮説の判定"),
+            ("3", "数値実験", "実験設定・高安定 HV・全域 HV と AUC"),
+            ("4", "結論", "まとめ・限界と今後の課題")]
 
 
-def diag_tradeoff(slide, x, y, w):
-    """1.2：効率⇄安定のトレードオフ（2ボックスを中央寄せで近づける）"""
-    bh = 1.05
-    boxw = 4.55; gap = 1.15
-    startx = x + (w - (boxw * 2 + gap)) / 2
-    _boxtext(slide, startx, y + 0.05, boxw, bh,
-             [("効率（メイクスパン MS）", 13, BLUE, True), ("を最小化", 10.5, INK, False)],
-             fill=FILL, line=BLUE)
-    _boxtext(slide, startx + boxw + gap, y + 0.05, boxw, bh,
-             [("安定性（$S_p$ からの変更量 $D$）", 12.5, BLUE, True), ("を最小化", 10.5, INK, False)],
-             fill=FILL, line=BLUE)
-    cx = startx + boxw + gap / 2
-    tb, tf = add_textbox(slide, cx - 0.55, y + 0.02, 1.1, bh)
-    tf.vertical_anchor = MSO_ANCHOR.MIDDLE
-    p = tf.paragraphs[0]; p.alignment = PP_ALIGN.CENTER
-    _run(p, "⇄", 24, color=BLUE, bold=True)
-    p2 = tf.add_paragraph(); p2.alignment = PP_ALIGN.CENTER
-    _run(p2, "トレードオフ", 10.5, color=BLUE, bold=True)
-    return bh + 0.10
+def chapter(no):
+    """章扉。4 章すべてを並べ，当該の章だけを白い太字と淡い帯で目立たせる。
+    スライド番号を本文と通しにするため番号を進め，右下に小さく出す。"""
+    slide = prs.slides.add_slide(BLANK)
+    _rect(slide, 0, 0, SW, SH, COVER)
+    rh, gap = 0.95, 0.2
+    y0 = (SH - (len(CHAPTERS) * rh + (len(CHAPTERS) - 1) * gap)) / 2
+    x0, w = 2.2, SW - 4.4
+    for i, (n, title, sub) in enumerate(CHAPTERS):
+        y = y0 + i * (rh + gap)
+        cur = (n == no)
+        if cur:
+            band = _rrect(slide, x0 - 0.3, y - 0.05, w + 0.6, rh + 0.1, BLUESOFT, radius=0.12)
+            _alpha(band, 0.45)
+        tb, tf = add_textbox(slide, x0, y, 1.0, rh, anchor=MSO_ANCHOR.MIDDLE)
+        _run(tf.paragraphs[0], n, 40 if cur else 30, color=WHITE if cur else BLUESOFT, bold=True)
+        tb, tf = add_textbox(slide, x0 + 1.1, y, w - 1.1, rh, anchor=MSO_ANCHOR.MIDDLE)
+        p = tf.paragraphs[0]
+        _run(p, title, 26 if cur else 20, color=WHITE if cur else BLUESOFT, bold=cur)
+        if cur and sub:
+            p2 = tf.add_paragraph(); p2.space_before = Pt(4)
+            _run(p2, sub, 13, color=LTBLUE)
+    _page["n"] += 1
+    tb, tf = add_textbox(slide, SW - ML - 1.2, 7.08, 1.2, 0.30)
+    p = tf.paragraphs[0]; p.alignment = PP_ALIGN.RIGHT
+    _run(p, str(_page["n"]), 10, color=LTBLUE)
+    return slide
 
 
-def _verdict_card(slide, x, y, w, h, host, badge, badge_fill, rows):
-    """4.3：ホスト別の使い分けカード（見出し＋バッジ＋2行の判定）。"""
-    _rrect(slide, x, y, w, h, WHITE, line=CARDLINE, radius=0.05, lw=1.1)
-    tb, tf = add_textbox(slide, x + 0.24, y + 0.18, w - 1.9, 0.44)
-    _add_runs(tf.paragraphs[0], host, 16, color=BLUE, bold=True)
-    _boxtext(slide, x + w - 1.75, y + 0.18, 1.5, 0.42, [(badge, 11.5, WHITE, True)],
-             fill=badge_fill, radius=0.24)
-    tb, tf = add_textbox(slide, x + 0.24, y + 0.78, w - 0.48, h - 0.9)
-    for i, (k, v) in enumerate(rows):
-        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-        p.line_spacing = 1.12; p.space_before = Pt(0 if i == 0 else 6)
-        _run(p, k + "　", 13, color=MUTE)
-        _add_runs(p, v, 13.5, color=INK, emph=BLUE)
-
-
-def diag_pr_repair(slide, x, y, w):
-    gap = 0.42; cw = (w - gap) / 2; h = 2.10
-    _verdict_card(slide, x, y, cw, h, "軌道（ILS・$d$ 小）", "どちらでも同じ", BLUESOFT,
-                  [("品質", "機構を足しても頭打ちで**タイ**"),
-                   ("速さ AOC", "全 8 シナリオで**タイ**（経路短く $O(d)$）"),
-                   ("→", "**選択は問題にならない**")])
-    _verdict_card(slide, x + cw + gap, y, cw, h, "集団（Memetic・$d$ 大）", "使い分けが要る", BLUE,
-                  [("品質", "**PR** が僅かに優る"),
-                   ("速さ AOC", "**repair** が全 8 で PR に優る（δ 最大 +1.0）"),
-                   ("→", "品質＝**PR** ／ 予算厳しめ＝**repair**")])
-    return h
-
-
-def diag_hyp(slide, x, y, w):
-    """起点 → H1 → H2 を矢印でつないだ仮説図（言葉の注記は付けない）。"""
-    bh = 2.75
-    by = y
-    w0 = 2.35; a1 = 0.50; a2 = 0.50
-    cw = (w - w0 - a1 - a2) / 2
-    _boxtext(slide, x, by, w0, bh,
-             [("起点", 12, LTBLUE, False), ("$S_p$ が\n既に存在する", 17, WHITE, True)],
-             fill=COVER, radius=0.05)
-    cards = [
-        (x + w0 + a1, cw, "H1（適合性）",
-         "$S_p$ から**連続変形**を重ねる**軌道ベース**は高安定領域を小刻みに覆える。"
-         "対して**交叉**で2親を組み替える**集団ベース**は子個体が $S_p$ 近傍から飛び、"
-         "同じ局所探索でも充填が**構造的に粗い**はず。"),
-        (x + w0 + a1 + cw + a2, cw, "H2（補完性）",
-         "誘導演算子(PR・repair)が供給する力は、**まさに集団に欠け・軌道は既に自力で持つ**もの。"
-         "ゆえに同一演算子でも効果は**ホスト依存で非対称**——集団に大・軌道に僅少。"),
-    ]
-    for cx0, cwid, head, body in cards:
-        _rrect(slide, cx0, by, cwid, bh, WHITE, line=BLUE, radius=0.04, lw=1.2)
-        tb, tf = add_textbox(slide, cx0 + 0.24, by + 0.20, cwid - 0.48, 0.40)
-        _add_runs(tf.paragraphs[0], head, 17, color=BLUE, bold=True)
-        tb, tf = add_textbox(slide, cx0 + 0.24, by + 0.72, cwid - 0.48, bh - 0.86)
-        p = tf.paragraphs[0]; p.line_spacing = 1.24
-        _add_runs(p, body, 14.5, color=INK, emph=BLUE)
-    for ax, aw in [(x + w0, a1), (x + w0 + a1 + cw, a2)]:
-        _connector(slide, ax + 0.06, by + bh / 2, ax + aw - 0.06, by + bh / 2,
-                   color=BLUESOFT, wt=2.4, kind=1)
-    return bh
-
-
-# ---------------------------------------------------------------- 3章の作図
-ORANGE = RGBColor(0xE8, 0x8B, 0x2E)   # 軌道側（図の親個体色に合わせる）
-VIOLET = RGBColor(0x8A, 0x86, 0xD8)   # 集団側（交叉で生成された子）
-RED    = RGBColor(0xE0, 0x4B, 0x43)   # $S_p$
+# ================================================================ 発表用の作図
 
 def _oval(slide, cx, cy, d, fill, line=None):
     sp = slide.shapes.add_shape(MSO_SHAPE.OVAL, Inches(cx - d / 2), Inches(cy - d / 2),
@@ -641,505 +577,1080 @@ def _oval(slide, cx, cy, d, fill, line=None):
     sp.shadow.inherit = False
     return sp
 
-
-def _schema_trajectory(slide, x, y, w, h):
-    """単一解が少しずつ変形しながら動くイメージ。"""
-    pts = [(0.05, 0.78), (0.16, 0.44), (0.28, 0.62), (0.40, 0.26),
-           (0.53, 0.50), (0.66, 0.20), (0.79, 0.44), (0.92, 0.16)]
-    P = [(x + fx * w, y + fy * h) for fx, fy in pts]
-    for (x1, y1), (x2, y2) in zip(P, P[1:]):
-        _connector(slide, x1, y1, x2, y2, color=ORANGE, wt=1.2, arrow=False, kind=1)
-    for i, (px, py) in enumerate(P):
-        last = (i == len(P) - 1)
-        _oval(slide, px, py, 0.20 if last else 0.13, ORANGE if last else RGBColor(0xF2, 0xB9, 0x74))
-    tb, tf = add_textbox(slide, x, y + h + 0.02, w, 0.28)
-    p = tf.paragraphs[0]; p.alignment = PP_ALIGN.CENTER
-    _run(p, "1 つの解が少しずつ変形しながら動く", 11.5, color=MUTE)
-    return h + 0.30
+ORANGE = RGBColor(0xE0, 0x6C, 0x00)   # 単点探索（ILS）＝図の橙
+GREEN  = RGBColor(0x0F, 0x5C, 0x28)   # 多点探索（Memetic）＝図の緑
+BROWN  = RGBColor(0x2E, 0x1A, 0x0E)   # 安定性誘導演算子＝図の茶
+RED    = RGBColor(0xB0, 0x3A, 0x2E)
+SAND   = RGBColor(0xF5, 0xEB, 0xD0)   # 高安定領域の帯
+SANDLN = RGBColor(0x7A, 0x5C, 0x12)
 
 
-def _schema_population(slide, x, y, w, h):
-    """集団が世代ごとに組み替わるイメージ（上端に世代ラベル）。"""
-    gens = [0.08, 0.50, 0.92]
-    hb = h - 0.26                      # ラベル分を除いた作図帯
-    yb = y + 0.26
-    ys = [[0.08, 0.32, 0.56, 0.80], [0.16, 0.38, 0.62, 0.86], [0.04, 0.30, 0.54, 0.78]]
-    G = [[(x + gx * w, yb + fy * hb) for fy in col] for gx, col in zip(gens, ys)]
-    pairs = [[(0, 1), (1, 3), (2, 0), (3, 2)], [(0, 2), (1, 0), (2, 3), (3, 1)]]
-    for gi, links in enumerate(pairs):
-        for a, b in links:
-            x1, y1 = G[gi][a]; x2, y2 = G[gi + 1][b]
-            _connector(slide, x1, y1, x2, y2, color=RGBColor(0xC7, 0xC5, 0xEC),
-                       wt=0.9, arrow=False, kind=1)
-    for gi, col in enumerate(G):
-        for px, py in col:
-            _oval(slide, px, py, 0.15, VIOLET if gi else RGBColor(0xF2, 0xB9, 0x74))
-    for gi, lab in enumerate(["親世代", "交叉・選択", "次世代"]):
-        tb, tf = add_textbox(slide, x + gens[gi] * w - 0.62, y - 0.03, 1.24, 0.26)
-        p = tf.paragraphs[0]; p.alignment = PP_ALIGN.CENTER
-        _run(p, lab, 10.5, color=MUTE)
-    tb, tf = add_textbox(slide, x, y + h + 0.02, w, 0.28)
-    p = tf.paragraphs[0]; p.alignment = PP_ALIGN.CENTER
-    _run(p, "多数の解を保持し、組み替えて入れ替える", 11.5, color=MUTE)
-    return h + 0.30
+def _text(slide, x, y, w, h, text, size, color=INK, bold=False, align=PP_ALIGN.LEFT,
+          anchor=MSO_ANCHOR.TOP, ls=1.05, emph=None):
+    tb, tf = add_textbox(slide, x, y, w, h, anchor=anchor)
+    for i, line in enumerate(text.split("\n")):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.alignment = align
+        p.line_spacing = ls
+        _add_runs(p, line, size, color=color, bold=bold, emph=emph or color)
+    return tb
 
 
-def diag_two_families(slide, x, y, w):
-    """3.1：軌道ベース／集団ベースの2系統を並べて説明する。"""
-    gap = 0.42; cw = (w - gap) / 2; ch = 3.96
-    cols = [
-        (x, "軌道ベース（trajectory-based）", "解を1つだけ持つ", _schema_trajectory,
-         ["解を1つだけ保持し、**近傍への移動を繰り返して1本の探索軌跡**を描く。",
-          "現在地が常に1点 ＝ **どの解から何手離れたか**を制御できる。",
-          "局所最適からの**脱出法**が手法差：**ILS**＝摂動／**タブーサーチ**＝再訪の禁止／**SA**＝悪化も確率的に受理"]),
-        (x + cw + gap, "集団ベース（population-based）", "解を多数持つ", _schema_population,
-         ["**交叉で2つの親を組み替え**、選択で世代を更新。多様性が駆動力。",
-          "個体は空間全体に散らばる ＝ 広く探せるが、**1点からの距離は制御しない**。",
-          "代表：**GA**・**Memetic（GA＋局所探索）**"]),
+def _bul(slide, x, y, w, items, size=15, gap=8, color=INK, emph=BLUE, mark="▪ "):
+    """items: 文字列 or (level, 文字列)。level 1 は字下げした小さめの行。"""
+    tb, tf = add_textbox(slide, x, y, w, 0.5)
+    for i, it in enumerate(items):
+        lv, t = it if isinstance(it, tuple) else (0, it)
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.line_spacing = 1.08
+        p.space_before = Pt(0 if i == 0 else (gap if lv == 0 else 3))
+        if lv == 0:
+            _run(p, mark, size * 0.8, color=BLUE, bold=True)
+            _add_runs(p, t, size, color=color, emph=emph)
+        else:
+            _run(p, "　－ ", size * 0.85, color=MUTE)
+            _add_runs(p, t, size * 0.9, color=color, emph=emph)
+    return tb
+
+
+def slide_frame(title, key, section):
+    slide = prs.slides.add_slide(BLANK)
+    _title_zone(slide, title, key)
+    _footer(slide, section)
+    return slide
+
+
+def pic(slide, name, x, y, w=None, h=None):
+    path = asset(name)
+    iw, ih = _img_size(path)
+    if w is None:
+        w = h * iw / ih
+    if h is None:
+        h = w * ih / iw
+    slide.shapes.add_picture(path, Inches(x), Inches(y), Inches(w), Inches(h))
+    return w, h
+
+
+# ---------------------------------------------------------------- 表紙
+
+def title_slide_talk():
+    slide = prs.slides.add_slide(BLANK)
+    _rect(slide, 0, 0, SW, SH, COVER)
+    _hline(slide, 0.95, 2.05, 2.6, color=BLUESOFT, weight=2.0)
+    tb, tf = add_textbox(slide, 0.95, 2.22, SW - 1.9, 1.9)
+    for i, t in enumerate(["処理順序の変更量を考慮した再スケジューリングにおける",
+                           "path relinking の適用と探索構造の比較評価"]):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.line_spacing = 1.15
+        _run(p, t, 30, color=WHITE, bold=True)
+    _hline(slide, 0.97, 4.75, 3.4, color=BLUESOFT, weight=1.0)
+    tb, tf = add_textbox(slide, 0.97, 4.9, SW - 1.9, 1.6)
+    rows = [("早稲田大学", 15, LTBLUE, False),
+            ("○鬼頭 拓海，谷水 義隆，渡邉 るりこ", 19, WHITE, True),
+            ("日本経営工学会 2026年秋季大会　2026年10月", 12.5, EN_BLUE, False)]
+    for i, (txt, sz, col, bold) in enumerate(rows):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.space_before = Pt(6 if i else 0)
+        _run(p, txt, sz, color=col, bold=bold)
+    _page["n"] = 1   # 表紙を 1 枚目として数え，以降はスライド番号＝通し番号
+
+
+# ---------------------------------------------------------------- 2. 背景
+
+JOBC = {"J1": RGBColor(0x3E, 0x61, 0x8C), "J2": RGBColor(0xD9, 0x8E, 0x45),
+        "J3": RGBColor(0x6F, 0x9E, 0x7C)}
+DELAY_FILL = RGBColor(0xF6, 0xD5, 0xD1)
+# 3 ジョブ × 3 機械の模式例（経路 J1: M1→M2→M3，J2: M2→M3→M1，J3: M3→M1→M2）。
+# M2 の J1 が 3 だけ遅延し，時刻 9 に終わる＝再スケジューリング時刻 t_r = 9。
+# t_r より前に開始した作業は凍結し，未着手の 4 作業（M2 の J3，M3 の J1・J2，M1 の J2）を決め直す。
+#   案A：S_p の処理順序を保ったまま後ろへずらす（総所要時間 19）
+#   案B：M3 で J1 と J2 の順序を入れ替える（総所要時間 16）
+GANTT_T, GANTT_TR = 20.0, 9
+GANTT_SP = {"M1": [("J1", 0, 3), ("J3", 4, 3), ("J2", 12, 4)],
+            "M2": [("J2", 0, 3), ("J1", 3, 3), ("J3", 7, 3)],
+            "M3": [("J3", 0, 4), ("J1", 6, 3), ("J2", 9, 3)]}
+GANTT_A = {"M1": [("J1", 0, 3), ("J3", 4, 3), ("J2", 15, 4)],
+           "M2": [("J2", 0, 3), ("J1", 3, 6), ("J3", 9, 3)],
+           "M3": [("J3", 0, 4), ("J1", 9, 3), ("J2", 12, 3)]}
+GANTT_B = {"M1": [("J1", 0, 3), ("J3", 4, 3), ("J2", 12, 4)],
+           "M2": [("J2", 0, 3), ("J1", 3, 6), ("J3", 9, 3)],
+           "M3": [("J3", 0, 4), ("J2", 9, 3), ("J1", 12, 3)]}
+
+
+def _alpha(shape, alpha):
+    """塗りの不透明度（0〜1）を設定する。"""
+    clr = shape.fill._xPr.find(qn('a:solidFill')).find(qn('a:srgbClr'))
+    a = clr.makeelement(qn('a:alpha'), {'val': str(int(alpha * 100000))})
+    clr.append(a)
+
+
+def _vline(slide, x, y0, y1, color=INK, weight=1.5, dash=True):
+    ln = slide.shapes.add_connector(1, Inches(x), Inches(y0), Inches(x), Inches(y1))
+    ln.line.color.rgb = color
+    ln.line.width = Pt(weight)
+    if dash:
+        from pptx.enum.dml import MSO_LINE
+        ln.line.dash_style = MSO_LINE.DASH
+    ln.shadow.inherit = False
+    return ln
+
+
+def _gantt(slide, x, y, w, ops, T=GANTT_T, rh=0.36, rg=0.12, fs=10.5, delay=None, moved=(),
+           label_w=0.42, tr=None):
+    """機械ごとの作業バー。delay=(機械, ジョブ, 元の長さ) なら遅延分を赤で塗る。
+    moved は順序が変わった (機械, ジョブ) で赤枠で囲む。tr を与えると，その時刻に破線を引き，
+    それより前（開始済み＝凍結）を白く薄める。"""
+    gx, gw = x + label_w, w - label_w
+    for r, (m, lst) in enumerate(ops.items()):
+        yy = y + r * (rh + rg)
+        _text(slide, x, yy, label_w, rh, m, fs, color=MUTE, anchor=MSO_ANCHOR.MIDDLE)
+        for j, st, du in lst:
+            bx = gx + gw * st / T
+            if delay and (m, j) == delay[:2]:
+                base = delay[2]
+                _boxtext(slide, bx + 0.015, yy, gw * base / T - 0.03, rh, [(j, fs, WHITE, True)],
+                         fill=JOBC[j], radius=0.08)
+                _rrect(slide, bx + gw * base / T + 0.015, yy, gw * (du - base) / T - 0.03, rh,
+                       DELAY_FILL, line=RED, radius=0.08, lw=1.2)
+                continue
+            line = RED if (m, j) in moved else None
+            sp = _boxtext(slide, bx + 0.015, yy, gw * du / T - 0.03, rh, [(j, fs, WHITE, True)],
+                          fill=JOBC[j], line=line, radius=0.08)
+            if line is not None:
+                sp.line.width = Pt(2.4)
+    bottom = y + 3 * (rh + rg) - rg
+    _hline(slide, gx, bottom + 0.04, gw, color=HAIR, weight=1.0)
+    if tr is not None:
+        xt = gx + gw * tr / T
+        veil = _rect(slide, gx - 0.02, y - 0.04, xt - gx + 0.02, bottom - y + 0.08, WHITE)
+        _alpha(veil, 0.55)
+        _vline(slide, xt, y - 0.12, bottom + 0.08, color=INK, weight=1.6)
+    return bottom + 0.05 - y
+
+
+def s_intro():
+    s = slide_frame("外乱と再スケジューリング",
+                    "外乱が起きたら，事前に作成した初期スケジュール $S_p$ を修正する（予測リアクティブ再スケジューリング）",
+                    "1. 研究背景と仮説")
+    # 外乱
+    _rrect(s, ML, 2.0, CW, 0.8, FILL, line=CARDLINE, radius=0.12)
+    _text(s, ML + 0.3, 2.0, CW - 0.6, 0.8,
+          "製造現場では，機械故障や作業遅延などの**外乱**により，スケジュール通りに作業を実行できないことがある",
+          16, color=INK, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, emph=BLUE)
+    # 静的／動的
+    gap = 0.6
+    cw = (CW - gap) / 2
+    cy, ch = 3.35, 1.35
+    cards = [("静的アプローチ", "事前に余裕を持たせ，外乱に備える", False),
+             ("動的アプローチ", "外乱の発生後に，スケジュールを修正する", True)]
+    for k, (head, body, ours) in enumerate(cards):
+        x = ML + k * (cw + gap)
+        _connector(s, ML + CW / 2, 2.82, x + cw / 2, cy - 0.04, color=MUTE, wt=1.6, kind=1)
+        _rrect(s, x, cy, cw, ch, WHITE if not ours else FILL, line=BLUE if ours else CARDLINE,
+               radius=0.06, lw=1.8 if ours else 1.1)
+        _text(s, x + 0.3, cy + 0.18, cw - 2.0, 0.45, head, 18, color=BLUE if ours else MUTE,
+              bold=True)
+        _text(s, x + 0.3, cy + 0.72, cw - 0.6, 0.45, body, 15, color=INK if ours else MUTE)
+        if ours:
+            _boxtext(s, x + cw - 1.35, cy + 0.2, 1.1, 0.38, [("本研究", 12.5, WHITE, True)],
+                     fill=BLUE, radius=0.4)
+    # 予測リアクティブ再スケジューリングと S_p
+    x = ML + cw + gap
+    _connector(s, x + cw / 2, cy + ch + 0.04, x + cw / 2, 5.12, color=BLUE, wt=2.6, kind=1)
+    _rrect(s, x, 5.18, cw, 1.6, COVER, radius=0.06)
+    tb, tf = add_textbox(s, x + 0.3, 5.22, cw - 0.6, 1.52, anchor=MSO_ANCHOR.MIDDLE)
+    p = tf.paragraphs[0]
+    _run(p, "予測リアクティブ再スケジューリング", 15.5, color=WHITE, bold=True)
+    q = tf.add_paragraph()
+    q.space_before = Pt(6)
+    q.line_spacing = 1.1
+    _add_runs(q, "外乱が起きたら，", 13.5, color=WHITE, emph=WHITE)
+    q2 = tf.add_paragraph()
+    q2.line_spacing = 1.1
+    _add_runs(q2, "外乱前のスケジュール（**初期スケジュール $S_p$**）を修正する",
+              13.5, color=WHITE, emph=WHITE)
+    _boxtext(s, ML, 5.62, 1.6, 0.42, [("本研究の対象", 12.5, WHITE, True)], fill=BLUESOFT,
+             radius=0.4)
+    _text(s, ML + 1.75, 5.55, cw - 1.6, 0.56, "ジョブショップ問題（JSP）における作業遅延", 14,
+          color=INK, anchor=MSO_ANCHOR.MIDDLE)
+
+
+def s_background():
+    s = slide_frame("再スケジューリングと安定性",
+                    "スケジュールの変更は現場にコストを生むため，生産効率と安定性の二目的最適化として扱う",
+                    "1. 研究背景と仮説")
+    # 左：例（2 通りの修正を上下に）
+    T = GANTT_T
+    lx, lw_ = ML, 5.9
+    tb, tf = add_textbox(s, lx, 1.72, lw_, 0.36, anchor=MSO_ANCHOR.MIDDLE)
+    p = tf.paragraphs[0]
+    _run(p, "例：", 12.5, color=INK, bold=True)
+    _add_runs(p, "**M2 の J1 が 3 遅延（赤）** → 時刻 $t_r$ 以降の処理順序を変更",
+              12.5, color=INK, emph=RED)
+    cases = [("$S_p$ の処理順序を保つ", GANTT_A, (), "総所要時間 19", "変更なし", 1),
+             ("M3 の順序を入れ替える", GANTT_B, {("M3", "J1"), ("M3", "J2")},
+              "総所要時間 16", "順序を変更", 0)]
+    ch, cg = 2.3, 0.14
+    for k, (head, ops, moved, ms, chg, good) in enumerate(cases):
+        cy = 2.15 + k * (ch + cg)
+        _rrect(s, lx, cy, lw_, ch, WHITE, line=CARDLINE, radius=0.04)
+        _text(s, lx + 0.2, cy + 0.1, lw_ - 3.3, 0.38, head, 13.5, color=INK, bold=True,
+              anchor=MSO_ANCHOR.MIDDLE)
+        # 良い側は青．順序を変えた案の「順序を変更」はコストの原因なので赤
+        for i, txt in enumerate([ms, chg]):
+            fill = BLUE if i == good else (RED if (i == 1 and moved) else FILL)
+            hot = fill != FILL
+            _boxtext(s, lx + lw_ - 2.95 + i * 1.40, cy + 0.1, 1.34, 0.38,
+                     [(txt, 11, WHITE if hot else INK, hot)], fill=fill, radius=0.3)
+        g_x, g_w, g_y = lx + 0.2, lw_ - 0.4, cy + 0.82
+        _gantt(s, g_x, g_y, g_w, ops, rh=0.34, rg=0.1, fs=10.5, delay=("M2", "J1", 3),
+               moved=moved, label_w=0.42, tr=GANTT_TR)
+        xt = g_x + 0.42 + (g_w - 0.42) * GANTT_TR / T
+        _text(s, xt - 0.25, g_y - 0.34, 0.5, 0.26, "$t_r$", 11.5, color=INK, bold=True,
+              align=PP_ALIGN.CENTER)
+        if k == 0:
+            _text(s, g_x + 0.42, g_y - 0.33, xt - g_x - 0.75, 0.26, "開始済み（凍結）", 9.5,
+                  color=MUTE, align=PP_ALIGN.RIGHT)
+            _text(s, xt + 0.22, g_y - 0.33, 2.5, 0.26, "再スケジューリングの対象", 9.5, color=MUTE)
+
+    # 右：変更のコスト → 二目的最適化
+    rx = lx + lw_ + 0.45
+    rw = SW - ML - rx
+    # 左の「順序を変更」から右のコストへつなぐ
+    _connector(s, lx + lw_ + 0.05, 2.15 + ch + cg + 0.29, rx - 0.05, 3.0, color=RED, wt=2.0,
+               kind=1)
+    _rrect(s, rx, 1.8, rw, 2.75, RGBColor(0xFB, 0xEE, 0xEC), line=RED, radius=0.05, lw=1.4)
+    _text(s, rx + 0.22, 1.9, rw - 0.44, 0.5, "処理順序の変更は，現場にコストを生む", 15.5,
+          color=RED, bold=True, anchor=MSO_ANCHOR.MIDDLE)
+    costs = ["段取り替え", "資材・治具の再手配", "作業者の再配置", "下流工程・外注先\nへの予定変更の波及"]
+    cw2 = (rw - 0.44 - 0.15) / 2
+    for i, c in enumerate(costs):
+        cx = rx + 0.22 + (i % 2) * (cw2 + 0.15)
+        cy = 2.55 + (i // 2) * 0.95
+        _boxtext(s, cx, cy, cw2, 0.8, [(c, 13.5, INK, True)], fill=WHITE, line=CARDLINE,
+                 radius=0.12)
+    _connector(s, rx + rw / 2, 4.6, rx + rw / 2, 5.0, color=BLUE, wt=3.0, kind=1)
+    by, bh = 5.06, 6.92 - 5.06
+    _rrect(s, rx, by, rw, bh, WHITE, line=BLUE, radius=0.05, lw=1.6)
+    _text(s, rx, by + 0.06, rw, 0.44, "二目的最適化", 16, color=BLUE, bold=True,
+          align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    objs = [("生産効率", "総所要時間を小さく"), ("安定性", "初期スケジュールからの\n変更を小さく")]
+    ow = (rw - 0.44 - 0.5) / 2
+    for i, (head, body) in enumerate(objs):
+        ox = rx + 0.22 + i * (ow + 0.5)
+        oy = by + 0.55
+        oh = bh - 0.55 - 0.18
+        _rrect(s, ox, oy, ow, oh, FILL, line=CARDLINE, radius=0.08)
+        _boxtext(s, ox, oy, ow, 0.38, [(head, 13.5, WHITE, True)], fill=BLUE, radius=0.12)
+        _text(s, ox + 0.1, oy + 0.38, ow - 0.2, oh - 0.38, body, 12.5, color=INK,
+              align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, ls=1.05)
+        if i == 0:
+            _text(s, ox + ow, oy, 0.5, oh, "⇄", 20, color=BLUE, bold=True,
+                  align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+
+# ---------------------------------------------------------------- 3. 特殊性
+
+def s_special():
+    s = slide_frame("再スケジューリングの特殊性",
+                    "安定性では最適で，生産効率も高い解が，探索の開始前から得られている",
+                    "1. 研究背景と仮説")
+    w, h = pic(s, "concept_0.png", ML - 0.05, 1.78, w=6.4)
+    tx = ML + 6.55
+    tw = SW - ML - tx
+    _bul(s, tx, 1.95, tw, [
+        "$S_p$ の処理順序を保ったまま遅延を吸収した解は**探索の開始前から得られる**",
+        "この解は**変更量 0** で安定性では最適であり，$S_p$ が外乱前に最適化済みのため **$MS$ も小さい**",
+        "変更コストが無視できない場面では，$S_p$ の近傍（**高安定領域**）で $MS$ を改善した解が求められる",
+    ], size=17, gap=16)
+    _text(s, tx, 4.75, tw, 0.7,
+          "→ 手法はフロント全体の解の質だけでなく，\n**高安定領域の解の質**でも評価する必要がある",
+          17, color=INK, ls=1.08, emph=BLUE)
+    _text(s, tx, 5.5, tw, 0.4, "本研究では，解の質を hypervolume（HV）で測る", 15, color=INK)
+
+
+# ---------------------------------------------------------------- 4. 先行研究
+
+def s_related():
+    s = slide_frame("先行研究：安定性を確保する 2 つのアプローチ",
+                    "安定性は「目的関数に組み込む」か「再スケジュールの範囲を限定する」かで確保されてきた",
+                    "1. 研究背景と仮説")
+    cards = [
+        ("安定性を目的関数に組み込むアプローチ",
+         [("Wu ら (1993)", "単一機械で効率と安定性を評価基準に定式化"),
+          ("Rangsaritratsamee ら (2004)", "JSP．GA＋局所探索"),
+          ("Zhang ら (2013)", "JSP．GA＋タブーサーチ"),
+          ("Fattahi & Fallahi (2010)", "FJSP．GA＋局所探索"),
+          ("Valledor ら (2022)，Luo ら (2025)", "NSGA-II 系で Pareto 支配")],
+         "安定性は解の評価（目的関数の一項）にのみ反映"),
+        ("再スケジュールの対象範囲を限定するアプローチ",
+         [("Bean ら (1991)", "復帰時点までを再スケジュール（match-up）"),
+          ("Abumaizar & Svestka (1997)", "影響を受ける作業だけを再スケジュール"),
+          ("Zakaria & Petrovic (2012)", "GA の染色体を区間に限定"),
+          ("Sun ら (2026)", "再最適化の範囲を 4 段階に整理")],
+         "探索空間の制限で安定性を確保する"),
     ]
-    for cx0, title, sub, schema, bullets in cols:
-        _rrect(slide, cx0, y, cw, ch, WHITE, line=CARDLINE, radius=0.04, lw=1.1)
-        _rect(slide, cx0, y, cw, 0.62, BLUE)
-        tb, tf = add_textbox(slide, cx0 + 0.18, y + 0.02, cw - 0.36, 0.58,
-                             anchor=MSO_ANCHOR.MIDDLE)
-        p = tf.paragraphs[0]
-        _run(p, title, 15.5, color=WHITE, bold=True)
-        _run(p, "　｜　" + sub, 12, color=LTBLUE)
-        _rect(slide, cx0 + 0.18, y + 0.76, cw - 0.36, 1.50, RGBColor(0xF7, 0xFA, 0xFC))
-        schema(slide, cx0 + 0.34, y + 0.86, cw - 0.68, 1.12)
-        tb, tf = add_textbox(slide, cx0 + 0.22, y + 2.36, cw - 0.44, ch - 2.46)
-        for i, t in enumerate(bullets):
+    gap = 0.4
+    cw = (CW - gap) / 2
+    y, h = 1.8, 4.05
+    for k, (head, refs, common) in enumerate(cards):
+        x = ML + k * (cw + gap)
+        _rrect(s, x, y, cw, h, WHITE, line=CARDLINE, radius=0.04)
+        _rect(s, x, y, cw, 0.55, BLUE)
+        _text(s, x + 0.2, y, cw - 0.4, 0.55, head, 15.5, color=WHITE, bold=True,
+              anchor=MSO_ANCHOR.MIDDLE)
+        tb, tf = add_textbox(s, x + 0.25, y + 0.68, cw - 0.5, 2.5)
+        for i, (who, what) in enumerate(refs):
             p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-            p.line_spacing = 1.08; p.space_before = Pt(0 if i == 0 else 8)
-            _run(p, "▪ ", 11, color=BLUE, bold=True)
-            _add_runs(p, t, 13, color=INK, emph=BLUE)
-    return ch
+            p.space_before = Pt(0 if i == 0 else 4)
+            p.line_spacing = 1.0
+            _run(p, who, 13.5, color=BLUE, bold=True)
+            p2 = tf.add_paragraph()
+            p2.line_spacing = 1.0
+            _run(p2, "　" + what, 12.5, color=INK)
+        _boxtext(s, x + 0.25, y + h - 0.6, cw - 0.5, 0.46, [(common, 13.5, BLUE, True)],
+                 fill=FILL, radius=0.2)
+    _text(s, ML, y + h + 0.12, CW, 0.5,
+          "どちらのアプローチでも，メタヒューリスティクスによる解法は GA を基軸とする**多点探索に集中**",
+          19, color=INK, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, emph=BLUE)
+    # 探索構造の 2 系統の説明（文脈を切らないよう控えめに）
+    tb, tf = add_textbox(s, ML, y + h + 0.62, CW, 0.38, anchor=MSO_ANCHOR.MIDDLE)
+    p = tf.paragraphs[0]
+    p.alignment = PP_ALIGN.CENTER
+    _run(p, "単点探索", 14, color=ORANGE, bold=True)
+    _run(p, "：1 つの解を少しずつ変更しながら進む　／　", 14, color=INK)
+    _run(p, "多点探索", 14, color=GREEN, bold=True)
+    _run(p, "：複数の解を保持し，互いに組み替えながら進む", 14, color=INK)
+    _run(p, "（Blum & Roli, 2003）", 11, color=MUTE)
 
 
-def _hypbox(slide, x, y, w, tag, text, h=0.86):
-    """仮説を再掲する濃紺の帯。"""
-    _rrect(slide, x, y, w, h, COVER, line=None, radius=0.05)
-    _boxtext(slide, x + 0.20, y + (h - 0.42) / 2, 2.35, 0.42,
-             [(tag, 13, COVER, True)], fill=WHITE, radius=0.26)
-    tb, tf = add_textbox(slide, x + 2.72, y, w - 2.92, h, anchor=MSO_ANCHOR.MIDDLE)
-    p = tf.paragraphs[0]; p.line_spacing = 1.06
-    _add_runs(p, text, 15, color=WHITE, emph=RGBColor(0xFF, 0xD9, 0x8A))
-    return h
+# ---------------------------------------------------------------- 5. 3 つの課題
+
+def s_gaps():
+    s = slide_frame("残された 3 つの課題",
+                    "探索構造の差は検証されておらず，その差を測る形式も，差を補う操作もない",
+                    "1. 研究背景と仮説")
+    rows = [
+        ("探索構造の差が\n検証されていない",
+         "解法は多点探索に集中している．$S_p$ が探索前に得られているという特性が，"
+         "単点探索と多点探索の間にどんな差を生むかは分析されていない"),
+        ("その差を読み取れる\n評価の形式がない",
+         "比較は少数の重みでのスカラー値や，フロント全体の HV で行われ，"
+         "高安定領域で手法がどう異なるかは分析されていない"),
+        ("フロント全体を保って\n高安定領域の解を生む\n操作がない",
+         "**目的関数に組み込む**：選ばれる解は変わるが，高安定領域の解を作る操作はない\n"
+         "**範囲を限定する**：解は高安定領域に留まるが，範囲外のトレードオフ解を失う\n"
+         "→ 探索構造が高安定領域に届かないとき（課題 1），補う手段がない"),
+    ]
+    y0, rh, rg = 1.9, 1.5, 0.2
+    hw = 4.3
+    for i, (head, body) in enumerate(rows):
+        y = y0 + i * (rh + rg)
+        _rrect(s, ML, y, CW, rh, WHITE, line=CARDLINE, radius=0.05)
+        _boxtext(s, ML + 0.22, y + (rh - 0.56) / 2, 0.56, 0.56, [(str(i + 1), 18, WHITE, True)],
+                 fill=BLUE, radius=0.5)
+        _text(s, ML + 1.0, y + 0.08, hw - 0.9, rh - 0.16, head, 16, color=BLUE, bold=True,
+              anchor=MSO_ANCHOR.MIDDLE, ls=1.1)
+        _rect(s, ML + hw + 0.2, y + 0.22, 0.015, rh - 0.44, HAIR)
+        _text(s, ML + hw + 0.45, y + 0.08, CW - hw - 0.7, rh - 0.16, body, 14, color=INK,
+              anchor=MSO_ANCHOR.MIDDLE, ls=1.18, emph=BLUE)
 
 
-def diag_h1(slide, x, y, w):
-    return _hypbox(slide, x, y, w, "仮説 H1（適合性）",
-                   "同じ局所探索を積んでも、**軌道ベース**は高安定領域（$S_p$ 近傍）を充填でき、"
-                   "**集団ベース**は構造的に粗い。")
+# ---------------------------------------------------------------- 6. 仮説
+
+def s_hypotheses():
+    s = slide_frame("本研究の仮説",
+                    "課題 1・3 に対して 2 つの仮説を立て，どちらも高安定 HV（課題 2 への対応）で判定する",
+                    "1. 研究背景と仮説")
+    gap = 0.3
+    cw = (CW - gap) / 2
+    hyps = [("仮説 1", "課題 1",
+             "交叉で 2 親の染色体を組み替える**多点探索**は，\n"
+             "$S_p$ からの小さな変更では表せない飛躍を伴うため，\n"
+             "$S_p$ を初期解として解を少しずつ変更する\n"
+             "**単点探索**のほうが，**高安定 HV が大きい**", "concept_h1.png"),
+            ("仮説 2", "課題 3",
+             "多点探索に，解を $S_p$ に近づける移動\n"
+             "（**安定性誘導演算子**）を組み込めば，\n"
+             "その経路上に変更量が小さく $MS$ の劣化も小さい\n"
+             "解が現れるため，**多点探索の高安定 HV は向上する**", "concept_h2.png")]
+    for k, (tag, src, text, img) in enumerate(hyps):
+        x = ML + k * (cw + gap)
+        _text(s, x + 0.05, 1.72, cw, 0.4, tag, 15, color=BLUE, bold=True,
+              anchor=MSO_ANCHOR.MIDDLE)
+        by, bh = 2.14, 1.6
+        _rrect(s, x, by, cw, bh, COVER, radius=0.06)
+        _text(s, x + 0.18, by + 0.05, cw - 0.36, bh - 0.1, text, 16.5, color=WHITE, ls=1.12,
+              anchor=MSO_ANCHOR.MIDDLE, emph=RGBColor(0xFF, 0xD9, 0x8A))
+        ih = 7.0 - (by + bh + 0.1)
+        iw, _h = _img_size(asset(img))
+        w_img = min(cw - 0.04, ih * iw / _h)
+        pic(s, img, x + (cw - w_img) / 2, by + bh + 0.1, w=w_img)
 
 
-def diag_h2(slide, x, y, w):
-    return _hypbox(slide, x, y, w, "仮説 H2（補完・非対称）",
-                   "$S_p$ 誘導演算子は**集団ベース**の弱点を直接補う。一方、自力で充填済みの"
-                   "**軌道ベース**には伸びしろが乏しい ＝ 効果は**ホスト依存で非対称**に現れる。")
+# ---------------------------------------------------------------- 7. 問題設定
+
+def s_problem():
+    s = slide_frame("問題設定",
+                    "決定変数は，遅延後に最適化対象となる作業の，機械ごとの処理順序",
+                    "2. 問題設定と実験計画")
+    _bul(s, ML, 1.95, 6.6, [
+        "$n$ ジョブ・$m$ 機械のジョブショップ問題（JSP）に，単一作業の遅延（遅延量 $Δ$）が発生",
+        "再スケジューリング時刻 $t_r$ より前に開始した作業は凍結し，以降の作業集合 $O_{opt}$ の**機械ごとの処理順序**を決定変数とする",
+        "安定性は**処理順序の変更量**で測る（順序偏差 $D$）",
+    ], size=15, gap=10)
+    render_equation(s, r"D(S_p,S_q)=\sum_{(i,j)\in O_{opt}}\left|r^p_{i,j}-r^q_{i,j}\right|",
+                    ML, 3.85, 6.6, number="(1)", name="talk_D", h=0.62)
+    _text(s, ML + 0.3, 4.55, 6.3, 0.35, "$r_{i,j}$：機械 $i$ におけるジョブ $j$ の処理順位", 12.5, color=MUTE)
+    _bul(s, ML, 5.1, 6.6, [
+        "二目的（$MS$, $D$）は重み付き和 $F$ にまとめ，重み $λ$ を生産効率重視から安定性重視まで掃引し，得られた全非劣解で評価する",
+    ], size=15)
+    # 右：順序偏差の例
+    rx, rw = 7.75, 4.95
+    _rrect(s, rx, 1.95, rw, 4.85, RGBColor(0xF7, 0xFA, 0xFC), line=CARDLINE, radius=0.04)
+    _text(s, rx + 0.25, 2.1, rw - 0.5, 0.4, "例：ある機械の処理順序", 14, color=BLUE, bold=True)
+    jc = {"J1": RGBColor(0x3E, 0x61, 0x8C), "J2": RGBColor(0xD9, 0x8E, 0x45),
+          "J3": RGBColor(0x6F, 0x9E, 0x7C), "J4": RGBColor(0x8A, 0x86, 0xA8)}
+    seqs = [("$S_p$", ["J1", "J3", "J2", "J4"], 3.05), ("$S_q$", ["J1", "J2", "J3", "J4"], 4.55)]
+    bw, bh, bx0 = 0.82, 0.55, rx + 1.0
+    pos = {}
+    for lab, seq, yy in seqs:
+        _text(s, rx + 0.25, yy, 0.7, bh, lab, 15, color=INK, bold=True, anchor=MSO_ANCHOR.MIDDLE)
+        for r, j in enumerate(seq):
+            bx = bx0 + r * (bw + 0.12)
+            _boxtext(s, bx, yy, bw, bh, [(j, 13.5, WHITE, True)], fill=jc[j], radius=0.1)
+            _text(s, bx, yy - 0.33 if lab == "$S_p$" else yy + bh + 0.02, bw, 0.3, f"{r + 1}番目",
+                  10.5, color=MUTE, align=PP_ALIGN.CENTER)
+            pos[(lab, j)] = (bx + bw / 2, yy, yy + bh)
+    for j in ["J1", "J2", "J3", "J4"]:
+        x1, _a, y1 = pos[("$S_p$", j)]
+        x2, y2, _b = pos[("$S_q$", j)]
+        moved = x1 != x2
+        _connector(s, x1, y1 + 0.02, x2, y2 - 0.02, color=RED if moved else HAIR,
+                   wt=2.0 if moved else 1.2, arrow=moved, kind=1)
+    _text(s, rx + 0.25, 5.6, rw - 0.5, 0.45, "$D$ = |3−2| ＋ |2−3| = **2**", 16, color=INK,
+          align=PP_ALIGN.CENTER, emph=RED)
+    _text(s, rx + 0.25, 6.1, rw - 0.5, 0.6, "$S_p$ の処理順序を保った解は $D$ = 0", 13, color=MUTE,
+          align=PP_ALIGN.CENTER)
 
 
-def diag_3caps(slide, x, y, w):
-    """3.4：3構造の概念図に添える3つの見出しチップ。"""
-    caps = [("① 集団ベース", "交叉で子が $S_p$ から飛散し、高安定域が空く"),
-            ("② 軌道ベース", "連続変形で $S_p$ 近傍をそのまま充填する"),
-            ("③ 集団 ＋ PR / repair", "散った解を $S_p$ へ引き戻し、空白を埋める")]
-    gap = 0.30; cw = (w - 2 * gap) / 3; h = 0.62
-    for i, (head, body) in enumerate(caps):
-        cx0 = x + i * (cw + gap)
-        _rrect(slide, cx0, y, cw, h, FILL, line=CARDLINE, radius=0.10)
-        tb, tf = add_textbox(slide, cx0 + 0.14, y, cw - 0.28, h, anchor=MSO_ANCHOR.MIDDLE)
-        p = tf.paragraphs[0]; p.line_spacing = 1.0
-        _add_runs(p, head, 13, color=BLUE, bold=True)
-        p2 = tf.add_paragraph(); p2.line_spacing = 1.0
-        _add_runs(p2, body, 11.5, color=INK, emph=BLUE)
-    return h
+# ---------------------------------------------------------------- 8. 比較する探索構造
+
+def _flow(slide, x, y, w, steps, bh=0.52, gap=0.3, loop_label=None, loop_from=None, loop_to=None):
+    """縦に並ぶ処理ボックスを矢印でつなぐ。steps: (文字列, 強調色 or None)。
+    loop_from/loop_to の段のあいだに右側の戻り矢印を描く。"""
+    ys = []
+    for i, (t, accent) in enumerate(steps):
+        yy = y + i * (bh + gap)
+        ys.append(yy)
+        if accent == "shared":
+            _boxtext(slide, x, yy, w, bh, [(t, 12.5, INK, False)], fill=FILL, line=CARDLINE,
+                     radius=0.12)
+        elif accent is not None:
+            _boxtext(slide, x, yy, w, bh, [(t, 12.5, WHITE, True)], fill=accent, radius=0.12)
+        else:
+            _boxtext(slide, x, yy, w, bh, [(t, 12.5, INK, False)], fill=WHITE, line=CARDLINE,
+                     radius=0.12)
+        if i:
+            _connector(slide, x + w / 2, yy - gap + 0.02, x + w / 2, yy - 0.02, color=MUTE,
+                       wt=1.4, kind=1)
+    if loop_from is not None:
+        rx = x + w + 0.28
+        y1 = ys[loop_from] + bh / 2
+        y0 = ys[loop_to] + bh / 2
+        _connector(slide, x + w + 0.02, y1, rx, y1, color=MUTE, wt=1.4, arrow=False, kind=1)
+        _connector(slide, rx, y1, rx, y0, color=MUTE, wt=1.4, arrow=False, kind=1)
+        _connector(slide, rx, y0, x + w + 0.04, y0, color=MUTE, wt=1.4, kind=1)
+        if loop_label:
+            _text(slide, rx + 0.08, (y0 + y1) / 2 - 0.2, 1.3, 0.4, loop_label, 11, color=MUTE,
+                  anchor=MSO_ANCHOR.MIDDLE)
+    return ys[-1] + bh - y
+
+
+def s_structures():
+    s = slide_frame("比較する探索構造：単点探索と多点探索",
+                    "局所探索などの条件を揃え，解の作り方（少しずつ変更するか，交叉で組み替えるか）を比較する",
+                    "2. 問題設定と実験計画")
+    gap = 0.4
+    cw = (CW - gap) / 2
+    top, ch = 1.85, 4.3
+    cards = [
+        ("単点探索（ILS：反復局所探索）", "現在解は常に 1 つ", ORANGE,
+         [("初期解：$S_p$", None), ("摂動：数手の insert 移動", ORANGE),
+          ("局所探索：N5 近傍", "shared"), ("受理判定：$F$ が改善すれば更新", None)],
+         1, 3, "反復",
+         "局所探索と摂動が別の段で，演算子を摂動に組み込める"),
+        ("多点探索（Memetic：GA＋局所探索）", "複数の解を保持", GREEN,
+         [("初期集団：$S_p$ ＋ 無作為に生成した個体", None), ("選択・交叉：2 親の染色体を組み替え", GREEN),
+          ("突然変異", None), ("局所探索：N5 近傍（各個体）", "shared")],
+         1, 3, "世代交代",
+         "先行研究で標準的な，GA に局所探索を組み込んだ構成"),
+    ]
+    for k, (head, sub, col, steps, lf, lt, loop, why) in enumerate(cards):
+        x = ML + k * (cw + gap)
+        _rrect(s, x, top, cw, ch, WHITE, line=CARDLINE, radius=0.04)
+        _rect(s, x, top, cw, 0.55, col)
+        tb, tf = add_textbox(s, x + 0.2, top, cw - 0.4, 0.55, anchor=MSO_ANCHOR.MIDDLE)
+        p = tf.paragraphs[0]
+        _run(p, head, 15, color=WHITE, bold=True)
+        _run(p, "　" + sub, 12, color=WHITE)
+        tb, tf = add_textbox(s, x + 0.25, top + 0.64, cw - 0.5, 0.4, anchor=MSO_ANCHOR.MIDDLE)
+        p = tf.paragraphs[0]
+        _run(p, "選定理由：", 12, color=col, bold=True)
+        _add_runs(p, why, 12, color=INK)
+        fw = 3.9
+        _flow(s, x + 0.35, top + 1.18, fw, steps, loop_from=lt, loop_to=lf, loop_label=loop)
+    _boxtext(s, ML, top + ch + 0.15, CW, 0.62,
+             [("揃えた条件：局所探索（N5 近傍）・目的関数 $F$・初期解に $S_p$ を含めること　→　局所探索の有無による差を除いて比較",
+               13.5, WHITE, True)],
+             fill=COVER, radius=0.12)
+
+
+# ---------------------------------------------------------------- 9. 安定性誘導演算子
+
+def s_operators():
+    s = slide_frame("安定性誘導演算子：PR と PR-$k$",
+                    "path relinking（PR）の誘導解を $S_p$ に固定し，現在解から $S_p$ へ swap 移動でたどる",
+                    "2. 問題設定と実験計画")
+    # 左右の列の上端・下端を揃える（左：定義と組み込み方，右：例）
+    top, bot = 1.85, 6.75
+    lw_ = 5.95
+    lx = SW - ML - lw_
+    # ---- 右：ある機械の処理順序を S_p に近づける経路
+    _rrect(s, lx, top, lw_, bot - top, RGBColor(0xF7, 0xFA, 0xFC), line=CARDLINE, radius=0.04)
+    _text(s, lx + 0.25, top + 0.1, lw_ - 0.5, 0.4, "例：ある機械の処理順序を $S_p$ に近づける", 14,
+          color=BLUE, bold=True)
+    jc = {"J1": RGBColor(0x3E, 0x61, 0x8C), "J2": RGBColor(0xD9, 0x8E, 0x45),
+          "J3": RGBColor(0x6F, 0x9E, 0x7C), "J4": RGBColor(0x8A, 0x86, 0xA8)}
+    SP = ["J1", "J2", "J3", "J4"]
+    bw, bh, bg = 0.72, 0.5, 0.09
+    bx0 = lx + 1.55
+
+    def seq_row(yy, lab, seq, dlab, lab_color=INK):
+        _text(s, lx + 0.25, yy, 1.3, bh, lab, 13.5, color=lab_color, bold=True,
+              anchor=MSO_ANCHOR.MIDDLE)
+        for c, j in enumerate(seq):
+            bx = bx0 + c * (bw + bg)
+            diff = j != SP[c]
+            sp = _boxtext(s, bx, yy, bw, bh, [(j, 13.5, WHITE, True)], fill=jc[j], radius=0.1,
+                          line=RED if diff else None)
+            if diff:
+                sp.line.width = Pt(2.6)
+        _text(s, bx0 + 4 * (bw + bg) + 0.08, yy, 0.9, bh, dlab, 13.5, color=INK,
+              anchor=MSO_ANCHOR.MIDDLE)
+
+    # 目標（誘導解 S_p）を最初に示し，現在解と並べて差異を見せる
+    _rrect(s, lx + 0.15, top + 0.6, lw_ - 0.3, 0.7, RGBColor(0xCF, 0xDC, 0xEA), radius=0.1)
+    seq_row(top + 0.7, "$S_p$（誘導解）", SP, "$D$ = 0", lab_color=BLUE)
+    path = [("現在解", ["J1", "J4", "J2", "J3"], "$D$ = 4", None),
+            ("1 回目", ["J1", "J3", "J2", "J4"], "$D$ = 2", "swap：J4 と J3 を入れ替え"),
+            ("2 回目", ["J1", "J2", "J3", "J4"], "$D$ = 0", "swap：J3 と J2 を入れ替え（$S_p$ に到達）")]
+    y0, gy = top + 1.57, 0.46
+    for r, (lab, seq, dlab, note) in enumerate(path):
+        yy = y0 + r * (bh + gy)
+        if note:
+            _text(s, bx0 - 0.05, yy - gy, lw_ - 1.65, gy, "↓ " + note, 11.5, color=RED,
+                  anchor=MSO_ANCHOR.MIDDLE)
+        seq_row(yy, lab, seq, dlab)
+    _text(s, lx + 0.25, bot - 0.78, lw_ - 0.5, 0.7,
+          "赤枠：$S_p$ と順位が異なる作業\n"
+          "1 回の swap で 1 作業を $S_p$ の順位に合わせ，$D$ が小さくなる", 12, color=MUTE, ls=1.1,
+          anchor=MSO_ANCHOR.MIDDLE)
+    # ---- 左：PR と PR-k（通常の PR との違いを示してから操作を述べる），組み込み方
+    rx = ML
+    rw = lx - 0.3 - ML
+    gap = 0.18
+    cards = [("PR", "通常の PR はエリート解どうしを結ぶ．\n"
+                    "本研究では**誘導解を $S_p$ に固定**し，\n"
+                    "現在解と $S_p$ を結ぶ経路をたどり，\n"
+                    "その中間解から $F$ の小さい解を選ぶ", 1.62),
+             ("PR-$k$", "$k$ 回の swap で打ち切り，\n"
+                        "到達解を返す．$k$ は 1〜$d$ で変える\n"
+                        "（$d$：$S_p$ と順位が異なる作業数）", 1.3)]
+    cy = top
+    for head, body, h in cards:
+        _rrect(s, rx, cy, rw, h, WHITE, line=CARDLINE, radius=0.05)
+        _boxtext(s, rx + 0.2, cy + 0.2, 1.05, 0.42, [(head, 14, WHITE, True)], fill=BROWN,
+                 radius=0.3)
+        _text(s, rx + 1.45, cy + 0.08, rw - 1.6, h - 0.16, body, 15, color=INK, ls=1.12,
+              anchor=MSO_ANCHOR.MIDDLE, emph=BLUE)
+        cy += h + gap
+    # 組み込み方：残りの高さに中身を上下中央で置く
+    bh2 = bot - cy
+    _rrect(s, rx, cy, rw, bh2, FILL, line=CARDLINE, radius=0.05)
+    tb, tf = add_textbox(s, rx + 0.25, cy + 0.06, rw - 0.5, bh2 - 0.12, anchor=MSO_ANCHOR.MIDDLE)
+    p = tf.paragraphs[0]
+    _run(p, "組み込み方", 15, color=BLUE, bold=True)
+    for who, col, how in [("ILS", ORANGE, "停滞したときに，摂動として発動"),
+                          ("Memetic", GREEN, "各個体に確率的に，改善操作として発動")]:
+        q = tf.add_paragraph()
+        q.space_before = Pt(8)
+        _run(q, who + "：", 15, color=col, bold=True)
+        _add_runs(q, how, 15, color=INK)
+
+
+# ---------------------------------------------------------------- 10. 実験計画
+
+def s_design():
+    s = slide_frame("比較する手法と仮説の判定",
+                    "仮説 1 は ILS と Memetic，仮説 2 は Memetic と演算子を組み込んだ Memetic の高安定 HV を比較して判定する",
+                    "2. 問題設定と実験計画")
+    # 研究の位置づけ
+    _text(s, ML, 1.66, CW, 0.36,
+          "本研究の主眼は最先端手法との性能競争ではなく，仮説を立てて条件を統制し，"
+          "**探索構造と演算子の関係を切り分けること**", 14, color=INK,
+          anchor=MSO_ANCHOR.MIDDLE, emph=BLUE)
+    # 比較する手法：探索構造 × 安定性誘導演算子
+    ty, trh, tw = 2.16, 0.4, 8.7
+    render_table(s, [["探索構造", "安定性誘導演算子なし", "PR-$k$ を組み込む", "PR を組み込む"],
+                     ["単点探索（ILS）", "ILS", "ILS＋PR-$k$", "ILS＋PR"],
+                     ["多点探索（Memetic）", "Memetic", "Memetic＋PR-$k$", "Memetic＋PR"]],
+                 ML, ty, tw, col_w=[2.5, 2.3, 2.0, 1.9], size=14.5, align=['l', 'c', 'c', 'c'],
+                 row_h=trh)
+    tbl = s.shapes[-1].table
+    for r, col in [(1, ORANGE), (2, GREEN)]:
+        for c in range(4):
+            for p in tbl.cell(r, c).text_frame.paragraphs:
+                for run in p.runs:
+                    run.font.color.rgb = col
+                    run.font.bold = True
+    _text(s, ML + tw + 0.35, ty + trh, CW - tw - 0.35, 2 * trh,
+          "参考：GA（局所探索なし）を\n加えて計 7 手法", 13, color=MUTE, anchor=MSO_ANCHOR.MIDDLE)
+    # 仮説ごとに，比較する手法と支持とみなす条件を書き下す
+    hyps = [("仮説 1", "単点探索のほうが，多点探索より高安定 HV が大きい",
+             "ILS が Memetic を全シナリオで有意に上回れば，支持とみなす"),
+            ("仮説 2", "安定性誘導演算子を組み込めば，多点探索の高安定 HV は向上する",
+             "Memetic＋PR-$k$ と Memetic＋PR がそれぞれ Memetic を全シナリオで有意に上回れば，支持とみなす")]
+    tx = ML + 1.4
+    txw = SW - ML - tx
+    y = 3.58
+    for tag, claim, rule in hyps:
+        _boxtext(s, ML, y + 0.03, 1.2, 0.4, [(tag, 14, WHITE, True)], fill=COVER, radius=0.3)
+        _text(s, tx, y, txw, 0.46, "**" + claim + "**", 17, color=INK,
+              anchor=MSO_ANCHOR.MIDDLE, emph=INK)
+        tb, tf = add_textbox(s, tx, y + 0.48, txw, 0.38, anchor=MSO_ANCHOR.MIDDLE)
+        p = tf.paragraphs[0]
+        _run(p, "判定：", 15, color=BLUE, bold=True)
+        _add_runs(p, rule, 15, color=INK)
+        y += 1.04
+        _rect(s, ML, y - 0.1, CW, 0.012, HAIR)
+    # 仮説を置かない比較
+    _boxtext(s, ML, y + 0.03, 1.2, 0.4, [("仮説なし", 13, WHITE, True)], fill=MUTE, radius=0.3)
+    _text(s, tx, y, txw, 0.46, "ILS＋PR-$k$ と ILS＋PR も，仮説 2 と同じ形で ILS と比較する", 15,
+          color=INK, anchor=MSO_ANCHOR.MIDDLE)
+    # 検定
+    jy = y + 0.72
+    tb, tf = add_textbox(s, ML, jy, CW, 0.56)
+    for k, (head, body) in enumerate([
+            ("検定：", "両側 Mann–Whitney の $U$ 検定．全シナリオにわたる同じ比較は Holm 法で補正"),
+            ("効果量：", "Cliff's $δ$．$|δ|$ = 1.0 は，一方の全試行が他方の全試行を上回る完全分離")]):
+        q = tf.paragraphs[0] if k == 0 else tf.add_paragraph()
+        q.space_before = Pt(0 if k == 0 else 2)
+        _run(q, head, 12.5, color=MUTE, bold=True)
+        _add_runs(q, body, 12.5, color=MUTE)
+
+
+# ---------------------------------------------------------------- 9. 評価指標
+
+def s_metrics():
+    s = slide_frame("評価指標",
+                    "高安定 HV は，順序偏差 $D$ が $P_{θ}$ 未満の非劣解だけで算出した HV",
+                    "2. 問題設定と実験計画")
+    pic(s, "metrics.png", ML + 0.05, 1.78, w=CW - 0.1)
+    _bul(s, ML, 6.12, CW, [
+        "$P_{θ}$：全手法・全試行の非劣解の $D$ の $θ$ パーセンタイル．"
+        "$D$ = 0 の解（$S_p$ の処理順序を保った解）は全手法が探索せずに得るため HV から除く",
+        "全域 HV・高安定 HV は全ての重み $λ$ の解を合わせて算出し，AUC は重みごとに算出して平均する",
+    ], size=13, gap=4)
+
+
+# ---------------------------------------------------------------- 10. 実験設定
+
+def s_setup():
+    s = slide_frame("実験設定",
+                    "5 つのベンチマーク問題に単一作業の遅延を与え，8 シナリオを構成",
+                    "3. 数値実験")
+    rows = [
+        ["項目", "設定"],
+        ["問題・外乱", "mt10・la21・la36・la40・ta21 に単一作業の完了遅延（$Δ$ = 60〜148，対象作業の処理時間の約 0.9〜1.5 倍）"],
+        ["シナリオ", "8 つ：la36S・la36M・la36L，ta21S・ta21L，mt10，la21，la40\n"
+                    "la36 と ta21 は同一問題・同一 $S_p$ のまま外乱の規模だけを段階的に変え，小さい順に S・M・L"],
+        ["初期スケジュール $S_p$", "500 世代の GA で生成"],
+        ["重み $λ$", "0, 0.1, …, 0.9 の 10 点（$λ$ = 1.0 は $D$ = 0 の自明解に縮退するため除外）"],
+        ["計算予算", "ILS 系 3000 反復，GA・Memetic 系 500 世代"],
+        ["探索", "GA・Memetic 系：交叉率 0.85，突然変異率 0.1，集団 50（$S_p$ 以外の 49 個体は無作為生成）\n"
+                "ILS 系：insert 摂動 2〜5 手を鋸歯状に巡回"],
+        ["安定性誘導演算子", "Memetic 系：各個体に確率 0.3 で発動．PR は経路上の上位 3 中間解を局所探索して最良を返す\n"
+                          "ILS 系：無改善 400 反復で初回，以降 10 反復ごとに発動．PR は経路上の最良 1 解を返す"],
+        ["高安定領域の境界", "$θ$ = 50（$P_{50}$：全手法・全試行の非劣解の $D$ の中央値）"],
+        ["試行", "各条件 10 試行（全乱数シード固定）"],
+        ["環境", "AMD Ryzen 5 7530U，Python 3.12（NumPy・DEAP・SciPy）"],
+    ]
+    render_table(s, rows, ML, 1.78, CW, col_w=[2.3, 9.79], size=12.5, align=['l', 'l'], row_h=0.3)
+    # 妥当性の確認（1 行ずつ）
+    vy = 5.62
+    _text(s, ML, vy, CW, 0.3, "妥当性の確認", 13.5, color=BLUE, bold=True, anchor=MSO_ANCHOR.MIDDLE)
+    _bul(s, ML, vy + 0.33, CW, [
+        "**高安定領域の境界**：$θ$ を 33〜67 に変えても，仮説 1・仮説 2 の結論は変わらない（全シナリオで完全分離）",
+        "**計算予算**：中央値の試行は全手法とも，予算の 7 割以内で最終の全域 HV の 99% に到達",
+        "**パラメータ感度**：挙動を定める 11 軸を 2 シナリオで一要因ずつ振っても，全域 HV の変化は +0.5〜2%（手法間の差は +7〜54%）",
+    ], size=13, gap=3)
+
+
+# ---------------------------------------------------------------- 11〜14. 結果
+
+def s_front():
+    s = slide_frame("結果 1　高安定領域の非劣解（代表 2 シナリオ）",
+                    "ta21S では，演算子なしの Memetic は高安定領域に非劣解を持たない",
+                    "3. 数値実験")
+    w = 12.0
+    pic(s, "front_ta21.png", ML + (CW - w) / 2, 1.72, w=w)
+    _bul(s, ML, 5.3, CW, [
+        "(a) ta21S：Memetic は高安定領域に非劣解を持たない",
+        "(b) ta21L：Memetic は高安定領域に入るが，$MS$ で ILS に劣る",
+        "どちらのシナリオでも，演算子を組み込むと両構造のフロント（点線）は高安定領域で重なる",
+    ], size=18, gap=7)
+
+
+def s_highstab():
+    s = slide_frame("結果 2　高安定 HV（全 8 シナリオ）",
+                    "仮説 1・仮説 2 とも，全 8 シナリオで支持された",
+                    "3. 数値実験")
+    w = 12.0
+    pic(s, "highstab_all8.png", ML + (CW - w) / 2, 1.68, w=w)
+    _bul(s, ML, 5.62, CW, [
+        "**仮説 1**：演算子なしで ILS > Memetic（全シナリオで $p$ < 0.001，$|δ|$ = 1.0）",
+        "**仮説 2**：演算子を組み込んだ Memetic > Memetic（全シナリオで $p$ < 0.001，$|δ|$ = 1.0）",
+        (1, "Memetic は演算子を組み込むと ILS と同程度まで向上する一方，ILS ではほとんど向上しない"),
+    ], size=18, gap=7)
+
+
+def s_band():
+    s = slide_frame("安定性誘導演算子の効果が現れる条件",
+                    "効果の非対称は，組み込む前に「到達上限の帯」に入っているかで説明できる",
+                    "3. 数値実験")
+    w = 12.0
+    pic(s, "highstab_band.png", ML + (CW - w) / 2, 1.68, w=w)
+    _bul(s, ML, 5.6, CW, [
+        "どのシナリオでも 3〜5 手法が最良値の 2% 以内に集まる → この帯を到達上限とみなす",
+        "**Memetic**：演算子なしでは全シナリオで帯の外 → 組み込むと 7 つで帯の中",
+        "**ILS**：演算子なしで 6 つが帯の中 → 有意に向上したのは帯の外の 2 つだけ",
+    ], size=17, gap=3)
+    _text(s, ML, 6.6, CW, 0.36,
+          "→ 演算子の効果は，探索構造の違いそのものではなく，**組み込む前に上限までの差が残っているかで決まる**",
+          17, color=INK, emph=BLUE, anchor=MSO_ANCHOR.MIDDLE)
+
+
+def s_anytime():
+    s = slide_frame("結果 3　全域 HV と AUC（代表 2 シナリオ）",
+                    "立ち上がりは ILS が速く，到達した全域 HV は演算子を組み込んだ Memetic が同等以上",
+                    "3. 数値実験")
+    w = 12.0
+    pic(s, "anytime.png", ML + (CW - w) / 2, 1.72, w=w)
+    _bul(s, ML, 5.74, CW, [
+        "(a) ta21S：演算子を組み込んだ Memetic も ILS と同じ全域 HV に達するが，立ち上がりが遅い",
+        "(b) la36L：Memetic 系は途中で ILS 系を追い越し，より大きい全域 HV に達する",
+    ], size=18, gap=7)
+
+
+def s_union_auc():
+    s = slide_frame("結果 4　全域 HV と AUC（全 8 シナリオ）",
+                    "最良の手法は評価指標によって異なる：全域 HV は Memetic＋演算子，AUC は ILS",
+                    "3. 数値実験")
+    tw = 5.75
+    _text(s, ML, 1.74, tw, 0.42, "最良に並ぶシナリオ数（/8）", 17, color=BLUE, bold=True,
+          anchor=MSO_ANCHOR.MIDDLE)
+    trh = 0.47
+    render_table(s, [
+        ["手法", "全域HV", "高安定HV", "AUC"],
+        ["ILS", "4", "6", "**6**"],
+        ["ILS+PR-$k$", "4", "**8**", "**6**"],
+        ["ILS+PR", "4", "**8**", "**6**"],
+        ["GA", "0", "0", "0"],
+        ["Memetic", "1", "0", "2"],
+        ["Memetic+PR-$k$", "**7**", "**7**", "1"],
+        ["Memetic+PR", "**7**", "**7**", "0"],
+    ], ML, 2.24, tw, col_w=[2.3, 1.15, 1.35, 0.95], size=16.5, row_h=trh)
+    _text(s, ML, 2.24 + 8 * trh + 0.08, tw, 0.4, "最良に並ぶ：中央値が最良手法の中央値から 2% 以内",
+          14, color=MUTE)
+    # 右：指標ごとの読み取り（シナリオ数は表に任せ，語の途中で折り返さないよう行を明示）
+    rx = ML + tw + 0.5
+    rw = SW - ML - rx
+    _text(s, rx, 1.74, rw, 0.42, "全域 HV", 18, color=BLUE, bold=True, anchor=MSO_ANCHOR.MIDDLE)
+    _text(s, rx, 2.24, rw, 1.9,
+          "Memetic＋演算子が最良に並ぶ\n"
+          "ILS 系は 4 シナリオで 5〜38% 下回る\n"
+          "→ **高安定 HV での ILS の優位は，**\n**全体として優れていることの反映ではない**",
+          17, color=INK, ls=1.12, emph=BLUE)
+    _text(s, rx, 4.4, rw, 0.42, "AUC", 18, color=BLUE, bold=True, anchor=MSO_ANCHOR.MIDDLE)
+    _text(s, rx, 4.9, rw, 1.9,
+          "ILS 系が最良に並ぶ\n"
+          "Memetic では演算子が各個体に発動して\n"
+          "計算時間が増え，PR は AUC を\n"
+          "5 シナリオで 7〜26% 下げる",
+          17, color=INK, ls=1.12)
+
+
+# ---------------------------------------------------------------- 15. 結論
+
+def s_conclusion():
+    s = slide_frame("まとめ",
+                    "$S_p$ が探索前に得られる再スケジューリングでは，高安定領域で探索構造と演算子の関係が分かれる",
+                    "4. 結論")
+    items = [("仮説 1 を支持", "高安定 HV は**単点探索（ILS）**が多点探索（Memetic）を上回る．全 8 シナリオの全試行で分離"),
+             ("仮説 2 を支持", "安定性誘導演算子は**多点探索の高安定 HV を単点探索と同程度まで向上**させ，\n"
+                              "単点探索ではほとんど向上させない．効果は，組み込む前に到達上限の帯に入っているかで決まる"),
+             ("手法の選び方", "全域 HV を重視するなら **Memetic＋演算子**，短い計算時間で解を得るなら **ILS**．\n"
+                              "高安定 HV では両者が並ぶ"),
+             ("貢献", "手法を高安定 HV でも評価し，局所探索を揃えた統制比較で，探索構造と演算子の関係を切り分けた\n"
+                      "→ **ある演算子が有効だという報告は，どの探索構造に組み込んだかを抜きにしては一般化できない**")]
+    # 見出しの列を詰めて本文の幅を取り，各行を 1 行に収める
+    bx = ML + 2.75
+    bw = SW - ML - 0.2 - bx
+    y, hh, gap = 1.85, 1.08, 0.15
+    for i, (h, b) in enumerate(items):
+        _rrect(s, ML, y, CW, hh, WHITE, line=CARDLINE, radius=0.06)
+        if h != "貢献":
+            _boxtext(s, ML + 0.2, y + (hh - 0.52) / 2, 0.52, 0.52, [(str(i + 1), 17, WHITE, True)],
+                     fill=BLUE, radius=0.5)
+        _text(s, ML + 0.95, y + 0.08, 1.7, hh - 0.16, h, 15.5, color=BLUE, bold=True,
+              anchor=MSO_ANCHOR.MIDDLE)
+        _text(s, bx, y + 0.06, bw, hh - 0.12, b, 14, color=INK, ls=1.12,
+              anchor=MSO_ANCHOR.MIDDLE, emph=BLUE if h == "貢献" else None)
+        y += hh + gap
+
+
+def s_limits():
+    s = slide_frame("限界と今後の課題",
+                    "結論は本実験の条件の下で得たもので，条件を変えた再検証が今後の課題",
+                    "4. 結論")
+    x = ML + 0.2
+    w = CW - 0.2
+    _text(s, ML, 1.74, CW, 0.42, "限界", 18, color=BLUE, bold=True, anchor=MSO_ANCHOR.MIDDLE)
+    _bul(s, x, 2.18, w, [
+        "(i) $p$ が有意水準に近い比較は，$n$ = 10 では決着していない",
+        "(ii) 安定性を開始時刻偏差で測る場合の妥当性は検証していない",
+        "(iii) 外乱は単一作業の遅延に限る",
+        "(iv) 初期スケジュール $S_p$ の最適化の程度が結果に与える影響は検証していない",
+        "(v) 各探索構造の代表は 1 手法ずつである",
+    ], size=16.5, gap=4, mark="")
+    _text(s, ML, 4.25, CW, 0.42, "今後の課題", 18, color=BLUE, bold=True,
+          anchor=MSO_ANCHOR.MIDDLE)
+    _bul(s, x, 4.69, w, [
+        "上記の条件を変えた再検証",
+        "再スケジュールの範囲を限定するアプローチと安定性誘導演算子の統合",
+        "安定性を交叉自体に持たせる方式の検証",
+        "Pareto 支配に基づく手法（NSGA-II 等）での再検証",
+    ], size=16.5, gap=4)
+    _text(s, ML, 6.48, CW, 0.36,
+          "データ：各シナリオの定義と，試行ごとの値・検定は公開リポジトリに収録"
+          "（https://github.com/kitotakumi/stability_scheduling）", 13, color=MUTE,
+          anchor=MSO_ANCHOR.MIDDLE)
+
+
+# ---------------------------------------------------------------- 予備
+
+def backup_divider():
+    slide = prs.slides.add_slide(BLANK)
+    _rect(slide, 0, 0, SW, SH, COVER)
+    _text(slide, 1.15, 2.9, 10, 1.0, "予備スライド", 30, color=WHITE, bold=True)
+    _page["n"] += 1
+
+
+def s_backup_robust():
+    s = slide_frame("［予備］頑健性と計算時間", None, "予備")
+    _bul(s, ML, 1.5, CW, [
+        "**高安定領域の境界**：$θ$ を 50 から 33〜67 に変えても，仮説 1・仮説 2 の結論は変わらない（全シナリオで完全分離）",
+        "**計算時間**：壁時計は Memetic+PR が ILS の 4.8〜9.4 倍．ただし中央値の試行は，全手法とも予算の 7 割以内で最終の全域 HV の 99% に達する → 全域 HV の差は計算予算の不足によらない",
+        "**PR か PR-$k$ か**：ILS ではどちらを組み込んでも 3 指標とも差は 2% 以内．Memetic では全域 HV・高安定 HV は PR がわずかに上回り（有意差は各 2 シナリオ），AUC は 1 回の計算が軽い PR-$k$ が 8 シナリオ中 6 つで有意に上回る",
+        "**ILS で演算子により有意に向上した 2 シナリオ**：la36L・ta21L で $p$ < 0.05．Holm 補正後に残るのは ta21L のみ（la36L は $p_{adj}$ = 0.091）．中央値の向上は 6.3〜6.5%",
+    ], size=15, gap=14)
+
+
+def s_backup_scalar():
+    s = slide_frame("［予備］重み付き和によるスカラー化", None, "予備")
+    render_equation(s, r"F(S_q)=\lambda\,\hat{D}(S_p,S_q)+(1-\lambda)\,\widehat{MS}(S_q)",
+                    ML, 1.45, CW, number="(2)", name="talk_F", h=0.6)
+    _text(s, ML, 2.2, CW, 0.4,
+          "$\\hat{D}$，$\\widehat{MS}$ は min-max 正規化値．$λ$ = 0, 0.1, …, 0.9 の 10 点で探索を独立に行う"
+          "（$λ$ = 1.0 は $D$ = 0 の自明解に縮退するため除く）", 12.5, color=MUTE,
+          align=PP_ALIGN.CENTER)
+    _bul(s, ML, 2.85, CW, [
+        "**運用との対応**：生産効率と安定性の優先度は，意思決定者が事前に重みとして与える．"
+        "1 点ぶんの探索は，重みが定まった状態で再スケジューリングを 1 回行う実運用に対応する",
+        "**先行研究との対応**：Rangsaritratsamee ら (2004)・Zhang ら (2013)・Fattahi & Fallahi (2010) も，"
+        "生産効率と安定性を重みで 1 つのスカラーにまとめる",
+        "**統制比較の共通基盤**：単点探索と多点探索に同じ目的 $F$ を共有させ，同じ安定性誘導演算子を"
+        "変更なしで組み込める → 構造間で条件を揃えて比較できる",
+        "**評価との対応**：各重みの探索を時間で追えば立ち上がりの速さ（AUC）が，"
+        "全重みの解を合わせればフロント全体の HV が，同じ実験から測れる",
+        "**限界**：重み付き和は非凸フロントの凹部に届かない．ただし全手法が同じスカラー化を共有し，"
+        "探索中に訪問した凹部の解も記録するため，構造差の比較への影響は限定的．"
+        "Pareto 支配に基づく手法（NSGA-II 等）での再検証は今後の課題",
+    ], size=14.5, gap=14)
+
+
+def s_backup_why():
+    s = slide_frame("［予備］なぜ ILS と Memetic か", None, "予備")
+    gap = 0.4
+    cw = (CW - gap) / 2
+    cols = [
+        ("単点探索の代表：ILS（反復局所探索）", ORANGE, [
+            "摂動 → 局所探索 → 受理判定を反復し，1 つの解を改善する枠組み",
+            "**局所探索と摂動が独立した段に分かれている**ため，摂動の強度（現在解から一度に"
+            "どれだけ離すか）を明示的に設定でき，安定性誘導演算子も局所探索・受理判定を"
+            "変えずに摂動の段へ組み込める",
+            "他の単点探索は局所最適からの脱出を別の形で行う：SA は悪化解の確率的な受理，"
+            "タブーサーチは再訪の禁止",
+            "設定：初期解 $S_p$．insert 摂動は 2〜5 手を停滞度に応じて巡回．"
+            "best の $F$ を厳密に改善したときのみ現在解を更新",
+        ]),
+        ("多点探索の代表：Memetic（GA＋局所探索）", GREEN, [
+            "先行研究（Rangsaritratsamee ら 2004，Fattahi & Fallahi 2010）で用いられる，"
+            "**GA に局所探索を組み込んだ標準的な構成**",
+            "GA：operation-based 表現，GT 法でデコード，エリート保存付きトーナメント選択，"
+            "PPX 交叉，逆位突然変異",
+            "各個体に N5 局所探索を適用し，改善解を染色体に書き戻す Lamarckian 型．"
+            "初期集団に $S_p$ を 1 個体含める",
+            "局所探索をもたない素の GA は参考として比較する",
+        ]),
+    ]
+    for k, (head, col, items) in enumerate(cols):
+        x = ML + k * (cw + gap)
+        _rrect(s, x, 1.45, cw, 5.45, WHITE, line=CARDLINE, radius=0.04)
+        _rect(s, x, 1.45, cw, 0.55, col)
+        _text(s, x + 0.2, 1.45, cw - 0.4, 0.55, head, 14.5, color=WHITE, bold=True,
+              anchor=MSO_ANCHOR.MIDDLE)
+        _bul(s, x + 0.2, 2.15, cw - 0.4, items, size=13, gap=10)
+
+
+def s_backup_problem():
+    s = slide_frame("［予備］問題設定の根拠", None, "予備")
+    _bul(s, ML, 1.5, CW, [
+        "**外乱を単一の作業遅延に限る理由**：作業遅延は作業集合を変えず，処理順序の再調整だけで対処できる．"
+        "修正スケジュールを高安定領域に保つという前提が，最も素直に成り立つ外乱である",
+        "**再スケジューリング時刻 $t_r$**：遅延の解消時刻．遅延の発生から $t_r$ までは，"
+        "機械上の順序を $S_p$ から変えずに遅延を吸収して実行を続ける（right-shift）．"
+        "この間に開始した作業はもう変更できないため凍結し，$t_r$ 以降の作業の機械ごとの処理順序だけを決定変数とする",
+        "**安定性を順序偏差で測る理由**：変更量の測り方は，開始時刻偏差と順序偏差の二系統に大別される"
+        "（Sun ら (2026) は前者の開始時刻の絶対偏差和を採る）．本研究は，探索で用いる操作"
+        "（N5 近傍と安定性誘導演算子の swap 移動）がいずれも順列操作であること，"
+        "および $MS$ との独立性が高いことから，順序偏差を採る",
+    ], size=15, gap=16)
+
+
+def s_backup_operator():
+    s = slide_frame("［予備］安定性誘導演算子の設計", None, "予備")
+    _bul(s, ML, 1.5, CW, [
+        "**誘導解を $S_p$ に固定する理由**：(a) $S_p$ は順序偏差 $D$ を最小にする解なので，"
+        "PR を「$D$ を最小にする解へ向かう移動」と一意に解釈できる．"
+        "(b) $S_p$ へ向かう経路上には $D$ が小さく $MS$ の劣化も小さい解が現れると期待でき，"
+        "それが高安定領域の非劣解になる",
+        "**PR-$k$ で $k$ を変える理由**：$k$ が $d$ に等しければ $S_p$ まで戻り，小さければ現在解の近くに留まる．"
+        "$k$ を変えて繰り返すことで，現在解と $S_p$ の間の広い範囲に解を得る",
+        "**組み込み方**：両構造に「$S_p$ に近づける swap 移動」という核を共有させ，発動の契機と返し方は"
+        "各構造の標準的な組み込み方に合わせる．ILS は停滞時に摂動として発動し，$k$ を 1 から $d$ まで "
+        "1 ずつ増やして，上限に達するか best が改善したら 1 に戻す．Memetic は局所探索の後に個体ごとに"
+        "確率的に適用し（$k$ は 1〜$d$ から一様に選ぶ），N5 で再最適化して無条件に集団へ戻す"
+        "（採否はトーナメント選択に委ねる）",
+        (1, "組み込み方が同じ ILS 系の中でも帯の内外で効果が分かれる → 効果の非対称は，組み込み方の違いでは説明できない"),
+        "**入れ替える作業の選び方**：実行可能な候補からランダムに選び，評価回数を $O(d)$ に抑える．"
+        "全候補を評価する best 選択は $O(d^2)$ で，予備実験では全域 HV が約 +1% 増えるのに対し，"
+        "最大で約 8 倍の時間を要したため採らない",
+    ], size=14.5, gap=14)
+
+
+def s_backup_control():
+    s = slide_frame("［予備］対照実験とパラメータ感度", None, "予備")
+    _bul(s, ML, 1.5, CW, [
+        "**ランダム方向の対照実験**：Memetic に組み込んだ演算子による向上が，摂動一般の効果か，"
+        "$S_p$ に近づける方向に固有の効果かを確かめるため，強度を揃えて方向だけをランダム化した対照を "
+        "2 シナリオ（mt10・la36S）で実行した",
+        (1, "ランダム方向は向上幅の 7 割前後しか再現せず，高安定 HV では演算子に完全分離で及ばない"),
+        (1, "同じ高安定 HV に達するには，1.7〜2.4 倍の時間を要する"),
+        "**パラメータ感度**：手法パラメータは標準値で固定した．挙動を定める 11 軸（ベースの探索構造側を含む）を "
+        "2 シナリオで一要因ずつ上下に振ったが，全域 HV の変化は +0.5〜2% で，"
+        "手法間の差（+7〜54%）より一桁小さい",
+    ], size=15, gap=16)
+
+
+def s_backup_params():
+    s = slide_frame("［予備］手法のパラメータ", None, "予備")
+    render_table(s, [
+        ["項目", "設定"],
+        ["GA・Memetic 系", "交叉率 0.85，突然変異率 0.1，集団 50（$S_p$ 以外の 49 個体は無作為生成）．operation-based 表現，GT 法でデコード"],
+        ["ILS 系", "insert 摂動 2〜5 手を巡回．局所探索は N5 近傍（クリティカルブロック端の隣接 swap）"],
+        ["演算子（Memetic 系）", "各個体に確率 0.3 で発動．PR は経路上の上位 3 中間解を局所探索して最良を返す"],
+        ["演算子（ILS 系）", "無改善 400 反復で初回，以降 10 反復ごとに発動．PR は経路上の最良 1 解を返す"],
+        ["PR-$k$ の深さ $k$", "1 から $S_p$ と処理順位が異なる作業数 $d$ までの範囲で発動ごとに変える"],
+        ["記録", "選択の前に生成した全解から非劣解を保存（両構造で記録点を揃える）"],
+        ["環境", "AMD Ryzen 5 7530U，Python 3.12（NumPy・DEAP・SciPy）"],
+    ], ML, 1.5, CW, col_w=[2.6, 9.5], size=13.5, align=['l', 'l'])
 
 
 # ================================================================ 本編
 def build():
-    # 1. 表紙
-    title_slide()
-
-    # 2. 研究概要
-    content_slide(
-        "研究概要", "同一の安定性誘導演算子が、載せる探索構造しだいで効き方を変える——その非対称性を統制下で切り分ける",
-        "Overview",
-        [
-            {'k': 'bullets', 'items': [
-                (0, "**予測リアクティブ再スケジューリング**では、外乱前の高品質スケジュール $S_p$ が既に存在し、修正解には効率（メイクスパン）と安定性（$S_p$ からの変更量の小ささ）が同時に求められる。"),
-                (0, "→ 探索の勝負は「大域探索力」ではなく、**$S_p$ 近傍（高安定領域）をどれだけ良く充填できるか**という軸を新たに帯びる。"),
-                (1, "**H1（適合性）**：軌道ベースは連続変形でこの近傍を自力充填できるが、集団ベースは交叉ゆえ充填が構造的に粗い。"),
-                (1, "**H2（補完性）**：$S_p$ へ引き寄せる安定性誘導演算子(PR・repair)が供給する力はまさに集団に欠け軌道は既に持つもの ＝ 効果は**ホスト依存で非対称**に現れる。"),
-                (0, "主眼は新手法の性能競争ではなく、**演算子とホスト構造の相互作用を統制下で解明**すること（8 シナリオ × 7 手法 × n=10）。"),
-            ]},
-        ])
-
-    # 3. 目次
-    content_slide(
-        "目次", None, "Contents",
-        [
-            {'k': 'bullets', 'items': [
-                (0, "**1. 研究背景・目的** ｜ 外乱・再スケジューリング・安定性のトレードオフ"),
-                (0, "**2. 既存研究と本研究の位置づけ** ｜ 先行研究の 2 系譜・残された課題・2 仮説（H1 / H2）"),
-                (0, "**3. 探索構造と提案手法** ｜ 軌道／集団の 2 系統・安定性誘導演算子（PR / repair）・問題設定"),
-                (0, "**4. 計算機実験** ｜ H1（適合性）・H2（非対称効果）・総合スコアボード"),
-                (0, "**5. 結論** ｜ 相補構造・限界・今後の課題"),
-            ]},
-        ])
-
-    # ===== 1
-    divider_slide("1", "研究背景・目的", "外乱・再スケジューリング・安定性のトレードオフ")
-
-    content_slide(
-        "1.1 外乱と再スケジューリング", "本研究の対象を「予測リアクティブ再スケジューリング × 作業遅延」に位置づける",
-        "1. 研究背景・目的",
-        [
-            {'k': 'bullets', 'items': [
-                (0, "生産現場では**作業遅延・機械故障**などの外乱が頻発し、当初スケジュールの実行を困難にする。対応は静的・動的の 2 系統に大別される。"),
-            ]},
-            {'k': 'draw', 'fn': diag_taxonomy},
-            {'k': 'bullets', 'items': [
-                (0, "**作業遅延**に着目する理由：機械割当を保ち、処理**順序の再調整**だけで対処できる ＝ **作業集合を変えない**。"),
-                (1, "ゆえに**修正解を $S_p$ 近傍に保つ**という本研究の前提が、最も素直に成立する外乱クラスである。"),
-            ]},
-        ])
-
-    content_slide(
-        "1.2 効率と安定性のトレードオフ", "変更コストゆえ安定性は効率(MS)と並ぶ目的——効率と安定性の多目的最適化として定式化する",
-        "1. 研究背景・目的",
-        [
-            {'k': 'draw', 'fn': diag_tradeoff, 'y': 2.35},
-            {'k': 'bullets', 'y': 3.95, 'items': [
-                (0, "大幅な変更は現場に**実コスト**を生む。"),
-                (1, "現場の混乱・段取り替え／資材・治具の再手配・作業者の再配置／下流工程・外注への波及"),
-            ]},
-            {'k': 'note', 'y': 5.55, 'text': "これらのコストゆえ、**安定性は効率(MS)と並ぶ目的**。本研究は効率と安定性の**多目的最適化**として定式化する。"},
-        ])
-
-    content_slide(
-        "1.3 再スケジューリングの特殊性と研究目的", "特殊性＝高品質初期解 $S_p$ が既に存在する。本研究の目的は、この特殊性が探索構造に与える影響を多角的に検証すること",
-        "1. 研究背景・目的",
-        [
-            {'k': 'bullets', 'y': 1.95, 'items': [
-                (0, "**特殊性**：静的スケジューリングと違い、外乱前の高品質な初期解 $S_p$ が既に存在する。"),
-                (1, "最適解は $S_p$ 近傍に分布しやすく、手法の優劣は**大域探索力だけでは決まらない**。"),
-            ]},
-            {'k': 'bullets', 'y': 3.15, 'items': [
-                (0, "**研究目的**：この特殊性が**探索構造に与える影響を多角的に検証する**。"),
-                (1, "二系統の探索構造（軌道／集団）の力関係が、この特性下でどう変わるかを統制下で明らかにする。"),
-                (1, "その力関係を踏まえ、解を安定側へ誘導する探索演算子（PR・repair）を設計し、相互作用を検証する。"),
-            ]},
-            {'k': 'note', 'y': 4.85, 'text': "主眼は最先端手法との性能競争ではなく、**演算子と探索構造の相互作用の構造分析**にある[28]。"},
-        ])
-
-    # ===== 2
-    divider_slide("2", "既存研究と本研究の位置づけ", "先行研究の 2 系譜・残された課題・2 仮説（H1 / H2）")
-
-    content_slide(
-        "2.1 先行研究の 2 系譜と残された課題", "既存は安定性を「目的関数に畳み込む(受動)」か「再スケ範囲を限定する」かの 2 系譜——そこに 3 つの課題が残る",
-        "2. 既存研究と位置づけ",
-        [
-            {'k': 'bullets', 'items': [
-                (0, "**① 併合型（目的関数で確保）**：安定性をスカラー目的（多くは重み付き和）に畳み込み、**一評価項として受動的に**扱う。"),
-                (1, "Wu ら[14]（先駆）・Rangsaritratsamee ら[3]（ハイブリッド GA）・Katragjini ら[19]（フローショップ）"),
-                (0, "**② 範囲限定型（探索空間で確保）**：**再スケジュール範囲を限定**し、探索空間の制限で構造的に保証する。"),
-                (1, "match-up[15]・AOR[16]（影響波及作業のみ再スケ）・Zakaria & Petrovic[17]（染色体を区間に限定）・Sun ら[27]（範囲を 4 階層に定式化）"),
-            ]},
-            {'k': 'table', 'y': 3.70, 'rows': [
-                ["残された課題", "既存研究", "本研究のアプローチ"],
-                ["① 適合性分析の欠如", "**GA 中心**で、探索手法ごとの比較が十分にされていない",
-                 "**軌道ベース**と**集団ベース**を局所探索まで揃えて**統制比較**【H1】"],
-                ["② 演算子としての機構の欠如", "①併合型・②範囲限定型のどちらも、探索を安定側へ**能動的には導かない**",
-                 "解を $S_p$ へ**能動的に**引き寄せる**安定性誘導演算子**(PR・repair)【H2】"],
-                ["③ 評価方法論の不足", "単一重みのスカラー比較が主",
-                 "**3 指標**（Pareto 覆域・安定帯別・速度）で評価"],
-            ], 'col_w': [0.80, 1.38, 1.82], 'size': 13},
-            {'k': 'note', 'y': 5.85, 'text': "安定性を**探索空間の制限ではなく演算子として確保する**——これが範囲限定型に対する、本研究の核心的な設計上の主張である。"},
-        ])
-
-    content_slide(
-        "2.2 本研究の仮説", "$S_p$ が既に存在することから、探索構造の適合性（H1）と、誘導演算子のホスト依存な非対称効果（H2）を立てる",
-        "2. 既存研究と位置づけ",
-        [
-            {'k': 'draw', 'fn': diag_hyp, 'y': 2.55},
-        ])
-
-    # ===== 3
-    divider_slide("3", "探索構造と提案手法", "軌道／集団の2系統・安定性誘導演算子（PR / repair）・問題設定")
-
-    content_slide(
-        "3.1 探索構造の2系統 — 軌道ベースと集団ベース", "メタヒューリスティクスは「1解を動かす」軌道ベースと「多数解を組み替える」集団ベースに大別される",
-        "3. 探索構造と提案手法",
-        [
-            {'k': 'draw', 'fn': diag_two_families},
-            {'k': 'note', 'text': "本研究は両系統の代表として **ILS（軌道）** と **Memetic（集団）** を採り、局所探索 **N5** を両者で揃える → 観測される差を**探索構造だけ**に帰属させる。"},
-        ])
-
-    content_slide(
-        "3.2 再スケジューリングでの効き方の違い", "$S_p$ が既にある再スケでは、「$S_p$ からどれだけ離れたか」を制御できるか否かが決定的に効く",
-        "3. 探索構造と提案手法",
-        [
-            {'k': 'row', 'ratio': [1.05, 1], 'cols': [
-                [{'k': 'image', 'path': asset("concept_2struct.png"), 'h': 3.45,
-                  'caption': "集団は交叉で子が $S_p$ から飛散（左）／軌道は連続変形で $S_p$ 近傍を充填（右）"}],
-                [{'k': 'bullets', 'items': [
-                    (0, "**軌道ベース＝本研究では ILS（反復局所探索）を採用**：深掘り(局所探索)と脱出(摂動)が分離 → **摂動強度＝$S_p$ からの距離**を直接制御でき、$S_p$ を起点に近傍を塗りつぶせる。"),
-                    (0, "**集団ベース＝本研究では Memetic（GA＋N5 局所探索）を採用**：**交叉は2親を切り貼りする破壊的操作**。子個体は $S_p$ 近傍から飛散し、そこに留まる仕組みを持たない。"),
-                    (0, "局所探索 N5[1] は両者で共有（統制）→ 充填力の差は**交叉の有無＝探索構造**だけに帰属する。"),
-                ]}],
-            ]},
-            {'k': 'draw', 'fn': diag_h1, 'y': 6.02},
-        ])
-
-    content_slide(
-        "3.3 安定性誘導演算子 — PR・repair", "解を「安定性アンカー」$S_p$ へ能動的に引き寄せる移動を演算子として実装し、同一演算子を両ホストへ載せる",
-        "3. 探索構造と提案手法",
-        [
-            {'k': 'row', 'ratio': [1.05, 1], 'cols': [
-                [{'k': 'image', 'path': asset("concept_direct_swap.png"), 'h': 3.75}],
-                [{'k': 'bullets', 'items': [
-                    (0, "集団ベースが $S_p$ から遠い解を多数抱える性質は、逆に**引き戻す演算子が働く土壌**になる。"),
-                    (0, "**PR（Path Relinking）**[5]：現在解→$S_p$ の経路を swap で辿り経路上最良解を返す。評価回数は **$O(d)$**（$d$=不一致数）。"),
-                    (0, "**repair（Mini-PR kick）**：PR を数手で打ち切り $S_p$ 方向へ引き戻し、局所探索で再最適化。深さで安定側フロントを面で覆う。"),
-                    (0, "**両ホストに載るのは同一演算子**。違うのは発動法だけ：軌道＝停滞時の摂動／集団＝個体ごとの精緻化。"),
-                ]}],
-            ]},
-            {'k': 'draw', 'fn': diag_h2, 'y': 6.02},
-        ])
-
-    content_slide(
-        "3.4 全体像 — 3 つの探索構造", "集団は散る／軌道は $S_p$ 近傍を充填する／集団＋誘導演算子は散った解を $S_p$ へ引き戻す",
-        "3. 探索構造と提案手法",
-        [
-            {'k': 'image', 'path': asset("concept_3struct.png"), 'h': 4.42},
-            {'k': 'draw', 'fn': diag_3caps, 'y': 6.24},
-        ])
-
-    content_slide(
-        "3.5 問題定義 — 再スケジューリングの力学", "凍結部を固定し、$t_r$ 以降の「機械ごとの処理順序」だけを動かす順列最適化に帰着する",
-        "3. 探索構造と提案手法",
-        [
-            {'k': 'bullets', 'items': [
-                (0, "**元スケジュール $S_p$**：静的 JSSP の高品質解（全手法の共通入力）。**外乱**は単一の作業遅延（遅延量 $\\Delta$）。"),
-                (0, "**right-shift 解 $S_{RSR}$**：機械上の順序を保ち遅延を吸収した現場の実スケジュール（$D=0$ に対応）。"),
-                (0, "**凍結**：再スケ時刻 $t_r$ 前に開始済みの作業は凍結し、$t_r$ 以降を**最適化対象 $\\mathcal{O}_{opt}$** とする。"),
-                (0, "**決定変数**：機械割当は固定 → 対象作業の**機械ごとの処理順序**のみ。"),
-            ]},
-            {'k': 'bullets', 'items': [
-                (0, "**安定性指標（順列偏差）**：探索機構(swap・N5)が動く順列空間と一致し、MS と独立性が高い。"),
-            ]},
-            {'k': 'eq', 'name': 'stab',
-             'latex': r'D(S_p,S_q)=\sum_{(i,j)\in\mathcal{O}_{opt}}\left|\,r_{ij}^{\,p}-r_{ij}^{\,q}\,\right|',
-             'number': '(1)', 'h': 0.58},
-            {'k': 'bullets', 'items': [
-                (1, "$r_{ij}$＝機械 $i$ 上のジョブ $j$ の処理順位。値が小さいほど高安定（$D=0$＝順序不変の $S_{RSR}$）。"),
-            ]},
-        ])
-
-    content_slide(
-        "3.6 多目的とスカラー化", "重み付き和で掃引——運用の選好設定と整合し、軌道と集団に同一目的を共有させる「統制の共通土台」になる",
-        "3. 探索構造と提案手法",
-        [
-            {'k': 'bullets', 'items': [
-                (0, "$\\min_{S_q}(MS(S_q),\\, D(S_p,S_q))$ を、重み $\\lambda\\in[0,1]$ の**重み付き和**で解く（$\\hat\\cdot$ は min-max 正規化）。"),
-            ]},
-            {'k': 'eq', 'name': 'scal',
-             'latex': r'F(S_q)=\lambda\,\hat D(S_p,S_q)+(1-\lambda)\,\widehat{MS}(S_q)',
-             'number': '(2)', 'h': 0.56},
-            {'k': 'bullets', 'items': [
-                (0, "**なぜ Pareto-native 手法でなく重みスカラー化か**"),
-                (1, "**運用形態との整合**：効率と安定の優先度は意思決定者が事前に重みとして与える量（再スケの標準枠組[3]）。"),
-                (1, "**統制比較の共通基盤**：単一解 ILS と集団 Memetic に同一目的 $F(\\lambda)$ を共有させ、同一機構を無改変で載せ**構造差だけ**を切り出せる。"),
-                (0, "単一重み依存を避け $\\lambda$ を複数点掃引し、**UEA[9]** で全非劣解を統合して評価する。"),
-            ]},
-        ])
-
-    content_slide(
-        "3.7 評価フレームワーク — 3 指標", "単一指標では相補構造が見えない——「総合品質・高安定充填・速度」の 3 問を 3 指標で切り分ける",
-        "3. 探索構造と提案手法",
-        [
-            {'k': 'image', 'path': sem("core_v3_metrics_explained.png"), 'h': 3.05},
-            {'k': 'bullets', 'y': 4.95, 'items': [
-                (0, "**統合 HV**：全領域の hypervolume ＝ 総合品質。"),
-                (0, "**高安定 HV**：$D<$P50（$S_p$ 近傍）に限定 ＝ **本命の充填度**。"),
-                (0, "**AOC**：HV-対-log 時間曲線の時間平均 ＝ アンタイム（速さ）。"),
-            ]},
-            {'k': 'bullets', 'y': 6.55, 'items': [
-                (2, "HV は各シナリオで $[0,1]^2$ 正規化＋参照点 $(1.1,1.1)$。統計は片側 Wilcoxon＋Cliff's δ、横断は Friedman 平均順位＋Kendall's W（探索的要約）。|δ|=1.0 は完全分離（p≈0.001）。"),
-            ]},
-        ])
-
-    # ===== 4
-    divider_slide("4", "計算機実験", "H1（適合性）・H2（非対称効果）・総合スコアボード")
-
-    content_slide(
-        "4.1 実験設定", "同一 $S_p$ のまま再スケ率 ρ だけを段階変化させ、手法差の ρ 依存を交絡なく切り分ける設計",
-        "4. 計算機実験",
-        [
-            {'k': 'table', 'rows': [
-                ["対象 7 手法", "baseline", "＋ repair", "＋ PR"],
-                ["軌道（ILS）", "ILS-baseline", "ILS+repair", "ILS+PR"],
-                ["集団（Memetic）", "Memetic-LS", "Memetic+repair", "Memetic+PR"],
-            ], 'col_w': [1.05, 1.0, 1.0, 1.0], 'size': 12, 'align': [None, 'c', 'c', 'c']},
-            {'k': 'bullets', 'items': [
-                (1, "＋ **GA**（局所探索なしの参考ベースライン）で計 **7 手法**。$S_p$（GA-500 の高品質解）を全手法で共有。"),
-            ]},
-            {'k': 'row', 'ratio': [1, 1.05], 'cols': [
-                [{'k': 'table', 'rows': [
-                    ["項目", "設定"],
-                    ["インスタンス", "mt10・la21・la36・la40・ta21"],
-                    ["重み λ", "10 点（0〜0.9・0.1 刻み）"],
-                    ["Trial", "n=10（解析単位＝1 trial）"],
-                    ["計算予算", "ILS 3000 反復／GA・Memetic 500 世代"],
-                ], 'col_w': [0.8, 1.7], 'size': 11}],
-                [{'k': 'bullets', 'items': [
-                    (0, "各シナリオの%は**再スケ率** $\\rho=n_{res}/\\text{ops}$（統制軸）：la36 27/54/73・ta21 32/82・mt10 72・la21 35・la40 32。"),
-                    (0, "**la36 ラダー**・**ta21 対**は同一 $S_p$ で $\\rho$ だけ段階変化 → $\\rho$ 依存を交絡なく分離。"),
-                    (0, "外乱は単一作業の完了遅延 $\\Delta$=60〜148。環境：Ryzen 5 7530U／Python 3.12・全乱数シード固定。"),
-                ]}],
-            ]},
-        ])
-
-    content_slide(
-        "4.2 結果1：軌道(ILS) vs 集団(Memetic)【H1】", "同じ N5 を積んでも、高安定領域は ILS が全 8 シナリオで完全分離——差は局所探索でなく探索構造",
-        "4. 計算機実験",
-        [
-            {'k': 'image', 'path': sem("core_v3_claim1.png"), 'h': 3.45,
-             'caption': "局所探索(N5)を揃えた ILS-baseline vs Memetic-LS ｜ 統合HV=互角／高安定HV=ILS完全優越／AOC=6/8でILS優位"},
-            {'k': 'bullets', 'items': [
-                (0, "**高安定 HV：ILS が全 8 シナリオを完全分離で上回る**（$p$=0.001, $|\\delta|$=1.0）。低 $\\rho$ の 3 シナリオでは Memetic は高安定域に**1 解も到達できず**、残る 5 でも ILS が 2〜4.5 倍。Holm 補正後も全シナリオ有意。"),
-                (0, "**統合 HV は互角**（ILS 5 勝・Memetic 3 勝、勝者は $\\rho$ で入れ替わる）。一方 **AOC は ILS が 6/8 で優位**（早期から良い incumbent を持つ）。差は**局所探索の有無でなく探索構造**に由来する。"),
-            ]},
-        ])
-
-    content_slide(
-        "4.2 H1 の構造的原因 — 探索はどこを訪れたか", "軌道は低 $D$（安定側）のフロント帯にびっしり、集団は高 $D$ の不安定領域に散る——狙う場所そのものが違う",
-        "4. 計算機実験",
-        [
-            {'k': 'image', 'path': asset("density_ja3.png"), 'h': 3.30,
-             'caption': "代表 3 シナリオの訪問密度差（手法ごと総和 1 で正規化）｜ 橙線＝軌道(ILS)のパレートフロント・緑線＝集団(Memetic)のパレートフロント"},
-            {'k': 'bullets', 'items': [
-                (0, "**軌道(ILS)＝赤**は $D$ の小さいフロント帯に張り付き、**集団(Memetic)＝青**は高 $D$ の不安定領域に散る。$\\rho$ が上がるほど青の雲は上へ膨らみ、**橙のフロントだけが安定側の底を舐める**。"),
-                (0, "→ 高安定 HV 差の**構造的原因**。同時に、集団が $S_p$ から遠い解を多数持つこの性質が、次の H2 の土壌になる。"),
-            ]},
-        ])
-
-    content_slide(
-        "4.3 結果2：PR・repair の非対称効果【H2】", "同一演算子が集団の高安定 HV を 2 倍超に引き上げ ILS 水準へ。だが自力充填済みの軌道はほぼ頭打ち＝非対称",
-        "4. 計算機実験",
-        [
-            {'k': 'image', 'path': sem("core_v3_claim2.png"), 'h': 3.45,
-             'caption': "baseline に機構を追加したときの高安定 HV の伸び（ホスト別）"},
-            {'k': 'bullets', 'items': [
-                (0, "**集団(Memetic)：高安定 HV を大幅改善**（全 8 シナリオで 2 倍以上, $p$=0.001, $|\\delta|$=1.0）。届かなかった $S_p$ 近傍を機構が直接充填 → **高安定で ILS に追いつき、統合 HV では追い越す**。"),
-                (0, "**軌道(ILS)：ほぼ頭打ち**。baseline 時点で自力充填済み。機構が有意なのは最高 $\\rho$ 帯の la36L(73%)・ta21L(82%)のみ（Holm 後は ta21L のみ残存, $p_{adj}$≈0.008）。"),
-            ]},
-        ])
-
-    content_slide(
-        "4.3 H2 の機構的原因 — PR 経路統計", "集団は経路が長く道中で改善を 30〜65% 発見、ILS は経路が短く発見ほぼ 0%——方向づけは軌道では空振り",
-        "4. 計算機実験",
-        [
-            {'k': 'image', 'path': sem("mech_pr.png"), 'h': 3.42},
-            {'k': 'bullets', 'y': 5.32, 'items': [
-                (0, "**Memetic**：経路長 $d_0$ が大きく、経路上で**約 30〜65%** の確率で改善解を発見。一方 **ILS** は $S_p$ 近傍に張り付いて経路が短く、改善発見率は**全シナリオほぼ 0%**（ta21L でも 0.4%）。"),
-                (0, "方向づけ移動は ILS では空振り。la36L・ta21L で僅かに効くのは、**キック後の局所探索**が埋め残しを再最適化する寄与による。"),
-            ]},
-        ])
-
-    content_slide(
-        "4.3 PR か repair か — ホスト依存の使い分け", "使い分けが要るのは集団だけ：最終品質なら PR、アンタイム重視なら repair（軌道はどちらでも同じ）",
-        "4. 計算機実験",
-        [
-            {'k': 'draw', 'fn': diag_pr_repair, 'y': 2.05},
-            {'k': 'bullets', 'y': 4.55, 'items': [
-                (2, "PR は $S_p$ までの長い経路を辿り切ってから最良中間解を返すため立ち上がりが遅い。repair は数手で打ち切り即座に incumbent を更新するためアンタイムに強い。"),
-            ]},
-            {'k': 'note', 'y': 5.55, 'text': "**使い分けの結論**：最終品質最優先なら **Memetic+PR**、計算予算が厳しくアンタイム重視なら **repair**。ILS ではどちらも同等ゆえ既定の repair で足りる。"},
-        ])
-
-    content_slide(
-        "4.4 総合スコアボード — 指標で首位が替わる", "評価軸が変われば首位も替わる：総合品質＝Memetic+機構／安定・速度＝ILS系。万能手法は存在しない",
-        "4. 計算機実験",
-        [
-            {'k': 'row', 'ratio': [1, 1, 1], 'cols': [
-                [{'k': 'image', 'path': sem("scoreboard_union.png"), 'h': 2.5,
-                  'caption': "(a) 統合HV — 首位 Memetic+PR"}],
-                [{'k': 'image', 'path': sem("scoreboard_highstab.png"), 'h': 2.5,
-                  'caption': "(b) 高安定HV — 首位 ILS 系"}],
-                [{'k': 'image', 'path': sem("scoreboard_aoc.png"), 'h': 2.5,
-                  'caption': "(c) AOC — 首位 ILS 系"}],
-            ], 'gap': 0.25},
-            {'k': 'bullets', 'items': [
-                (0, "Friedman 平均順位は 3 指標とも明確に分離（Kendall's $W$=0.59／0.81／0.63, $p$<0.0001, 相関ゆえ探索的要約）。"),
-                (0, "**機構なしの素の集団(GA・Memetic-LS)だけが高安定 HV で ARPD≈70〜78% と壊滅**し、$S_p$ 近傍に届かず二分される（H1・H2 の予言どおり）。"),
-            ]},
-        ])
-
-    content_slide(
-        "4.4 結果の統合 — 相補構造と閾値頑健性", "「素の集団だけが高安定で壊滅」する二分構造は閾値 P25〜P75 で不変——相補構造は頑健",
-        "4. 計算機実験",
-        [
-            {'k': 'bullets', 'items': [
-                (0, "**統合 HV（品質）**：機構込み集団が首位群（Memetic+PR 2.0・+repair 2.5）。素の集団と互角だった ILS の**上に**機構込み Memetic が立つ（首位は leave-one-out に頑健）。"),
-                (0, "**高安定 HV（本命）**：ILS 系と機構込み Memetic が首位群(2.6〜3.4)、素の集団だけ壊滅（GA 6.4・Memetic-LS 6.6）。"),
-                (0, "**AOC（速さ）**：ILS 系 3 種が首位群(2.5〜2.8)。ウォームアップの遅い Memetic+PR・GA が下位。"),
-                (2, "閾値頑健性：高安定 HV の P50 を P25〜P75 で掃引しても「素の集団＝最下位群／ILS系・機構込 Memetic＝上位群」の二分構造は不変。動くのは首位群内の僅差順位のみ。"),
-            ]},
-            {'k': 'note', 'text': "**発散型 ILS**（$S_p$ 起点に外へ）と**収束型 Memetic+PR**（散った集団を $S_p$ へ）は逆向きだが類似の最終 Pareto に到達。ILS は早期から良い incumbent を持ち、AOC でこの交差が ILS 優位として現れる。"},
-        ])
-
-    content_slide(
-        "4.4【探索的】統合 HV の勝者と再スケ率", "総合HVの勝者は ρ≈50% で二分——ただし交絡ゆえ見立て。本命の結論はこれに依存しない",
-        "4. 計算機実験",
-        [
-            {'k': 'bullets', 'items': [
-                (0, "統合 HV の勝者は $\\rho$ と対応し、**~50% を境に低で ILS・中〜高で Memetic** に二分（同一 la36 ラダー 27/54/73% で ILS→Memetic→Memetic）。可動工程の絶対数や問題規模では捉えられない。"),
-                (0, "**機序の見立て**：安定性項は $S_p$($D$=0) を引力点とする。$\\rho$ 小では良解が $S_p$ 近傍に限られ ILS の近傍充填で足りる。$\\rho$ 増で効率端が遠のくと、単一軌道の ILS は引力圏を脱しにくく、$S_p$ から離れた個体を保つ Memetic だけが届く（H1 と同型）。"),
-            ]},
-            {'k': 'note', 'text': "ただし ta21L(82%)は例外（≒タイ, $p$=0.053）で、$S_p$ 品質の交絡と順列偏差表現への依存も残るため**探索的見立て**に留める。本命の高安定 HV 優位・機構非対称はこの対応に依存せず、全 8 シナリオの直接検定で独立に確立している。"},
-        ])
-
-    # ===== 5
-    divider_slide("5", "結論", "相補構造・限界・今後の課題")
-
-    content_slide(
-        "5. 結論 — 3 つの主張", "安定性を「演算子」化して同一機構を両ホストへ移植し、そのホスト依存の非対称性を統制下で切り分けた",
-        "5. 結論",
-        [
-            {'k': 'bullets', 'items': [
-                (0, "**① 軌道(ILS)は高安定領域を効率的に充填する【H1】**：総合品質は互角だが、本命の高安定領域で同一 N5 の集団を全 8 シナリオで完全分離で上回る（$p$=0.001, $|\\delta|$=1.0）。局所探索の有無でなく**探索構造**に由来。"),
-                (0, "**② PR・repair の効果はホスト依存で非対称【H2】**：集団の高安定 HV を 2 倍以上押し上げ ILS 水準へ。自力充填済みの軌道はほぼ頭打ち（ただし極端な高 $\\rho$=ta21L 82% では軌道にも有意に残る）。"),
-                (0, "**③ 軌道と集団の相補構造**：総合品質＝Memetic+機構／安定性＝ILS と Memetic+機構の双方／速度＝ILS 系。**評価指標により最良手法が替わる**——両構造は再スケの異なる要求を補い合う。"),
-            ]},
-            {'k': 'note', 'text': "**中心的貢献**：安定性レバーを演算子として実装したことで同一機構を両ホストへ移植でき、そのホスト依存の非対称性を統制下で切り分けたこと。"},
-        ])
-
-    content_slide(
-        "5. 限界と今後の課題", "主結論は「作業集合を保つ作業遅延・順列偏差」で確立——集合を変える外乱や開始時刻偏差が次の射程",
-        "5. 結論",
-        [
-            {'k': 'row', 'ratio': [1, 1], 'cols': [
-                [{'k': 'bullets', 'items': [
-                    (0, "**限界**"),
-                    (1, "n=10 に基づく（飽和した主結論は頑健、境界事例は別）。"),
-                    (1, "安定性を**順列偏差でのみ**測定。開始時刻偏差下での妥当性は未検証。"),
-                    (1, "H1・H2 は**作業集合を保つ作業遅延**で確立。作業集合を変える外乱では $S_p$ が完全な参照解でなくなり、式(1)の定義自体が変わる。"),
-                ]}],
-                [{'k': 'bullets', 'items': [
-                    (0, "**今後の課題**"),
-                    (1, "開始時刻偏差下での再検証。"),
-                    (1, "特急ジョブ割込み・ジョブ削除など**作業集合を変える外乱**への拡張。"),
-                    (1, "範囲レバーと演算子レバーの統合（波及範囲内での誘導演算子併用）。"),
-                    (1, "集団側の代替処方（$S_p$ 偏向交叉）との比較、Pareto-native 手法(NSGA-II 等)での再検証。"),
-                ]}],
-            ]},
-        ])
-
+    title_slide_talk()
+    chapter("1")
+    s_intro()
+    s_background()
+    s_special()
+    s_related()
+    s_gaps()
+    s_hypotheses()
+    chapter("2")
+    s_problem()
+    s_metrics()
+    s_structures()
+    s_operators()
+    s_design()
+    chapter("3")
+    s_setup()
+    s_front()
+    s_highstab()
+    s_band()
+    s_anytime()
+    s_union_auc()
+    chapter("4")
+    s_conclusion()
+    s_limits()
+    backup_divider()
+    s_backup_problem()
+    s_backup_scalar()
+    s_backup_why()
+    s_backup_operator()
+    s_backup_params()
+    s_backup_robust()
+    s_backup_control()
     prs.save(OUT)
     print("saved:", OUT, " slides:", len(prs.slides._sldIdLst))
 
 
+def export_pdf(pptx_path, pdf_path=None):
+    """PowerPoint（COM）で pptx を PDF に書き出す。PowerShell 経由で呼ぶので pywin32 は不要。
+
+    PowerPoint で描画するため，フォントや数式の見た目は pptx を開いたときと一致する。
+    """
+    import subprocess
+    pdf_path = pdf_path or os.path.splitext(pptx_path)[0] + ".pdf"
+    ps = (
+        "$ErrorActionPreference='Stop';"
+        "$app = New-Object -ComObject PowerPoint.Application;"
+        f"$p = $app.Presentations.Open('{pptx_path}', $true, $false, $false);"
+        f"$p.SaveAs('{pdf_path}', 32);"  # 32 = ppSaveAsPDF
+        "$p.Close();"
+        "if ($app.Presentations.Count -eq 0) { $app.Quit() }"
+    )
+    r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        print("PDF の書き出しに失敗（同名の PDF を開いていないか確認）:", r.stderr.strip())
+    else:
+        print("pdf:", pdf_path)
+
+
 if __name__ == "__main__":
+    import sys
     build()
+    if "--no-pdf" not in sys.argv:
+        export_pdf(OUT)

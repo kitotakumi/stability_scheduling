@@ -4,7 +4,7 @@ import os, sys, glob
 import win32com.client
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PPTX = os.path.join(HERE, "APIEMS2026_ゼミ発表.pptx")
+PPTX = os.path.join(HERE, "JIMA2026fall_発表.pptx")
 OUTDIR = os.path.join(HERE, "_preview")
 os.makedirs(OUTDIR, exist_ok=True)
 for f in glob.glob(os.path.join(OUTDIR, "*.png")):
