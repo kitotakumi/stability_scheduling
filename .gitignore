@@ -25,9 +25,9 @@ Thumbs.db
 venv/
 env/
 
-# 参考文献PDF（著作権物のため git 管理外）
-*.pdf
+# 参考文献PDF・学会配布の執筆要領（著作権物のため git 管理外）
 doc/references/
+doc/paper_jima2026fall/jima_abst_guide.pdf
 
 # 助成金申請（個人情報を含む書類のため git 管理外）
 doc/paper_apiems2026/助成金申請/
