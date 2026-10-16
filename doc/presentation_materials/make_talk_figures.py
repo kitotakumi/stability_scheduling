@@ -113,7 +113,8 @@ def _plane(ax, fs=12.5):
     ax.text(BAND_HI / 2, 0.075, '高安定領域\n（$S_p$ の近傍）', ha='center', va='bottom',
             fontsize=fs, color=BAND_EDGE, linespacing=1.15)
     ax.plot(XS, _front_curve(XS), ls='--', color='gray', lw=1.4, zorder=1)
-    ax.text(0.55, _front_curve(0.55) - 0.025, 'Pareto フロント', fontsize=fs - 1.5,
+    # 曲線上の点と重ならないよう，曲線から少し下げて置く
+    ax.text(0.55, _front_curve(0.55) - 0.07, 'Pareto フロント', fontsize=fs - 1.5,
             color='gray', rotation=-17, rotation_mode='anchor', ha='left', va='top')
     ax.plot([0], [0.95], marker='*', ms=17, color='black', zorder=6, clip_on=False)
     ax.text(0.035, 0.985, '$S_p$ の処理順序を保った解', fontsize=fs, va='bottom')
@@ -149,15 +150,19 @@ def fig_concept_0():
     _plane(ax, fs=15)
     ax.xaxis.label.set_size(15)
     ax.yaxis.label.set_size(15)
-    # 変更コストが無視できない場面で求められる解の範囲：帯の中の Pareto フロント区間。
-    # 重みを掃引して全非劣解で評価するので 1 点ではなく区間を指す（D = 0 の解は除く）
-    seg = np.linspace(0.02, BAND_HI, 60)
-    ax.plot(seg, _front_curve(seg), color=INK, lw=3.4, solid_capstyle='round', zorder=6)
-    tx = 0.16
-    ax.annotate('変更コストが無視できない場面で\n求められる解の範囲', xy=(tx, _front_curve(tx) + 0.012),
+    # Pareto フロント上の非劣解を点で示す（仮説の図と同じ読み方になるように）。
+    # 帯の中の解＝変更コストが無視できない場面で選ばれる解を濃く，外の解を白抜きで描く。
+    # D = 0 の解（★）だけは探索せずに得られる
+    fx = np.array([0.045, 0.10, 0.16, 0.23, 0.33, 0.44, 0.57, 0.72, 0.90])
+    fy = _front_curve(fx)
+    inb = fx < BAND_HI
+    ax.scatter(fx[~inb], fy[~inb], s=62, facecolor='white', edgecolor='#55606B', lw=1.4,
+               zorder=5)
+    ax.scatter(fx[inb], fy[inb], s=78, color=INK, zorder=6)
+    ax.annotate('変更コストが無視できない場面で\n選ばれる解', xy=(fx[2] + 0.012, fy[2] + 0.012),
                 xytext=(0.36, 0.80), fontsize=15, color=INK, va='center', linespacing=1.3,
                 arrowprops=dict(arrowstyle='-|>', color='#55606B', lw=1.1, mutation_scale=12,
-                                shrinkA=4, shrinkB=5))
+                                shrinkA=4, shrinkB=6))
     fig.tight_layout(pad=0.4)
     mark_schematic(fig)
     save(fig, 'concept_0.png')
