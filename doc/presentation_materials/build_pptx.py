@@ -733,46 +733,58 @@ def s_intro():
                     "外乱が起きたら，事前に作成した初期スケジュール $S_p$ を修正する（予測リアクティブ再スケジューリング）",
                     "1. 研究背景と仮説")
     # 外乱
-    _rrect(s, ML, 2.0, CW, 0.8, FILL, line=CARDLINE, radius=0.12)
-    _text(s, ML + 0.3, 2.0, CW - 0.6, 0.8,
+    by_, bh_ = 1.92, 0.72
+    _rrect(s, ML, by_, CW, bh_, FILL, line=CARDLINE, radius=0.12)
+    _text(s, ML + 0.3, by_, CW - 0.6, bh_,
           "製造現場では，機械故障や作業遅延などの**外乱**により，スケジュール通りに作業を実行できないことがある",
           16, color=INK, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, emph=BLUE)
-    # 静的／動的
-    gap = 0.6
-    cw = (CW - gap) / 2
-    cy, ch = 3.35, 1.35
-    cards = [("静的アプローチ", "事前に余裕を持たせ，外乱に備える", False),
-             ("動的アプローチ", "外乱の発生後に，スケジュールを修正する", True)]
-    for k, (head, body, ours) in enumerate(cards):
-        x = ML + k * (cw + gap)
-        _connector(s, ML + CW / 2, 2.82, x + cw / 2, cy - 0.04, color=MUTE, wt=1.6, kind=1)
-        _rrect(s, x, cy, cw, ch, WHITE if not ours else FILL, line=BLUE if ours else CARDLINE,
+    # 静的／動的。動的を広く取り，その下に完全リアクティブ／予測リアクティブの 2 分岐を置く
+    cy, ch = 3.0, 1.2
+    sw, gap = 3.3, 0.4
+    dx, dw = ML + sw + gap, CW - sw - gap
+    cards = [(ML, sw, "静的アプローチ", "事前に余裕を持たせ，外乱に備える", False),
+             (dx, dw, "動的アプローチ", "外乱の発生後に，スケジュールを修正する", True)]
+    for x, w, head, body, ours in cards:
+        _connector(s, ML + CW / 2, by_ + bh_ + 0.02, x + w / 2, cy - 0.04,
+                   color=BLUE if ours else MUTE, wt=2.2 if ours else 1.6, kind=1)
+        _rrect(s, x, cy, w, ch, FILL if ours else WHITE, line=BLUE if ours else CARDLINE,
                radius=0.06, lw=1.8 if ours else 1.1)
-        _text(s, x + 0.3, cy + 0.18, cw - 2.0, 0.45, head, 18, color=BLUE if ours else MUTE,
+        _text(s, x + 0.3, cy + 0.14, w - 0.6, 0.42, head, 18, color=BLUE if ours else MUTE,
               bold=True)
-        _text(s, x + 0.3, cy + 0.72, cw - 0.6, 0.45, body, 15, color=INK if ours else MUTE)
-        if ours:
-            _boxtext(s, x + cw - 1.35, cy + 0.2, 1.1, 0.38, [("本研究", 12.5, WHITE, True)],
-                     fill=BLUE, radius=0.4)
-    # 予測リアクティブ再スケジューリングと S_p
-    x = ML + cw + gap
-    _connector(s, x + cw / 2, cy + ch + 0.04, x + cw / 2, 5.12, color=BLUE, wt=2.6, kind=1)
-    _rrect(s, x, 5.18, cw, 1.6, COVER, radius=0.06)
-    tb, tf = add_textbox(s, x + 0.3, 5.22, cw - 0.6, 1.52, anchor=MSO_ANCHOR.MIDDLE)
+        _text(s, x + 0.3, cy + 0.62, w - 0.6, 0.52, body, 14.5, color=INK if ours else MUTE,
+              ls=1.05)
+    # 動的の 2 分岐。本研究に効く区別は「事前のスケジュール S_p があるか」だけなので，
+    # 周期的／イベント駆動（ローリングホライズン）の区別は出さない
+    ry, rh = 4.85, 1.95
+    cw1 = 3.55
+    px, pw = dx + cw1 + gap, dw - cw1 - gap
+    _connector(s, dx + dw / 2, cy + ch + 0.02, dx + cw1 / 2, ry - 0.04, color=MUTE, wt=1.6,
+               kind=1)
+    _rrect(s, dx, ry, cw1, rh, WHITE, line=CARDLINE, radius=0.06, lw=1.1)
+    _text(s, dx + 0.25, ry + 0.16, cw1 - 0.5, 0.42, "完全リアクティブ", 15.5, color=MUTE,
+          bold=True)
+    _text(s, dx + 0.25, ry + 0.66, cw1 - 0.5, rh - 0.8,
+          "事前のスケジュールを持たず，ディスパッチングルールなどで作業をその場で決める",
+          13, color=MUTE, ls=1.1)
+    # 予測リアクティブ（本研究）。S_p の存在が以後のすべての前提
+    _connector(s, dx + dw / 2, cy + ch + 0.02, px + pw / 2, ry - 0.04, color=BLUE, wt=2.6,
+               kind=1)
+    _rrect(s, px, ry, pw, rh, COVER, radius=0.06)
+    _boxtext(s, px + pw - 1.3, ry - 0.19, 1.1, 0.38, [("本研究", 12.5, WHITE, True)],
+             fill=BLUESOFT, radius=0.4)
+    tb, tf = add_textbox(s, px + 0.28, ry + 0.3, pw - 0.56, rh - 0.4)
     p = tf.paragraphs[0]
     _run(p, "予測リアクティブ再スケジューリング", 15.5, color=WHITE, bold=True)
     q = tf.add_paragraph()
     q.space_before = Pt(6)
     q.line_spacing = 1.1
-    _add_runs(q, "外乱が起きたら，", 13.5, color=WHITE, emph=WHITE)
-    q2 = tf.add_paragraph()
-    q2.line_spacing = 1.1
-    _add_runs(q2, "外乱前のスケジュール（**初期スケジュール $S_p$**）を修正する",
+    _add_runs(q, "外乱が起きたら，外乱前のスケジュール（**初期スケジュール $S_p$**）を修正する",
               13.5, color=WHITE, emph=WHITE)
-    _boxtext(s, ML, 5.62, 1.6, 0.42, [("本研究の対象", 12.5, WHITE, True)], fill=BLUESOFT,
-             radius=0.4)
-    _text(s, ML + 1.75, 5.55, cw - 1.6, 0.56, "ジョブショップ問題（JSP）における作業遅延", 14,
-          color=INK, anchor=MSO_ANCHOR.MIDDLE)
+    q2 = tf.add_paragraph()
+    q2.space_before = Pt(8)
+    q2.line_spacing = 1.1
+    _add_runs(q2, "→ $S_p$ が存在するので，**$S_p$ からの変更量**を定義できる",
+              13.5, color=WHITE, emph=RGBColor(0xFF, 0xD9, 0x8A))
 
 
 def s_background():
@@ -853,20 +865,26 @@ def s_background():
 
 def s_special():
     s = slide_frame("再スケジューリングの特殊性",
-                    "安定性では最適で，生産効率も高い解が，探索の開始前から得られている",
+                    "安定性では最適で，$MS$ の増加も遅延量以内に収まる解が，探索の開始前から得られている",
                     "1. 研究背景と仮説")
-    w, h = pic(s, "concept_0.png", ML - 0.05, 1.78, w=6.4)
-    tx = ML + 6.55
+    w, h = pic(s, "concept_0.png", ML - 0.05, 1.85, w=6.1)
+    tx = ML + 6.25
     tw = SW - ML - tx
+    # このスライドの主張は「高安定領域のフロントの質が実用上の価値を決める」まで。
+    # 既存の評価形式で測れていないことは課題 2，高安定 HV の定義は評価指標のスライドで述べる
     _bul(s, tx, 1.95, tw, [
-        "$S_p$ の処理順序を保ったまま遅延を吸収した解は**探索の開始前から得られる**",
-        "この解は**変更量 0** で安定性では最適であり，$S_p$ が外乱前に最適化済みのため **$MS$ も小さい**",
-        "変更コストが無視できない場面では，$S_p$ の近傍（**高安定領域**）で $MS$ を改善した解が求められる",
-    ], size=17, gap=16)
-    _text(s, tx, 4.75, tw, 0.7,
-          "→ 手法はフロント全体の解の質だけでなく，\n**高安定領域の解の質**でも評価する必要がある",
-          17, color=INK, ls=1.08, emph=BLUE)
-    _text(s, tx, 5.5, tw, 0.4, "本研究では，解の質を hypervolume（HV）で測る", 15, color=INK)
+        "$S_p$ の処理順序を保ったまま遅延を吸収した解（right-shift）は，**探索の開始前から得られる**",
+        "この解は**変更量 0** で安定性では最適．$MS$ も，外乱前に最適化した $S_p$ の値から"
+        "**遅延量以内の増加**に収まる",
+        "変更コストが無視できない場面で求められるのは，この解から少しの変更で $MS$ をどこまで下げられるか"
+        " ＝ **高安定領域**の Pareto フロント",
+    ], size=15, gap=10)
+    _text(s, tx, 4.55, tw, 0.75,
+          "→ 実用上は，Pareto フロント全体だけでなく，\n**高安定領域のフロントの質**が手法の価値を決める",
+          16, color=INK, ls=1.08, emph=BLUE)
+    _text(s, tx, 5.5, tw, 0.7,
+          "本研究では，フロントの質を hypervolume（HV）で測り，高安定領域に限った HV を"
+          "**高安定 HV** と呼ぶ", 13.5, color=INK, ls=1.08, emph=BLUE)
 
 
 # ---------------------------------------------------------------- 4. 先行研究
@@ -930,22 +948,27 @@ def s_gaps():
     s = slide_frame("残された 3 つの課題",
                     "探索構造の差は検証されておらず，その差を測る形式も，差を補う操作もない",
                     "1. 研究背景と仮説")
+    # 課題 3 は文献の事実（そういう操作がない）だけを述べ，課題 1 や仮説 1 には寄りかからない。
+    # 「探索構造が届かないなら演算子で補う」は仮説 2 の側で言う
     rows = [
         ("探索構造の差が\n検証されていない",
          "解法は多点探索に集中している．$S_p$ が探索前に得られているという特性が，"
-         "単点探索と多点探索の間にどんな差を生むかは分析されていない"),
+         "単点探索と多点探索の間にどんな差を生むかは分析されていない", 1.3),
         ("その差を読み取れる\n評価の形式がない",
-         "比較は少数の重みでのスカラー値や，フロント全体の HV で行われ，"
-         "高安定領域で手法がどう異なるかは分析されていない"),
-        ("フロント全体を保って\n高安定領域の解を生む\n操作がない",
-         "**目的関数に組み込む**：選ばれる解は変わるが，高安定領域の解を作る操作はない\n"
-         "**範囲を限定する**：解は高安定領域に留まるが，範囲外のトレードオフ解を失う\n"
-         "→ 探索構造が高安定領域に届かないとき（課題 1），補う手段がない"),
+         "比較は少数の重みでのスカラー値や，Pareto フロント全体の HV で行われ，"
+         "高安定領域で手法がどう異なるかは分析されていない", 1.3),
+        ("Pareto フロント全体を保って\n高安定領域の解を生む\n操作がない",
+         "**目的関数に組み込む**：高安定領域の解を「選ぶ」ことはできるが，"
+         "「作る」のは交叉や局所探索などの探索演算子のまま\n"
+         "**範囲を限定する**：解を高安定領域に閉じ込めるので，"
+         "範囲外（変更量が大きく $MS$ が小さい）の Pareto フロントは得られない\n"
+         "→ Pareto フロント全体を保ったまま，高安定領域の解を能動的に作る操作は，どちらにもない", 1.95),
     ]
-    y0, rh, rg = 1.9, 1.5, 0.2
+    y, rg = 1.9, 0.2
     hw = 4.3
-    for i, (head, body) in enumerate(rows):
-        y = y0 + i * (rh + rg)
+    for i, (head, body, rh) in enumerate(rows):
+        if i:
+            y += rows[i - 1][2] + rg
         _rrect(s, ML, y, CW, rh, WHITE, line=CARDLINE, radius=0.05)
         _boxtext(s, ML + 0.22, y + (rh - 0.56) / 2, 0.56, 0.56, [(str(i + 1), 18, WHITE, True)],
                  fill=BLUE, radius=0.5)
@@ -964,23 +987,24 @@ def s_hypotheses():
                     "1. 研究背景と仮説")
     gap = 0.3
     cw = (CW - gap) / 2
+    # 機序と主張を別の文にする（「多点探索は…伴うため，単点探索のほうが」だと主題が宙に浮く）
     hyps = [("仮説 1", "課題 1",
              "交叉で 2 親の染色体を組み替える**多点探索**は，\n"
-             "$S_p$ からの小さな変更では表せない飛躍を伴うため，\n"
-             "$S_p$ を初期解として解を少しずつ変更する\n"
+             "$S_p$ からの小さな変更では表せない飛躍を伴う．\n"
+             "そのため，$S_p$ を初期解として解を少しずつ変更する\n"
              "**単点探索**のほうが，**高安定 HV が大きい**", "concept_h1.png"),
             ("仮説 2", "課題 3",
              "多点探索に，解を $S_p$ に近づける移動\n"
              "（**安定性誘導演算子**）を組み込めば，\n"
-             "その経路上に変更量が小さく $MS$ の劣化も小さい\n"
-             "解が現れるため，**多点探索の高安定 HV は向上する**", "concept_h2.png")]
+             "その経路上に変更量の小さい解が現れるため，\n"
+             "**多点探索の高安定 HV は向上する**", "concept_h2.png")]
     for k, (tag, src, text, img) in enumerate(hyps):
         x = ML + k * (cw + gap)
         _text(s, x + 0.05, 1.72, cw, 0.4, tag, 15, color=BLUE, bold=True,
               anchor=MSO_ANCHOR.MIDDLE)
         by, bh = 2.14, 1.6
         _rrect(s, x, by, cw, bh, COVER, radius=0.06)
-        _text(s, x + 0.18, by + 0.05, cw - 0.36, bh - 0.1, text, 16.5, color=WHITE, ls=1.12,
+        _text(s, x + 0.16, by + 0.05, cw - 0.32, bh - 0.1, text, 15.5, color=WHITE, ls=1.12,
               anchor=MSO_ANCHOR.MIDDLE, emph=RGBColor(0xFF, 0xD9, 0x8A))
         ih = 7.0 - (by + bh + 0.1)
         iw, _h = _img_size(asset(img))
@@ -1308,7 +1332,7 @@ def s_front():
     _bul(s, ML, 5.3, CW, [
         "(a) ta21S：Memetic は高安定領域に非劣解を持たない",
         "(b) ta21L：Memetic は高安定領域に入るが，$MS$ で ILS に劣る",
-        "どちらのシナリオでも，演算子を組み込むと両構造のフロント（点線）は高安定領域で重なる",
+        "どちらのシナリオでも，演算子を組み込むと両構造の Pareto フロント（点線）は高安定領域で重なる",
     ], size=18, gap=7)
 
 
@@ -1483,8 +1507,8 @@ def s_backup_scalar():
         "**統制比較の共通基盤**：単点探索と多点探索に同じ目的 $F$ を共有させ，同じ安定性誘導演算子を"
         "変更なしで組み込める → 構造間で条件を揃えて比較できる",
         "**評価との対応**：各重みの探索を時間で追えば立ち上がりの速さ（AUC）が，"
-        "全重みの解を合わせればフロント全体の HV が，同じ実験から測れる",
-        "**限界**：重み付き和は非凸フロントの凹部に届かない．ただし全手法が同じスカラー化を共有し，"
+        "全重みの解を合わせれば Pareto フロント全体の HV が，同じ実験から測れる",
+        "**限界**：重み付き和は非凸な Pareto フロントの凹部に届かない．ただし全手法が同じスカラー化を共有し，"
         "探索中に訪問した凹部の解も記録するため，構造差の比較への影響は限定的．"
         "Pareto 支配に基づく手法（NSGA-II 等）での再検証は今後の課題",
     ], size=14.5, gap=14)
