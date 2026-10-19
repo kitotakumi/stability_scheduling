@@ -1170,11 +1170,11 @@ def s_operators():
     for i, (head, col, body) in enumerate([
             ("通常の PR", MUTE, "探索中に得た良い解どうしを結び，その間を探索する"),
             ("本研究", BLUE, "誘導解を $S_p$ に**固定** → 解を $S_p$ に近づける操作になる")]):
-        yy = top + i * 0.42
+        yy = top + 0.12 + i * 0.42   # 左の列は図の下余白ぶん上に寄って見えるので少し下げる
         _boxtext(s, ML, yy + 0.04, 1.05, 0.34, [(head, 12, WHITE, True)], fill=col, radius=0.3)
         _text(s, ML + 1.2, yy, fw - 1.3, 0.42, body, 13, color=INK if i else MUTE,
               anchor=MSO_ANCHOR.MIDDLE, emph=BLUE)
-    _w, fh = pic(s, "concept_op.png", ML - 0.05, top + 0.94, w=fw)
+    _w, fh = pic(s, "concept_op.png", ML - 0.05, top + 1.06, w=fw)
     # ---- 右：ある機械の処理順序を S_p に近づける例（swap 1 回で D が減る）
     lx = ML + fw + 0.3
     lw_ = SW - ML - lx
