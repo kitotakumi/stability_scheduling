@@ -1136,8 +1136,8 @@ def s_structures():
         _flow(s, x + 0.35, top + 1.12, fw, steps, bh=0.44, gap=fgap, loop_from=lt, loop_to=lf,
               loop_label=loop)
     _boxtext(s, ML, top + ch + 0.15, CW, 0.62,
-             [("揃えた条件：局所探索（N5 近傍）・目的関数 $F$・初期解に $S_p$ を含めること　→　局所探索の有無による差を除いて比較",
-               13.5, WHITE, True)],
+             [("探索構造の差だけを比較するため，局所探索（N5 近傍）・目的関数 $F$・初期解 $S_p$ を両者で揃える",
+               14, WHITE, True)],
              fill=COVER, radius=0.12)
 
 
@@ -1188,7 +1188,7 @@ def s_operators():
                   anchor=MSO_ANCHOR.MIDDLE)
         seq_row(yy, lab, seq, dlab)
     _text(s, lx + 0.25, bot - 0.78, lw_ - 0.5, 0.7,
-          "赤枠：$S_p$ と順位が異なる作業\n"
+          "赤枠：$S_p$ と順位が異なる作業（その数が $d$）\n"
           "1 回の swap で 1 作業を $S_p$ の順位に合わせ，$D$ が小さくなる", 12, color=MUTE, ls=1.1,
           anchor=MSO_ANCHOR.MIDDLE)
     # ---- 左：提案の位置づけ（通常の PR と何が違うか）→ 2 つの演算子 → 組み込み方。
@@ -1196,23 +1196,24 @@ def s_operators():
     rx = ML
     rw = lx - 0.3 - ML
     gap = 0.18
-    h1 = 3.4
+    # 表は密度が上がりすぎるので，札＋1 文の 4 行にする：通常の PR／本研究（違い）／PR／PR-k
+    h1 = 3.25
     _rrect(s, rx, top, rw, h1, WHITE, line=CARDLINE, radius=0.05)
     _boxtext(s, rx + rw - 1.15, top - 0.19, 0.95, 0.38, [("提案", 12.5, WHITE, True)],
              fill=BLUESOFT, radius=0.4)
-    _text(s, rx + 0.22, top + 0.12, rw - 1.5, 0.42, "通常の path relinking との違い", 15,
-          color=BLUE, bold=True, anchor=MSO_ANCHOR.MIDDLE)
-    render_table(s, [["", "通常の PR", "本研究（安定性誘導演算子）"],
-                     ["誘導解", "探索中の別の良い解", "外乱前のスケジュール $S_p$ に**固定**"],
-                     ["ねらい", "良い解の間を探索", "$S_p$ に近づけて**変更量の小さい解**を得る"]],
-                 rx + 0.22, top + 0.62, rw - 0.44, col_w=[0.5, 1.25, 2.25], size=11.5, row_h=0.46)
-    oy = top + 0.62 + 0.46 * 3 + 0.2
-    for head, body, oh in [("PR", "$S_p$ に到達するまで swap をたどり，経路上で $F$ が最小の解を返す", 0.5),
-                           ("PR-$k$", "$k$ 回の swap で打ち切り，到達解を返す（$k$ は 1〜$d$．"
-                                      "$d$：$S_p$ と順位が異なる作業数）", 0.64)]:
-        _boxtext(s, rx + 0.22, oy + (oh - 0.4) / 2, 0.95, 0.4, [(head, 13.5, WHITE, True)],
-                 fill=BROWN, radius=0.3)
-        _text(s, rx + 1.32, oy, rw - 1.55, oh, body, 13.5, color=INK, ls=1.08,
+    rows = [("通常の PR", MUTE, "探索中に得た良い解どうしを結び，その間を探索する", 13.5, MUTE, 0.62),
+            ("本研究", BLUE, "誘導解を初期スケジュール $S_p$ に**固定**し，解を $S_p$ に近づける操作にする",
+             14.5, INK, 0.82),
+            ("PR", BROWN, "$S_p$ に到達するまで swap をたどり，経路上で $F$ が最小の解を返す", 13.5, INK, 0.62),
+            ("PR-$k$", BROWN, "$k$ 回の swap で打ち切り，到達解を返す（$k$ は 1〜$d$ で変える）", 13.5, INK, 0.62)]
+    oy = top + 0.3
+    for i, (head, col, body, fs, tc, oh) in enumerate(rows):
+        if i == 2:
+            _hline(s, rx + 0.22, oy + 0.02, rw - 0.44, color=HAIR, weight=1.0)
+            oy += 0.14
+        _boxtext(s, rx + 0.22, oy + (oh - 0.38) / 2, 1.05, 0.38, [(head, 12.5, WHITE, True)],
+                 fill=col, radius=0.3)
+        _text(s, rx + 1.42, oy, rw - 1.65, oh, body, fs, color=tc, ls=1.08,
               anchor=MSO_ANCHOR.MIDDLE, emph=BLUE)
         oy += oh
     cy = top + h1 + gap
