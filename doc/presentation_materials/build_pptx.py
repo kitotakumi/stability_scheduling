@@ -873,16 +873,16 @@ def s_special():
     # 役割：(D, MS) 平面の読み方を教え，★（探索前に得られる解）と帯（選ばれる解）を置く。
     # 主張は「高安定領域にどれだけ良い解を出せるかが問われる」まで。既存の評価形式で測れて
     # いないことは課題 2，高安定 HV の定義は評価指標のスライドで述べる。箇条書きの ★● は図の記号
-    _bul(s, tx, 1.95, tw, [
+    _bul(s, tx, 2.45, tw, [
         "★ $S_p$ の処理順序を保って遅延を吸収した解（right-shift）は，**探索せずに得られる**．"
         "変更量 0 で安定性は最良，$MS$ も外乱前に最適化済み",
         "● **Pareto フロント**上の非劣解のうち，変更コストが無視できない場面で選ばれるのは，"
         "$S_p$ の近傍（**高安定領域**）の解",
     ], size=15, gap=12, mark="")
-    _text(s, tx, 4.05, tw, 0.75,
+    _text(s, tx, 4.55, tw, 0.75,
           "→ この場合，手法は Pareto フロント全体の品質\nだけではなく，**高安定領域の品質**が問われる",
           15.5, color=INK, ls=1.08, emph=BLUE)
-    _text(s, tx, 5.0, tw, 0.7,
+    _text(s, tx, 5.5, tw, 0.7,
           "本研究では，Pareto フロントの品質を hypervolume（HV）で測り，高安定領域に限った HV を"
           "**高安定 HV** と呼ぶ", 13.5, color=INK, ls=1.08, emph=BLUE)
 
@@ -1000,13 +1000,13 @@ def s_hypotheses():
              "その経路上に変更量の小さい解が現れるため，\n"
              "**多点探索の高安定 HV は向上する**", "concept_h2.png")]
     # 図を大きく取るため，札は箱の上辺に重ね，箱は 4 行ぶんの高さにする。札の色は判定のスライドと同じ
+    # 札は箱の上に置く（上辺に重ねると本文と詰まって見える）。色は 2 つとも同じ青
     for k, (tag, src, text, img) in enumerate(hyps):
         x = ML + k * (cw + gap)
-        by, bh = 1.92, 1.38
+        _boxtext(s, x + 0.02, 1.8, 1.05, 0.34, [(tag, 12.5, WHITE, True)], fill=BLUE, radius=0.4)
+        by, bh = 2.2, 1.32
         _rrect(s, x, by, cw, bh, COVER, radius=0.06)
-        _boxtext(s, x + 0.18, by - 0.19, 1.05, 0.38, [(tag, 12.5, WHITE, True)],
-                 fill=(BLUE if k == 0 else BROWN), line=WHITE, radius=0.4)
-        _text(s, x + 0.16, by + 0.14, cw - 0.32, bh - 0.2, text, 15.5, color=WHITE, ls=1.12,
+        _text(s, x + 0.16, by + 0.06, cw - 0.32, bh - 0.12, text, 15.5, color=WHITE, ls=1.12,
               anchor=MSO_ANCHOR.MIDDLE, emph=RGBColor(0xFF, 0xD9, 0x8A))
         ih = 6.76 - (by + bh + 0.08)
         iw, _h = _img_size(asset(img))
@@ -1024,15 +1024,15 @@ def s_problem():
     s = slide_frame("問題設定",
                     "決定変数は，遅延後に最適化対象となる作業の，機械ごとの処理順序",
                     "2. 問題設定と実験計画")
-    _bul(s, ML, 1.95, 6.6, [
+    _bul(s, ML, 2.5, 6.6, [
         "$n$ ジョブ・$m$ 機械のジョブショップ問題（JSP）に，単一作業の遅延（遅延量 $Δ$）が発生",
         "再スケジューリング時刻 $t_r$ より前に開始した作業は凍結し，以降の作業集合 $O_{opt}$ の**機械ごとの処理順序**を決定変数とする",
         "安定性は**処理順序の変更量**で測る（順序偏差 $D$）",
     ], size=15, gap=10)
     render_equation(s, r"D(S_p,S_q)=\sum_{(i,j)\in O_{opt}}\left|r^p_{i,j}-r^q_{i,j}\right|",
-                    ML, 3.85, 6.6, number="(1)", name="talk_D", h=0.62)
-    _text(s, ML + 0.3, 4.55, 6.3, 0.35, "$r_{i,j}$：機械 $i$ におけるジョブ $j$ の処理順位", 12.5, color=MUTE)
-    _bul(s, ML, 5.1, 6.6, [
+                    ML, 4.4, 6.6, number="(1)", name="talk_D", h=0.62)
+    _text(s, ML + 0.3, 5.1, 6.3, 0.35, "$r_{i,j}$：機械 $i$ におけるジョブ $j$ の処理順位", 12.5, color=MUTE)
+    _bul(s, ML, 5.65, 6.6, [
         "二目的（$MS$, $D$）は重み付き和 $F$ にまとめ，重み $λ$ を生産効率重視から安定性重視まで掃引し，得られた全非劣解で評価する",
     ], size=15)
     # 右：順序偏差の例
@@ -1114,11 +1114,13 @@ def s_structures():
     # 左：仮説 1 の図（仮説のスライドにも出るので小さめ）。右：2 つの探索構造を枠で囲んで横に並べ，
     # それぞれ手順を縦の流れ図で描く。色付きの箱＝解を作る操作（ここが 2 構造の差），薄い青＝揃えた局所探索
     fw = 4.4
-    _w, fh = pic(s, "concept_h1.png", ML - 0.05, 1.95, w=fw)
+    top, fh_ = 1.9, 4.25
+    iw0, ih0 = _img_size(asset("concept_h1.png"))
+    fh = fw * ih0 / iw0
+    pic(s, "concept_h1.png", ML - 0.05, top + (fh_ - fh) / 2, w=fw)   # 右の枠と上下中央で揃える
     rx0 = ML + fw + 0.3
     gap = 0.3
     cw = (SW - ML - rx0 - gap) / 2
-    top, fh_ = 1.9, 4.25
     cols = [
         (ORANGE, "単点探索（ILS）",
          [("初期解：$S_p$", None), ("局所探索：N5 近傍", "shared"),
@@ -1127,9 +1129,10 @@ def s_structures():
          2, 4, "反復",
          "選定理由：局所探索と摂動が別の段にあり，演算子を摂動に組み込める"),
         (GREEN, "多点探索（Memetic）",
-         [("初期集団：$S_p$＋無作為な個体", None), ("選択・交叉：2 親を組み替え", GREEN),
+         [("初期集団：$S_p$＋無作為な個体", None), ("選択", None),
+          ("交叉：2 親を組み替え", GREEN),
           ("突然変異", None), ("局所探索：N5 近傍（各個体）", "shared")],
-         1, 3, "世代交代",
+         1, 4, "世代交代",
          "選定理由：先行研究で標準的な，GA に局所探索を組み込んだ構成"),
     ]
     for k, (col, head, steps, lf, lt, loop, why) in enumerate(cols):
