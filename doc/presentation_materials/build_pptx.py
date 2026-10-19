@@ -1146,16 +1146,15 @@ def s_operators():
     top, bot = 1.85, 6.85
     # ---- 左：(D, MS) 平面での動き。PR・PR-k が返す解は図の中に注記する
     fw = 6.05
-    _w, fh = pic(s, "concept_op.png", ML - 0.05, top, w=fw)
-    # 左下：通常の PR との違い（提案はここ）
-    y0 = top + fh + 0.1
+    # 左上：通常の PR との違い（提案はここ）。図はその下
     for i, (head, col, body) in enumerate([
             ("通常の PR", MUTE, "探索中に得た良い解どうしを結び，その間を探索する"),
             ("本研究", BLUE, "誘導解を $S_p$ に**固定** → 解を $S_p$ に近づける操作になる")]):
-        yy = y0 + i * 0.42
+        yy = top + i * 0.42
         _boxtext(s, ML, yy + 0.04, 1.05, 0.34, [(head, 12, WHITE, True)], fill=col, radius=0.3)
         _text(s, ML + 1.2, yy, fw - 1.3, 0.42, body, 13, color=INK if i else MUTE,
               anchor=MSO_ANCHOR.MIDDLE, emph=BLUE)
+    _w, fh = pic(s, "concept_op.png", ML - 0.05, top + 0.94, w=fw)
     # ---- 右：ある機械の処理順序を S_p に近づける例（swap 1 回で D が減る）
     lx = ML + fw + 0.3
     lw_ = SW - ML - lx
