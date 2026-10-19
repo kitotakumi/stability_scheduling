@@ -208,7 +208,7 @@ def fig_concept_op():
     ax.xaxis.label.set_size(12)
     ax.yaxis.label.set_size(12)
     _mem(ax, 0.22)
-    _ils(ax, 0.25)
+    _ils(ax, 0.18)
     pr_x = np.array([0.62, 0.50, 0.39, 0.29, 0.20, 0.115])
     pr_y = _front_curve(pr_x) + np.array([0.210, 0.115, 0.150, 0.130, 0.165, 0.032])
     i0 = int(np.argmin(np.hypot(MX - pr_x[0], MY - pr_y[0])))
@@ -223,20 +223,18 @@ def fig_concept_op():
                                 mutation_scale=9, shrinkA=6, shrinkB=10), zorder=4)
     ax.text(pr_x[0] + 0.03, pr_y[0] + 0.05, '現在解', fontsize=11.5, color=C_MEM,
             fontweight='bold')
-    # PR：経路上で F が最小の解（帯の中の最後の点）に輪を付ける
-    ax.scatter([pr_x[-1]], [pr_y[-1]], s=190, facecolor='none', edgecolor=C_MPR, lw=1.8,
-               zorder=6)
-    ax.annotate('PR が返す解\n（経路上で $F$ が最小）', xy=(pr_x[-1], pr_y[-1]),
-                xytext=(0.24, 0.88), fontsize=11, color=C_MPR, fontweight='bold', va='center',
-                linespacing=1.2,
-                arrowprops=dict(arrowstyle='-|>', color=C_MPR, lw=1.0, mutation_scale=10,
-                                shrinkA=3, shrinkB=9))
-    # PR-k：k 回の swap で打ち切った解（例は k = 2）
+    # 返す解（PR：経路上で F が最小の解，PR-k：k 回の swap で打ち切った解．例は k = 2）に輪を付け，
+    # 注記は経路の下側，帯の左下の空きに置く。色は経路の茶と被らないよう本文の青にする
+    BLUE = '#16385C'
+    for (px, py), r in [((pr_x[-1], pr_y[-1]), 190), ((pr_x[2], pr_y[2]), 170)]:
+        ax.scatter([px], [py], s=r, facecolor='none', edgecolor=BLUE, lw=1.6, zorder=6)
+    ann = dict(fontsize=10.5, color=BLUE, fontweight='bold', va='center', linespacing=1.2,
+               arrowprops=dict(arrowstyle='-|>', color='#55606B', lw=1.0, mutation_scale=10,
+                               shrinkA=3, shrinkB=9))
+    ax.annotate('PR が返す解\n（経路上で $F$ 最小）', xy=(pr_x[-1], pr_y[-1]),
+                xytext=(0.03, 0.50), **ann)
     ax.annotate('PR-$k$ が返す解\n（$k$ 回の swap で打ち切り）', xy=(pr_x[2], pr_y[2]),
-                xytext=(0.52, 0.74), fontsize=11, color=C_MPR, fontweight='bold', va='center',
-                linespacing=1.2,
-                arrowprops=dict(arrowstyle='-|>', color=C_MPR, lw=1.0, mutation_scale=10,
-                                shrinkA=3, shrinkB=7))
+                xytext=(0.03, 0.32), **ann)
     ax.text(0.45, 0.995, '誘導解＝$S_p$（★）へ swap でたどる', fontsize=12, color=C_MPR,
             ha='left', va='bottom', fontweight='bold')
     fig.tight_layout(pad=0.35)

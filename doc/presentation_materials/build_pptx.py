@@ -1102,40 +1102,33 @@ def s_structures():
     s = slide_frame("比較する探索構造：単点探索と多点探索",
                     "局所探索などの条件を揃え，解の作り方（少しずつ変更するか，交叉で組み替えるか）を比較する",
                     "2. 問題設定と実験計画")
-    gap = 0.4
-    cw = (CW - gap) / 2
-    top, ch = 1.85, 4.3
-    # ILS は実装どおり，初期解にまず局所探索をかけてから 摂動→局所探索→受理判定 を反復する
-    # （ils_scheduling.py の run() は反復に入る前に local_search(init_orders) を呼ぶ）
+    # 左：仮説 1 の図を再掲（単点探索は S_p から少しずつ動き，多点探索は交叉で散る）。
+    # 右：2 つの探索構造の手順と選定理由を縦に並べる。手順の流れ図はやめた
+    fw = 6.2
+    _w, fh = pic(s, "concept_h1.png", ML - 0.05, 1.85, w=fw)
+    rx = ML + fw + 0.3
+    rw = SW - ML - rx
     cards = [
-        ("単点探索（ILS：反復局所探索）", "現在解は常に 1 つ", ORANGE,
-         [("初期解：$S_p$", None), ("局所探索：N5 近傍", "shared"),
-          ("摂動：数手の insert 移動", ORANGE),
-          ("局所探索：N5 近傍", "shared"), ("受理判定：$F$ が改善すれば更新", None)],
-         2, 4, "反復", 0.2,
-         "局所探索と摂動が別の段で，演算子を摂動に組み込める"),
-        ("多点探索（Memetic：GA＋局所探索）", "複数の解を保持", GREEN,
-         [("初期集団：$S_p$ ＋ 無作為に生成した個体", None), ("選択・交叉：2 親の染色体を組み替え", GREEN),
-          ("突然変異", None), ("局所探索：N5 近傍（各個体）", "shared")],
-         1, 3, "世代交代", 0.3,
-         "先行研究で標準的な，GA に局所探索を組み込んだ構成"),
+        (ORANGE, "単点探索（ILS：反復局所探索）", "現在解は常に 1 つ",
+         ["初期解 $S_p$ に局所探索（N5 近傍）をかけ，**摂動（数手の insert 移動）→ 局所探索 → "
+          "受理判定（$F$ が改善すれば更新）**を反復する",
+          "選定理由：局所探索と摂動が別の段にあり，演算子を摂動に組み込める"]),
+        (GREEN, "多点探索（Memetic：GA＋局所探索）", "複数の解を保持",
+         ["初期集団は $S_p$＋無作為に生成した個体．**選択・交叉（2 親の染色体を組み替え）→ 突然変異 → "
+          "局所探索（N5 近傍，各個体）**で世代交代する",
+          "選定理由：先行研究で標準的な，GA に局所探索を組み込んだ構成"]),
     ]
-    for k, (head, sub, col, steps, lf, lt, loop, fgap, why) in enumerate(cards):
-        x = ML + k * (cw + gap)
-        _rrect(s, x, top, cw, ch, WHITE, line=CARDLINE, radius=0.04)
-        _rect(s, x, top, cw, 0.55, col)
-        tb, tf = add_textbox(s, x + 0.2, top, cw - 0.4, 0.55, anchor=MSO_ANCHOR.MIDDLE)
+    cy, ch, cg = 1.85, 1.98, 0.14
+    for col, head, sub, bullets in cards:
+        _rrect(s, rx, cy, rw, ch, WHITE, line=CARDLINE, radius=0.04)
+        _rect(s, rx, cy, rw, 0.44, col)
+        tb, tf = add_textbox(s, rx + 0.2, cy, rw - 0.4, 0.44, anchor=MSO_ANCHOR.MIDDLE)
         p = tf.paragraphs[0]
-        _run(p, head, 15, color=WHITE, bold=True)
-        _run(p, "　" + sub, 12, color=WHITE)
-        tb, tf = add_textbox(s, x + 0.25, top + 0.64, cw - 0.5, 0.4, anchor=MSO_ANCHOR.MIDDLE)
-        p = tf.paragraphs[0]
-        _run(p, "選定理由：", 12, color=col, bold=True)
-        _add_runs(p, why, 12, color=INK)
-        fw = 3.9
-        _flow(s, x + 0.35, top + 1.12, fw, steps, bh=0.44, gap=fgap, loop_from=lt, loop_to=lf,
-              loop_label=loop)
-    _boxtext(s, ML, top + ch + 0.15, CW, 0.62,
+        _run(p, head, 14, color=WHITE, bold=True)
+        _run(p, "　" + sub, 11.5, color=WHITE)
+        _bul(s, rx + 0.2, cy + 0.56, rw - 0.4, bullets, size=12.5, gap=6, emph=col)
+        cy += ch + cg
+    _boxtext(s, ML, 6.2, CW, 0.58,
              [("探索構造の差だけを比較するため，局所探索（N5 近傍）・目的関数 $F$・初期解 $S_p$ を両者で揃える",
                14, WHITE, True)],
              fill=COVER, radius=0.12)
