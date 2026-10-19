@@ -125,14 +125,14 @@ def _plane(ax, fs=12.5, star_label='初期解 $S_p$', band_label='高安定領�
     ax.text(0.035, 0.985, star_label, fontsize=fs, va='bottom')
     ax.set_xlim(-0.02, 1.02)
     ax.set_ylim(0.05, 1.10)
-    ax.set_xticks([0])
-    ax.set_xticklabels(['0'])
+    # 目盛は置かず，原点の「0」は軸の左下の角に文字で添える。こうすると横軸ラベルも
+    # 縦軸ラベルと同じ余白（labelpad）で軸に接する
+    ax.set_xticks([])
     ax.set_yticks([])
+    ax.text(-0.012, -0.015, '0', transform=ax.transAxes, ha='right', va='top',
+            fontsize=fs - 1, color='#55606B')
     ax.set_xlabel('min　$S_p$ からの変更量（安定性）')
     ax.set_ylabel('min　総所要時間 $MS$（生産効率）')
-    # 横軸は目盛「0」の分だけラベルが軸から離れるので，目盛とラベルの余白を詰めて縦軸と揃える
-    ax.tick_params(axis='x', length=2.5, pad=1.5)
-    ax.xaxis.labelpad = 1.5
     despine(ax)
 
 
