@@ -530,7 +530,7 @@ def divider_slide(no, title, subtitle=None):
 
 
 CHAPTERS = [("1", "研究背景と仮説", "外乱と再スケジューリング・先行研究と課題・仮説"),
-            ("2", "問題設定と実験計画", "問題設定・評価指標・探索構造・安定性誘導演算子・仮説の判定"),
+            ("2", "問題設定と実験計画", "問題設定・探索構造・安定性誘導演算子・仮説の判定・評価指標"),
             ("3", "数値実験", "実験設定・高安定 HV・全域 HV と AUC"),
             ("4", "結論", "まとめ・限界と今後の課題")]
 
@@ -1036,7 +1036,9 @@ def s_problem():
     _text(s, rx + 0.25, 2.1, rw - 0.5, 0.4, "例：ある機械の処理順序", 14, color=BLUE, bold=True)
     jc = {"J1": RGBColor(0x3E, 0x61, 0x8C), "J2": RGBColor(0xD9, 0x8E, 0x45),
           "J3": RGBColor(0x6F, 0x9E, 0x7C), "J4": RGBColor(0x8A, 0x86, 0xA8)}
-    seqs = [("$S_p$", ["J1", "J3", "J2", "J4"], 3.05), ("$S_q$", ["J1", "J2", "J3", "J4"], 4.55)]
+    # 1 つ離れた位置の入れ替え（2 番目と 4 番目）にして，D が入れ替えた数でなく順位の差の和で
+    # あることが見えるようにする。S_p は演算子のスライド（13）の誘導解と同じ並びにそろえる
+    seqs = [("$S_p$", ["J1", "J2", "J3", "J4"], 3.05), ("$S_q$", ["J1", "J4", "J3", "J2"], 4.55)]
     bw, bh, bx0 = 0.82, 0.55, rx + 1.0
     pos = {}
     for lab, seq, yy in seqs:
@@ -1053,7 +1055,7 @@ def s_problem():
         moved = x1 != x2
         _connector(s, x1, y1 + 0.02, x2, y2 - 0.02, color=RED if moved else HAIR,
                    wt=2.0 if moved else 1.2, arrow=moved, kind=1)
-    _text(s, rx + 0.25, 5.6, rw - 0.5, 0.45, "$D$ = |3−2| ＋ |2−3| = **2**", 16, color=INK,
+    _text(s, rx + 0.25, 5.6, rw - 0.5, 0.45, "$D$ = |2−4| ＋ |4−2| = **4**", 16, color=INK,
           align=PP_ALIGN.CENTER, emph=RED)
     _text(s, rx + 0.25, 6.1, rw - 0.5, 0.6, "$S_p$ の処理順序を保った解は $D$ = 0", 13, color=MUTE,
           align=PP_ALIGN.CENTER)
@@ -1625,10 +1627,10 @@ def build():
     s_hypotheses()
     chapter("2")
     s_problem()
-    s_metrics()
     s_structures()
     s_operators()
     s_design()
+    s_metrics()      # 判定の直後・結果の直前に置く。判定に要るのは「高安定 HV」の名前だけで，それは 1 章で導入済み
     chapter("3")
     s_setup()
     s_front()
