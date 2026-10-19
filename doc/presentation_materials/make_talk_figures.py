@@ -107,7 +107,9 @@ IX = np.linspace(0.09, 0.47, 7)
 IY = _front_curve(IX) + np.array([0.030, 0.080, 0.035, 0.090, 0.040, 0.075, 0.030])
 
 
-def _plane(ax, fs=12.5):
+def _plane(ax, fs=12.5, star_label='初期解 $S_p$'):
+    """★は初期解 S_p（処理順序を保ったまま遅延を吸収した解，D = 0）。正確な言い方は最初の
+    図（concept_0）だけに書き，以後の図では「初期解 S_p」で通す。"""
     ax.axvspan(0, BAND_HI, facecolor=BAND_FACE, lw=0, zorder=0)
     ax.axvline(BAND_HI, color=BAND_EDGE, lw=1.0, ls=':', zorder=1)
     ax.text(BAND_HI / 2, 0.075, '高安定領域\n（$S_p$ の近傍）', ha='center', va='bottom',
@@ -117,7 +119,7 @@ def _plane(ax, fs=12.5):
     ax.text(0.55, _front_curve(0.55) - 0.07, 'Pareto フロント', fontsize=fs - 1.5,
             color='gray', rotation=-17, rotation_mode='anchor', ha='left', va='top')
     ax.plot([0], [0.95], marker='*', ms=17, color='black', zorder=6, clip_on=False)
-    ax.text(0.035, 0.985, '$S_p$ の処理順序を保った解', fontsize=fs, va='bottom')
+    ax.text(0.035, 0.985, star_label, fontsize=fs, va='bottom')
     ax.set_xlim(-0.02, 1.02)
     ax.set_ylim(0.05, 1.10)
     ax.set_xticks([0])
@@ -147,7 +149,7 @@ def _mem(ax, alpha=0.9):
 
 def fig_concept_0():
     fig, ax = plt.subplots(figsize=(6.4, 4.95))
-    _plane(ax, fs=15)
+    _plane(ax, fs=15, star_label='初期解 $S_p$（処理順序を保ったまま遅延を吸収）')
     ax.xaxis.label.set_size(15)
     ax.yaxis.label.set_size(15)
     # Pareto フロント上の非劣解を点で示す（仮説の図と同じ読み方になるように）。
@@ -207,8 +209,7 @@ def fig_concept_op():
     _plane(ax, fs=11.5)
     ax.xaxis.label.set_size(12)
     ax.yaxis.label.set_size(12)
-    _mem(ax, 0.22)
-    _ils(ax, 0.18)
+    _mem(ax, 0.22)          # 単点探索の軌跡は演算子の説明には要らないので描かない
     pr_x = np.array([0.62, 0.50, 0.39, 0.29, 0.20, 0.115])
     pr_y = _front_curve(pr_x) + np.array([0.210, 0.115, 0.150, 0.130, 0.165, 0.032])
     i0 = int(np.argmin(np.hypot(MX - pr_x[0], MY - pr_y[0])))

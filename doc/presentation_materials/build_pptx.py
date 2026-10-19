@@ -1061,7 +1061,7 @@ def s_problem():
                    wt=2.0 if moved else 1.2, arrow=moved, kind=1)
     _text(s, rx + 0.25, 5.6, rw - 0.5, 0.45, "$D$ = |2−4| ＋ |4−2| = **4**", 16, color=INK,
           align=PP_ALIGN.CENTER, emph=RED)
-    _text(s, rx + 0.25, 6.1, rw - 0.5, 0.6, "$S_p$ の処理順序を保った解は $D$ = 0", 13, color=MUTE,
+    _text(s, rx + 0.25, 6.1, rw - 0.5, 0.6, "初期解 $S_p$ は $D$ = 0", 13, color=MUTE,
           align=PP_ALIGN.CENTER)
 
 
@@ -1108,25 +1108,28 @@ def s_structures():
     _w, fh = pic(s, "concept_h1.png", ML - 0.05, 1.85, w=fw)
     rx = ML + fw + 0.3
     rw = SW - ML - rx
+    # 中身は手順を矢印でつないだ 1 文だけ。選定理由は小さく薄く添える
     cards = [
         (ORANGE, "単点探索（ILS：反復局所探索）", "現在解は常に 1 つ",
-         ["初期解 $S_p$ に局所探索（N5 近傍）をかけ，**摂動（数手の insert 移動）→ 局所探索 → "
-          "受理判定（$F$ が改善すれば更新）**を反復する",
-          "選定理由：局所探索と摂動が別の段にあり，演算子を摂動に組み込める"]),
+         "初期解 $S_p$ → **局所探索**（N5 近傍）→ **摂動**（数手の insert 移動）→ **局所探索** → "
+         "**受理判定**（$F$ が改善すれば更新）→ 摂動に戻って反復",
+         "選定理由：局所探索と摂動が別の段にあり，演算子を摂動に組み込める"),
         (GREEN, "多点探索（Memetic：GA＋局所探索）", "複数の解を保持",
-         ["初期集団は $S_p$＋無作為に生成した個体．**選択・交叉（2 親の染色体を組み替え）→ 突然変異 → "
-          "局所探索（N5 近傍，各個体）**で世代交代する",
-          "選定理由：先行研究で標準的な，GA に局所探索を組み込んだ構成"]),
+         "初期集団（$S_p$＋無作為に生成した個体）→ **選択・交叉**（2 親の染色体を組み替え）→ "
+         "**突然変異** → **局所探索**（N5 近傍，各個体）→ 世代交代して反復",
+         "選定理由：先行研究で標準的な，GA に局所探索を組み込んだ構成"),
     ]
     cy, ch, cg = 1.85, 1.98, 0.14
-    for col, head, sub, bullets in cards:
+    for col, head, sub, flow, why in cards:
         _rrect(s, rx, cy, rw, ch, WHITE, line=CARDLINE, radius=0.04)
         _rect(s, rx, cy, rw, 0.44, col)
         tb, tf = add_textbox(s, rx + 0.2, cy, rw - 0.4, 0.44, anchor=MSO_ANCHOR.MIDDLE)
         p = tf.paragraphs[0]
         _run(p, head, 14, color=WHITE, bold=True)
         _run(p, "　" + sub, 11.5, color=WHITE)
-        _bul(s, rx + 0.2, cy + 0.56, rw - 0.4, bullets, size=12.5, gap=6, emph=col)
+        _text(s, rx + 0.22, cy + 0.54, rw - 0.44, 0.98, flow, 14, color=INK, ls=1.18, emph=col)
+        _text(s, rx + 0.22, cy + ch - 0.46, rw - 0.44, 0.4, why, 11.5, color=MUTE,
+              anchor=MSO_ANCHOR.MIDDLE)
         cy += ch + cg
     _boxtext(s, ML, 6.2, CW, 0.58,
              [("探索構造の差だけを比較するため，局所探索（N5 近傍）・目的関数 $F$・初期解 $S_p$ を両者で揃える",
@@ -1295,7 +1298,7 @@ def s_metrics():
     pic(s, "metrics.png", ML + 0.05, 1.78, w=CW - 0.1)
     _bul(s, ML, 6.12, CW, [
         "$P_{θ}$：全手法・全試行の非劣解の $D$ の $θ$ パーセンタイル．"
-        "$D$ = 0 の解（$S_p$ の処理順序を保った解）は全手法が探索せずに得るため HV から除く",
+        "$D$ = 0 の解（初期解 $S_p$）は全手法が探索せずに得るため HV から除く",
         "全域 HV・高安定 HV は全ての重み $λ$ の解を合わせて算出し，AUC は重みごとに算出して平均する",
     ], size=13, gap=4)
 
