@@ -1008,15 +1008,15 @@ def s_hypotheses():
         _rrect(s, x, by, cw, bh, COVER, radius=0.06)
         _text(s, x + 0.16, by + 0.06, cw - 0.32, bh - 0.12, text, 15.5, color=WHITE, ls=1.12,
               anchor=MSO_ANCHOR.MIDDLE, emph=RGBColor(0xFF, 0xD9, 0x8A))
-        ih = 6.92 - (by + bh + 0.08)
+        ih = 6.76 - (by + bh + 0.08)
         iw, _h = _img_size(asset(img))
         w_img = min(cw - 0.04, ih * iw / _h)
         pic(s, img, x + (cw - w_img) / 2, by + bh + 0.08, w=w_img)
     # 研究の位置づけ（判定のスライドから移した。仮説を立てた場所で言うほうが据わりがよい）
-    # フッタの行（章名と頁番号のあいだ）に置き，図の高さを確保する
-    _text(s, ML, 7.0, CW, 0.3,
+    # 本文の下限（CONTENT_BOTTOM）は守る。図をこれ以上大きくするなら，この一文を外して口頭にする
+    _text(s, ML, 6.78, CW, 0.24,
           "主眼は最先端手法との性能競争ではなく，条件を統制して探索構造と演算子の関係を切り分けること",
-          11, color=MUTE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+          11.5, color=MUTE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
 
 
 # ---------------------------------------------------------------- 7. 問題設定
