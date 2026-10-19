@@ -1003,14 +1003,18 @@ def s_hypotheses():
         x = ML + k * (cw + gap)
         _text(s, x + 0.05, 1.72, cw, 0.4, tag, 15, color=BLUE, bold=True,
               anchor=MSO_ANCHOR.MIDDLE)
-        by, bh = 2.14, 1.6
+        by, bh = 2.1, 1.5
         _rrect(s, x, by, cw, bh, COVER, radius=0.06)
         _text(s, x + 0.16, by + 0.05, cw - 0.32, bh - 0.1, text, 15.5, color=WHITE, ls=1.12,
               anchor=MSO_ANCHOR.MIDDLE, emph=RGBColor(0xFF, 0xD9, 0x8A))
-        ih = 7.0 - (by + bh + 0.1)
+        ih = 6.58 - (by + bh + 0.1)
         iw, _h = _img_size(asset(img))
         w_img = min(cw - 0.04, ih * iw / _h)
         pic(s, img, x + (cw - w_img) / 2, by + bh + 0.1, w=w_img)
+    # 研究の位置づけ（判定のスライドから移した。仮説を立てた場所で言うほうが据わりがよい）
+    _text(s, ML, 6.64, CW, 0.32,
+          "主眼は最先端手法との性能競争ではなく，条件を統制して探索構造と演算子の関係を切り分けること",
+          12.5, color=MUTE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
 
 
 # ---------------------------------------------------------------- 7. 問題設定
@@ -1232,18 +1236,16 @@ def s_design():
     s = slide_frame("比較する手法と仮説の判定",
                     "仮説 1 は ILS と Memetic，仮説 2 は Memetic と演算子を組み込んだ Memetic の高安定 HV を比較して判定する",
                     "2. 問題設定と実験計画")
-    # 研究の位置づけ
-    _text(s, ML, 1.66, CW, 0.36,
-          "本研究の主眼は最先端手法との性能競争ではなく，仮説を立てて条件を統制し，"
-          "**探索構造と演算子の関係を切り分けること**", 14, color=INK,
-          anchor=MSO_ANCHOR.MIDDLE, emph=BLUE)
-    # 比較する手法：探索構造 × 安定性誘導演算子
-    ty, trh, tw = 2.16, 0.4, 8.7
+    # 比較する手法：探索構造 × 安定性誘導演算子。どの比較がどの仮説かを，表の上の枠と
+    # 下の札の色で対応させる（仮説 1＝青・演算子なしの列，仮説 2＝茶・Memetic の行，
+    # 仮説の外＝灰の破線・ILS の行）。「主眼は性能競争でない」の一文は仮説のスライドへ移した
+    H1, H2, H0 = BLUE, BROWN, MUTE
+    ty, trh, tw = 1.95, 0.42, 8.7
+    colw = [2.5, 2.3, 2.0, 1.9]
     render_table(s, [["探索構造", "安定性誘導演算子なし", "PR-$k$ を組み込む", "PR を組み込む"],
                      ["単点探索（ILS）", "ILS", "ILS＋PR-$k$", "ILS＋PR"],
                      ["多点探索（Memetic）", "Memetic", "Memetic＋PR-$k$", "Memetic＋PR"]],
-                 ML, ty, tw, col_w=[2.5, 2.3, 2.0, 1.9], size=14.5, align=['l', 'c', 'c', 'c'],
-                 row_h=trh)
+                 ML, ty, tw, col_w=colw, size=14.5, align=['l', 'c', 'c', 'c'], row_h=trh)
     tbl = s.shapes[-1].table
     for r, col in [(1, ORANGE), (2, GREEN)]:
         for c in range(4):
@@ -1251,32 +1253,56 @@ def s_design():
                 for run in p.runs:
                     run.font.color.rgb = col
                     run.font.bold = True
-    _text(s, ML + tw + 0.35, ty + trh, CW - tw - 0.35, 2 * trh,
-          "参考：GA（局所探索なし）を\n加えて計 7 手法", 13, color=MUTE, anchor=MSO_ANCHOR.MIDDLE)
-    # 仮説ごとに，比較する手法と支持とみなす条件を書き下す
-    hyps = [("仮説 1", "単点探索のほうが，多点探索より高安定 HV が大きい",
-             "ILS が Memetic を全シナリオで有意に上回れば，支持とみなす"),
-            ("仮説 2", "安定性誘導演算子を組み込めば，多点探索の高安定 HV は向上する",
-             "Memetic＋PR-$k$ と Memetic＋PR がそれぞれ Memetic を全シナリオで有意に上回れば，支持とみなす")]
+    cx = [ML]
+    for w_ in colw:
+        cx.append(cx[-1] + w_ * tw / sum(colw))
+    ry = [ty + i * trh for i in range(4)]
+
+    def frame(c0, c1, r0, r1, color, dash=False, lw=2.2):
+        sp = _rrect(s, cx[c0] + 0.05, ry[r0] + 0.05, cx[c1 + 1] - cx[c0] - 0.1,
+                    ry[r1 + 1] - ry[r0] - 0.1, None, line=color, radius=0.08, lw=lw)
+        if dash:
+            from pptx.enum.dml import MSO_LINE
+            sp.line.dash_style = MSO_LINE.DASH
+        return sp
+
+    frame(1, 3, 1, 1, H0, dash=True, lw=1.6)   # 仮説の外：ILS と ILS＋演算子
+    frame(1, 3, 2, 2, H2)                       # 仮説 2：Memetic と Memetic＋演算子
+    frame(1, 1, 1, 2, H1)                       # 仮説 1：ILS と Memetic
+    lx0 = cx[4] + 0.15
+    _boxtext(s, lx0, ry[1] + (trh - 0.3) / 2, 1.0, 0.3, [("仮説の外", 11, WHITE, True)],
+             fill=H0, radius=0.3)
+    _boxtext(s, lx0, ry[2] + (trh - 0.3) / 2, 1.0, 0.3, [("仮説 2", 11, WHITE, True)],
+             fill=H2, radius=0.3)
+    _boxtext(s, (cx[1] + cx[2]) / 2 - 0.5, ry[3] + 0.05, 1.0, 0.3, [("仮説 1", 11, WHITE, True)],
+             fill=H1, radius=0.3)
+    _text(s, cx[2] + 0.1, ry[3] + 0.06, cx[4] - cx[2] - 0.1, 0.3,
+          "参考：GA（局所探索なし）を加えて計 7 手法", 11.5, color=MUTE, anchor=MSO_ANCHOR.MIDDLE)
+    # 仮説ごとに，比較する手法と支持とみなす条件を書き下す（札の色は表の枠と同じ）
+    hyps = [("仮説 1", H1, "単点探索のほうが，多点探索より高安定 HV が大きい",
+             "ILS が Memetic を全シナリオで有意に上回れば支持"),
+            ("仮説 2", H2, "安定性誘導演算子を組み込めば，多点探索の高安定 HV は向上する",
+             "Memetic＋PR-$k$ と Memetic＋PR がそれぞれ Memetic を全シナリオで有意に上回れば支持")]
     tx = ML + 1.4
     txw = SW - ML - tx
-    y = 3.58
-    for tag, claim, rule in hyps:
-        _boxtext(s, ML, y + 0.03, 1.2, 0.4, [(tag, 14, WHITE, True)], fill=COVER, radius=0.3)
+    y = 3.72
+    for tag, col, claim, rule in hyps:
+        _boxtext(s, ML, y + 0.03, 1.2, 0.4, [(tag, 14, WHITE, True)], fill=col, radius=0.3)
         _text(s, tx, y, txw, 0.46, "**" + claim + "**", 17, color=INK,
               anchor=MSO_ANCHOR.MIDDLE, emph=INK)
         tb, tf = add_textbox(s, tx, y + 0.48, txw, 0.38, anchor=MSO_ANCHOR.MIDDLE)
         p = tf.paragraphs[0]
         _run(p, "判定：", 15, color=BLUE, bold=True)
         _add_runs(p, rule, 15, color=INK)
-        y += 1.04
+        y += 1.0
         _rect(s, ML, y - 0.1, CW, 0.012, HAIR)
-    # 仮説を置かない比較
-    _boxtext(s, ML, y + 0.03, 1.2, 0.4, [("仮説なし", 13, WHITE, True)], fill=MUTE, radius=0.3)
-    _text(s, tx, y, txw, 0.46, "ILS＋PR-$k$ と ILS＋PR も，仮説 2 と同じ形で ILS と比較する", 15,
+    # 仮説を置かない比較。ILS＋演算子の 2 手法が表にある理由と，非対称の見方をここで宣言する
+    _boxtext(s, ML, y + 0.03, 1.2, 0.4, [("仮説の外", 13, WHITE, True)], fill=H0, radius=0.3)
+    _text(s, tx, y, txw, 0.46,
+          "ILS＋PR-$k$ と ILS＋PR も同じ形で ILS と比較し，演算子の効果が探索構造で異なるかを見る", 15,
           color=INK, anchor=MSO_ANCHOR.MIDDLE)
     # 検定
-    jy = y + 0.72
+    jy = y + 0.6
     tb, tf = add_textbox(s, ML, jy, CW, 0.56)
     for k, (head, body) in enumerate([
             ("検定：", "両側 Mann–Whitney の $U$ 検定．全シナリオにわたる同じ比較は Holm 法で補正"),
