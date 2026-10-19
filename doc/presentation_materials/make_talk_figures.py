@@ -107,17 +107,20 @@ IX = np.linspace(0.09, 0.47, 7)
 IY = _front_curve(IX) + np.array([0.030, 0.080, 0.035, 0.090, 0.040, 0.075, 0.030])
 
 
-def _plane(ax, fs=12.5, star_label='初期解 $S_p$'):
+def _plane(ax, fs=12.5, star_label='初期解 $S_p$', band_label='高安定領域\n（$S_p$ の近傍）',
+           front_label=True):
     """★は初期解 S_p（処理順序を保ったまま遅延を吸収した解，D = 0）。正確な言い方は最初の
-    図（concept_0）だけに書き，以後の図では「初期解 S_p」で通す。"""
+    図（concept_0）だけに書き，以後の図では「初期解 S_p」で通す。帯と Pareto フロントの
+    ラベルも最初の図で定義し，以後は帯の短い名前だけ（演算子の図では付けない）。"""
     ax.axvspan(0, BAND_HI, facecolor=BAND_FACE, lw=0, zorder=0)
     ax.axvline(BAND_HI, color=BAND_EDGE, lw=1.0, ls=':', zorder=1)
-    ax.text(BAND_HI / 2, 0.075, '高安定領域\n（$S_p$ の近傍）', ha='center', va='bottom',
-            fontsize=fs, color=BAND_EDGE, linespacing=1.15)
+    if band_label:
+        ax.text(BAND_HI / 2, 0.075, band_label, ha='center', va='bottom',
+                fontsize=fs, color=BAND_EDGE, linespacing=1.15)
     ax.plot(XS, _front_curve(XS), ls='--', color='gray', lw=1.4, zorder=1)
-    # 曲線上の点と重ならないよう，曲線から少し下げて置く
-    ax.text(0.55, _front_curve(0.55) - 0.07, 'Pareto フロント', fontsize=fs - 1.5,
-            color='gray', rotation=-17, rotation_mode='anchor', ha='left', va='top')
+    if front_label:   # 曲線上の点と重ならないよう，曲線から少し下げて置く
+        ax.text(0.55, _front_curve(0.55) - 0.07, 'Pareto フロント', fontsize=fs - 1.5,
+                color='gray', rotation=-17, rotation_mode='anchor', ha='left', va='top')
     ax.plot([0], [0.95], marker='*', ms=17, color='black', zorder=6, clip_on=False)
     ax.text(0.035, 0.985, star_label, fontsize=fs, va='bottom')
     ax.set_xlim(-0.02, 1.02)
@@ -172,7 +175,7 @@ def fig_concept_0():
 
 def fig_concept_h(stage):
     fig, ax = plt.subplots(figsize=(6.0, 3.95))
-    _plane(ax, fs=11.5)
+    _plane(ax, fs=11.5, band_label='高安定領域', front_label=False)
     ax.xaxis.label.set_size(12)
     ax.yaxis.label.set_size(12)
     if stage == 1:
@@ -206,7 +209,7 @@ def fig_concept_op():
     """演算子のスライド用：多点探索の個体 1 つを S_p へ引き戻す経路に，PR と PR-k が返す解を
     注記する。背景の単点・多点の解集合は仮説 2 の図（concept_h2）と同じ配置を薄く残す。"""
     fig, ax = plt.subplots(figsize=(6.0, 3.95))
-    _plane(ax, fs=11.5)
+    _plane(ax, fs=11.5, band_label=None, front_label=False)
     ax.xaxis.label.set_size(12)
     ax.yaxis.label.set_size(12)
     _mem(ax, 0.22)          # 単点探索の軌跡は演算子の説明には要らないので描かない
