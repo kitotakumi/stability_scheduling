@@ -999,22 +999,23 @@ def s_hypotheses():
              "（**安定性誘導演算子**）を組み込めば，\n"
              "その経路上に変更量の小さい解が現れるため，\n"
              "**多点探索の高安定 HV は向上する**", "concept_h2.png")]
+    # 図を大きく取るため，札は箱の上辺に重ね，箱は 4 行ぶんの高さにする。札の色は判定のスライドと同じ
     for k, (tag, src, text, img) in enumerate(hyps):
         x = ML + k * (cw + gap)
-        _text(s, x + 0.05, 1.72, cw, 0.4, tag, 15, color=BLUE, bold=True,
-              anchor=MSO_ANCHOR.MIDDLE)
-        by, bh = 2.1, 1.5
+        by, bh = 1.92, 1.38
         _rrect(s, x, by, cw, bh, COVER, radius=0.06)
-        _text(s, x + 0.16, by + 0.05, cw - 0.32, bh - 0.1, text, 15.5, color=WHITE, ls=1.12,
+        _boxtext(s, x + 0.18, by - 0.19, 1.05, 0.38, [(tag, 12.5, WHITE, True)],
+                 fill=(BLUE if k == 0 else BROWN), line=WHITE, radius=0.4)
+        _text(s, x + 0.16, by + 0.14, cw - 0.32, bh - 0.2, text, 15.5, color=WHITE, ls=1.12,
               anchor=MSO_ANCHOR.MIDDLE, emph=RGBColor(0xFF, 0xD9, 0x8A))
-        ih = 6.58 - (by + bh + 0.1)
+        ih = 6.76 - (by + bh + 0.08)
         iw, _h = _img_size(asset(img))
         w_img = min(cw - 0.04, ih * iw / _h)
-        pic(s, img, x + (cw - w_img) / 2, by + bh + 0.1, w=w_img)
+        pic(s, img, x + (cw - w_img) / 2, by + bh + 0.08, w=w_img)
     # 研究の位置づけ（判定のスライドから移した。仮説を立てた場所で言うほうが据わりがよい）
-    _text(s, ML, 6.64, CW, 0.32,
+    _text(s, ML, 6.78, CW, 0.24,
           "主眼は最先端手法との性能競争ではなく，条件を統制して探索構造と演算子の関係を切り分けること",
-          12.5, color=MUTE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+          11.5, color=MUTE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
 
 
 # ---------------------------------------------------------------- 7. 問題設定
@@ -1067,7 +1068,8 @@ def s_problem():
 
 # ---------------------------------------------------------------- 8. 比較する探索構造
 
-def _flow(slide, x, y, w, steps, bh=0.52, gap=0.3, loop_label=None, loop_from=None, loop_to=None):
+def _flow(slide, x, y, w, steps, bh=0.52, gap=0.3, loop_label=None, loop_from=None, loop_to=None,
+          fs=12.5, label_w=1.3):
     """縦に並ぶ処理ボックスを矢印でつなぐ。steps: (文字列, 強調色 or None)。
     loop_from/loop_to の段のあいだに右側の戻り矢印を描く。"""
     ys = []
@@ -1075,12 +1077,12 @@ def _flow(slide, x, y, w, steps, bh=0.52, gap=0.3, loop_label=None, loop_from=No
         yy = y + i * (bh + gap)
         ys.append(yy)
         if accent == "shared":
-            _boxtext(slide, x, yy, w, bh, [(t, 12.5, INK, False)], fill=FILL, line=CARDLINE,
+            _boxtext(slide, x, yy, w, bh, [(t, fs, INK, False)], fill=FILL, line=CARDLINE,
                      radius=0.12)
         elif accent is not None:
-            _boxtext(slide, x, yy, w, bh, [(t, 12.5, WHITE, True)], fill=accent, radius=0.12)
+            _boxtext(slide, x, yy, w, bh, [(t, fs, WHITE, True)], fill=accent, radius=0.12)
         else:
-            _boxtext(slide, x, yy, w, bh, [(t, 12.5, INK, False)], fill=WHITE, line=CARDLINE,
+            _boxtext(slide, x, yy, w, bh, [(t, fs, INK, False)], fill=WHITE, line=CARDLINE,
                      radius=0.12)
         if i:
             _connector(slide, x + w / 2, yy - gap + 0.02, x + w / 2, yy - 0.02, color=MUTE,
@@ -1093,7 +1095,7 @@ def _flow(slide, x, y, w, steps, bh=0.52, gap=0.3, loop_label=None, loop_from=No
         _connector(slide, rx, y1, rx, y0, color=MUTE, wt=1.4, arrow=False, kind=1)
         _connector(slide, rx, y0, x + w + 0.04, y0, color=MUTE, wt=1.4, kind=1)
         if loop_label:
-            _text(slide, rx + 0.08, (y0 + y1) / 2 - 0.2, 1.3, 0.4, loop_label, 11, color=MUTE,
+            _text(slide, rx + 0.08, (y0 + y1) / 2 - 0.2, label_w, 0.4, loop_label, 11, color=MUTE,
                   anchor=MSO_ANCHOR.MIDDLE)
     return ys[-1] + bh - y
 
@@ -1102,35 +1104,37 @@ def s_structures():
     s = slide_frame("比較する探索構造：単点探索と多点探索",
                     "局所探索などの条件を揃え，解の作り方（少しずつ変更するか，交叉で組み替えるか）を比較する",
                     "2. 問題設定と実験計画")
-    # 左：仮説 1 の図を再掲（単点探索は S_p から少しずつ動き，多点探索は交叉で散る）。
-    # 右：2 つの探索構造の手順と選定理由を縦に並べる。手順の流れ図はやめた
-    fw = 6.2
-    _w, fh = pic(s, "concept_h1.png", ML - 0.05, 1.85, w=fw)
-    rx = ML + fw + 0.3
-    rw = SW - ML - rx
-    # 中身は手順を矢印でつないだ 1 文だけ。選定理由は小さく薄く添える
-    cards = [
-        (ORANGE, "単点探索（ILS：反復局所探索）", "現在解は常に 1 つ",
-         "初期解 $S_p$ → **局所探索**（N5 近傍）→ **摂動**（数手の insert 移動）→ **局所探索** → "
-         "**受理判定**（$F$ が改善すれば更新）→ 摂動に戻って反復",
+    # 左：仮説 1 の図。右：2 つの探索構造を横に並べ，それぞれ手順を縦の流れ図で描く
+    fw = 4.9
+    _w, fh = pic(s, "concept_h1.png", ML - 0.05, 1.92, w=fw)
+    rx0 = ML + fw + 0.3
+    gap = 0.3
+    cw = (SW - ML - rx0 - gap) / 2
+    top = 1.9
+    cols = [
+        (ORANGE, "単点探索（ILS）", "",
+         [("初期解：$S_p$", None), ("局所探索：N5 近傍", "shared"),
+          ("摂動：数手の insert 移動", ORANGE),
+          ("局所探索：N5 近傍", "shared"), ("受理判定：$F$ が改善すれば更新", None)],
+         2, 4, "反復",
          "選定理由：局所探索と摂動が別の段にあり，演算子を摂動に組み込める"),
-        (GREEN, "多点探索（Memetic：GA＋局所探索）", "複数の解を保持",
-         "初期集団（$S_p$＋無作為に生成した個体）→ **選択・交叉**（2 親の染色体を組み替え）→ "
-         "**突然変異** → **局所探索**（N5 近傍，各個体）→ 世代交代して反復",
+        (GREEN, "多点探索（Memetic）", "",
+         [("初期集団：$S_p$＋無作為な個体", None), ("選択・交叉：2 親を組み替え", GREEN),
+          ("突然変異", None), ("局所探索：N5 近傍（各個体）", "shared")],
+         1, 3, "世代交代",
          "選定理由：先行研究で標準的な，GA に局所探索を組み込んだ構成"),
     ]
-    cy, ch, cg = 1.85, 1.98, 0.14
-    for col, head, sub, flow, why in cards:
-        _rrect(s, rx, cy, rw, ch, WHITE, line=CARDLINE, radius=0.04)
-        _rect(s, rx, cy, rw, 0.44, col)
-        tb, tf = add_textbox(s, rx + 0.2, cy, rw - 0.4, 0.44, anchor=MSO_ANCHOR.MIDDLE)
+    for k, (col, head, sub, steps, lf, lt, loop, why) in enumerate(cols):
+        x = rx0 + k * (cw + gap)
+        _rect(s, x, top, cw, 0.42, col)
+        tb, tf = add_textbox(s, x + 0.15, top, cw - 0.3, 0.42, anchor=MSO_ANCHOR.MIDDLE)
         p = tf.paragraphs[0]
-        _run(p, head, 14, color=WHITE, bold=True)
-        _run(p, "　" + sub, 11.5, color=WHITE)
-        _text(s, rx + 0.22, cy + 0.54, rw - 0.44, 0.98, flow, 14, color=INK, ls=1.18, emph=col)
-        _text(s, rx + 0.22, cy + ch - 0.46, rw - 0.44, 0.4, why, 11.5, color=MUTE,
-              anchor=MSO_ANCHOR.MIDDLE)
-        cy += ch + cg
+        _run(p, head, 13.5, color=WHITE, bold=True)
+        if sub:   # 列が狭いので副題は省く（初期解／初期集団の箱で区別が付く）
+            _run(p, "　" + sub, 10.5, color=WHITE)
+        _flow(s, x + 0.1, top + 0.6, cw - 0.72, steps, bh=0.42, gap=0.2,
+              loop_from=lt, loop_to=lf, loop_label=loop, fs=11, label_w=0.7)
+        _text(s, x, top + 3.65, cw, 0.5, why, 10.5, color=MUTE, ls=1.1)
     _boxtext(s, ML, 6.2, CW, 0.58,
              [("探索構造の差だけを比較するため，局所探索（N5 近傍）・目的関数 $F$・初期解 $S_p$ を両者で揃える",
                14, WHITE, True)],
