@@ -1068,6 +1068,11 @@ def s_problem():
 
 # ---------------------------------------------------------------- 8. 比較する探索構造
 
+SHARED_FILL = RGBColor(0xDD, 0xE6, 0xEF)   # 揃えた局所探索の箱（FILL より少し濃い）
+TINT = {ORANGE: RGBColor(0xFB, 0xE4, 0xCC),  # 解を作る操作の箱の地色（ベタ塗りより薄く）
+        GREEN: RGBColor(0xD7, 0xE9, 0xDC)}
+
+
 def _flow(slide, x, y, w, steps, bh=0.52, gap=0.3, loop_label=None, loop_from=None, loop_to=None,
           fs=12.5, label_w=1.3):
     """縦に並ぶ処理ボックスを矢印でつなぐ。steps: (文字列, 強調色 or None)。
@@ -1077,10 +1082,12 @@ def _flow(slide, x, y, w, steps, bh=0.52, gap=0.3, loop_label=None, loop_from=No
         yy = y + i * (bh + gap)
         ys.append(yy)
         if accent == "shared":
-            _boxtext(slide, x, yy, w, bh, [(t, fs, INK, False)], fill=FILL, line=CARDLINE,
+            _boxtext(slide, x, yy, w, bh, [(t, fs, INK, False)], fill=SHARED_FILL, line=CARDLINE,
                      radius=0.12)
         elif accent is not None:
-            _boxtext(slide, x, yy, w, bh, [(t, fs, WHITE, True)], fill=accent, radius=0.12)
+            sp = _boxtext(slide, x, yy, w, bh, [(t, fs, accent, True)],
+                          fill=TINT.get(accent, FILL), line=accent, radius=0.12)
+            sp.line.width = Pt(1.6)
         else:
             _boxtext(slide, x, yy, w, bh, [(t, fs, INK, False)], fill=WHITE, line=CARDLINE,
                      radius=0.12)
@@ -1108,14 +1115,6 @@ def s_structures():
     # それぞれ手順を縦の流れ図で描く。色付きの箱＝解を作る操作（ここが 2 構造の差），薄い青＝揃えた局所探索
     fw = 4.4
     _w, fh = pic(s, "concept_h1.png", ML - 0.05, 1.95, w=fw)
-    ly = 1.95 + fh + 0.2
-    for i, (sw, txt) in enumerate([((ORANGE, GREEN), "解を作る操作（ここが 2 構造の差）"),
-                                   ((FILL, FILL), "両者で揃えた局所探索")]):
-        yy = ly + i * 0.34
-        for j, c in enumerate(sw):
-            _rrect(s, ML + 0.1 + j * 0.15, yy + 0.05, 0.14, 0.22, c,
-                   line=(CARDLINE if c == FILL else None), radius=0.04)
-        _text(s, ML + 0.5, yy, fw - 0.6, 0.32, txt, 11, color=MUTE, anchor=MSO_ANCHOR.MIDDLE)
     rx0 = ML + fw + 0.3
     gap = 0.3
     cw = (SW - ML - rx0 - gap) / 2
