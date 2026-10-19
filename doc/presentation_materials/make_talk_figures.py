@@ -130,6 +130,9 @@ def _plane(ax, fs=12.5, star_label='初期解 $S_p$', band_label='高安定領�
     ax.set_yticks([])
     ax.set_xlabel('min　$S_p$ からの変更量（安定性）')
     ax.set_ylabel('min　総所要時間 $MS$（生産効率）')
+    # 横軸は目盛「0」の分だけラベルが軸から離れるので，目盛とラベルの余白を詰めて縦軸と揃える
+    ax.tick_params(axis='x', length=2.5, pad=1.5)
+    ax.xaxis.labelpad = 1.5
     despine(ax)
 
 
