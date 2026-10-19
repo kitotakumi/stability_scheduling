@@ -1101,19 +1101,22 @@ def s_structures():
     gap = 0.4
     cw = (CW - gap) / 2
     top, ch = 1.85, 4.3
+    # ILS は実装どおり，初期解にまず局所探索をかけてから 摂動→局所探索→受理判定 を反復する
+    # （ils_scheduling.py の run() は反復に入る前に local_search(init_orders) を呼ぶ）
     cards = [
         ("単点探索（ILS：反復局所探索）", "現在解は常に 1 つ", ORANGE,
-         [("初期解：$S_p$", None), ("摂動：数手の insert 移動", ORANGE),
+         [("初期解：$S_p$", None), ("局所探索：N5 近傍", "shared"),
+          ("摂動：数手の insert 移動", ORANGE),
           ("局所探索：N5 近傍", "shared"), ("受理判定：$F$ が改善すれば更新", None)],
-         1, 3, "反復",
+         2, 4, "反復", 0.2,
          "局所探索と摂動が別の段で，演算子を摂動に組み込める"),
         ("多点探索（Memetic：GA＋局所探索）", "複数の解を保持", GREEN,
          [("初期集団：$S_p$ ＋ 無作為に生成した個体", None), ("選択・交叉：2 親の染色体を組み替え", GREEN),
           ("突然変異", None), ("局所探索：N5 近傍（各個体）", "shared")],
-         1, 3, "世代交代",
+         1, 3, "世代交代", 0.3,
          "先行研究で標準的な，GA に局所探索を組み込んだ構成"),
     ]
-    for k, (head, sub, col, steps, lf, lt, loop, why) in enumerate(cards):
+    for k, (head, sub, col, steps, lf, lt, loop, fgap, why) in enumerate(cards):
         x = ML + k * (cw + gap)
         _rrect(s, x, top, cw, ch, WHITE, line=CARDLINE, radius=0.04)
         _rect(s, x, top, cw, 0.55, col)
@@ -1126,7 +1129,8 @@ def s_structures():
         _run(p, "選定理由：", 12, color=col, bold=True)
         _add_runs(p, why, 12, color=INK)
         fw = 3.9
-        _flow(s, x + 0.35, top + 1.18, fw, steps, loop_from=lt, loop_to=lf, loop_label=loop)
+        _flow(s, x + 0.35, top + 1.12, fw, steps, bh=0.44, gap=fgap, loop_from=lt, loop_to=lf,
+              loop_label=loop)
     _boxtext(s, ML, top + ch + 0.15, CW, 0.62,
              [("揃えた条件：局所探索（N5 近傍）・目的関数 $F$・初期解に $S_p$ を含めること　→　局所探索の有無による差を除いて比較",
                13.5, WHITE, True)],
@@ -1136,8 +1140,8 @@ def s_structures():
 # ---------------------------------------------------------------- 9. 安定性誘導演算子
 
 def s_operators():
-    s = slide_frame("安定性誘導演算子：PR と PR-$k$",
-                    "path relinking（PR）の誘導解を $S_p$ に固定し，現在解から $S_p$ へ swap 移動でたどる",
+    s = slide_frame("提案：安定性誘導演算子 — $S_p$ を誘導解とする path relinking",
+                    "提案は PR の誘導解を $S_p$ に固定すること．解を $S_p$ に近づける操作になり，両構造に同じ形で組み込める",
                     "2. 問題設定と実験計画")
     # 左右の列の上端・下端を揃える（左：定義と組み込み方，右：例）
     top, bot = 1.85, 6.75
@@ -1183,25 +1187,31 @@ def s_operators():
           "赤枠：$S_p$ と順位が異なる作業\n"
           "1 回の swap で 1 作業を $S_p$ の順位に合わせ，$D$ が小さくなる", 12, color=MUTE, ls=1.1,
           anchor=MSO_ANCHOR.MIDDLE)
-    # ---- 左：PR と PR-k（通常の PR との違いを示してから操作を述べる），組み込み方
+    # ---- 左：提案の位置づけ（通常の PR と何が違うか）→ 2 つの演算子 → 組み込み方。
+    # 「PR」という既知の名前が先に立つと既存手法の適用に見えるので，違い（誘導解＝S_p）を表で先に出す
     rx = ML
     rw = lx - 0.3 - ML
     gap = 0.18
-    cards = [("PR", "通常の PR はエリート解どうしを結ぶ．\n"
-                    "本研究では**誘導解を $S_p$ に固定**し，\n"
-                    "現在解と $S_p$ を結ぶ経路をたどり，\n"
-                    "その中間解から $F$ の小さい解を選ぶ", 1.62),
-             ("PR-$k$", "$k$ 回の swap で打ち切り，\n"
-                        "到達解を返す．$k$ は 1〜$d$ で変える\n"
-                        "（$d$：$S_p$ と順位が異なる作業数）", 1.3)]
-    cy = top
-    for head, body, h in cards:
-        _rrect(s, rx, cy, rw, h, WHITE, line=CARDLINE, radius=0.05)
-        _boxtext(s, rx + 0.2, cy + 0.2, 1.05, 0.42, [(head, 14, WHITE, True)], fill=BROWN,
-                 radius=0.3)
-        _text(s, rx + 1.45, cy + 0.08, rw - 1.6, h - 0.16, body, 15, color=INK, ls=1.12,
+    h1 = 3.4
+    _rrect(s, rx, top, rw, h1, WHITE, line=CARDLINE, radius=0.05)
+    _boxtext(s, rx + rw - 1.15, top - 0.19, 0.95, 0.38, [("提案", 12.5, WHITE, True)],
+             fill=BLUESOFT, radius=0.4)
+    _text(s, rx + 0.22, top + 0.12, rw - 1.5, 0.42, "通常の path relinking との違い", 15,
+          color=BLUE, bold=True, anchor=MSO_ANCHOR.MIDDLE)
+    render_table(s, [["", "通常の PR", "本研究（安定性誘導演算子）"],
+                     ["誘導解", "探索中の別の良い解", "外乱前のスケジュール $S_p$ に**固定**"],
+                     ["ねらい", "良い解の間を探索", "$S_p$ に近づけて**変更量の小さい解**を得る"]],
+                 rx + 0.22, top + 0.62, rw - 0.44, col_w=[0.5, 1.25, 2.25], size=11.5, row_h=0.46)
+    oy = top + 0.62 + 0.46 * 3 + 0.2
+    for head, body, oh in [("PR", "$S_p$ に到達するまで swap をたどり，経路上で $F$ が最小の解を返す", 0.5),
+                           ("PR-$k$", "$k$ 回の swap で打ち切り，到達解を返す（$k$ は 1〜$d$．"
+                                      "$d$：$S_p$ と順位が異なる作業数）", 0.64)]:
+        _boxtext(s, rx + 0.22, oy + (oh - 0.4) / 2, 0.95, 0.4, [(head, 13.5, WHITE, True)],
+                 fill=BROWN, radius=0.3)
+        _text(s, rx + 1.32, oy, rw - 1.55, oh, body, 13.5, color=INK, ls=1.08,
               anchor=MSO_ANCHOR.MIDDLE, emph=BLUE)
-        cy += h + gap
+        oy += oh
+    cy = top + h1 + gap
     # 組み込み方：残りの高さに中身を上下中央で置く
     bh2 = bot - cy
     _rrect(s, rx, cy, rw, bh2, FILL, line=CARDLINE, radius=0.05)
