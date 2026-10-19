@@ -200,6 +200,50 @@ def fig_concept_h(stage):
     save(fig, out)
 
 
+def fig_concept_op():
+    """演算子のスライド用：多点探索の個体 1 つを S_p へ引き戻す経路に，PR と PR-k が返す解を
+    注記する。背景の単点・多点の解集合は仮説 2 の図（concept_h2）と同じ配置を薄く残す。"""
+    fig, ax = plt.subplots(figsize=(6.0, 3.95))
+    _plane(ax, fs=11.5)
+    ax.xaxis.label.set_size(12)
+    ax.yaxis.label.set_size(12)
+    _mem(ax, 0.22)
+    _ils(ax, 0.25)
+    pr_x = np.array([0.62, 0.50, 0.39, 0.29, 0.20, 0.115])
+    pr_y = _front_curve(pr_x) + np.array([0.210, 0.115, 0.150, 0.130, 0.165, 0.032])
+    i0 = int(np.argmin(np.hypot(MX - pr_x[0], MY - pr_y[0])))
+    pr_x[0], pr_y[0] = MX[i0], MY[i0]
+    ax.scatter(pr_x[1:], pr_y[1:], s=52, marker=M_MPR, color=C_MPR, zorder=5)
+    ax.scatter([pr_x[0]], [pr_y[0]], s=60, marker=M_MEM, color=C_MEM, edgecolor='black',
+               lw=1.0, zorder=5)
+    _arrow_chain(ax, pr_x, pr_y, C_MPR, lw=1.3)
+    # 経路の終点は S_p（★）。最後の 1 手は薄い破線の矢印で示す
+    ax.annotate('', xy=(0.0, 0.95), xytext=(pr_x[-1], pr_y[-1]),
+                arrowprops=dict(arrowstyle='-|>', color=C_MPR, lw=1.1, ls='--', alpha=0.55,
+                                mutation_scale=9, shrinkA=6, shrinkB=10), zorder=4)
+    ax.text(pr_x[0] + 0.03, pr_y[0] + 0.05, '現在解', fontsize=11.5, color=C_MEM,
+            fontweight='bold')
+    # PR：経路上で F が最小の解（帯の中の最後の点）に輪を付ける
+    ax.scatter([pr_x[-1]], [pr_y[-1]], s=190, facecolor='none', edgecolor=C_MPR, lw=1.8,
+               zorder=6)
+    ax.annotate('PR が返す解\n（経路上で $F$ が最小）', xy=(pr_x[-1], pr_y[-1]),
+                xytext=(0.24, 0.88), fontsize=11, color=C_MPR, fontweight='bold', va='center',
+                linespacing=1.2,
+                arrowprops=dict(arrowstyle='-|>', color=C_MPR, lw=1.0, mutation_scale=10,
+                                shrinkA=3, shrinkB=9))
+    # PR-k：k 回の swap で打ち切った解（例は k = 2）
+    ax.annotate('PR-$k$ が返す解\n（$k$ 回の swap で打ち切り）', xy=(pr_x[2], pr_y[2]),
+                xytext=(0.52, 0.74), fontsize=11, color=C_MPR, fontweight='bold', va='center',
+                linespacing=1.2,
+                arrowprops=dict(arrowstyle='-|>', color=C_MPR, lw=1.0, mutation_scale=10,
+                                shrinkA=3, shrinkB=7))
+    ax.text(0.45, 0.995, '誘導解＝$S_p$（★）へ swap でたどる', fontsize=12, color=C_MPR,
+            ha='left', va='bottom', fontweight='bold')
+    fig.tight_layout(pad=0.35)
+    mark_schematic(fig)
+    save(fig, 'concept_op.png')
+
+
 def fig_metrics():
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(12.0, 4.25),
                                  gridspec_kw=dict(width_ratios=[1.12, 1.0]))
@@ -428,6 +472,7 @@ if __name__ == '__main__':
     fig_concept_0()
     fig_concept_h(1)
     fig_concept_h(2)
+    fig_concept_op()
     fig_metrics()
     if '--no-data' not in sys.argv:
         M, S = load()

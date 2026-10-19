@@ -1144,91 +1144,78 @@ def s_structures():
 # ---------------------------------------------------------------- 9. 安定性誘導演算子
 
 def s_operators():
-    s = slide_frame("提案：安定性誘導演算子 — $S_p$ を誘導解とする path relinking",
-                    "提案は PR の誘導解を $S_p$ に固定すること．解を $S_p$ に近づける操作になり，両構造に同じ形で組み込める",
+    s = slide_frame("提案：安定性誘導演算子（PR と PR-$k$）",
+                    "PR の誘導解を初期スケジュール $S_p$ に固定し，現在解から $S_p$ へ swap でたどる経路上の解を返す操作にする",
                     "2. 問題設定と実験計画")
-    # 左右の列の上端・下端を揃える（左：定義と組み込み方，右：例）
-    top, bot = 1.85, 6.75
-    lw_ = 5.95
-    lx = SW - ML - lw_
-    # ---- 右：ある機械の処理順序を S_p に近づける経路
-    _rrect(s, lx, top, lw_, bot - top, RGBColor(0xF7, 0xFA, 0xFC), line=CARDLINE, radius=0.04)
-    _text(s, lx + 0.25, top + 0.1, lw_ - 0.5, 0.4, "例：ある機械の処理順序を $S_p$ に近づける", 14,
-          color=BLUE, bold=True)
+    top, bot = 1.85, 6.85
+    # ---- 左：(D, MS) 平面での動き。PR・PR-k が返す解は図の中に注記する
+    fw = 6.05
+    _w, fh = pic(s, "concept_op.png", ML - 0.05, top, w=fw)
+    # 左下：通常の PR との違い（提案はここ）
+    y0 = top + fh + 0.1
+    for i, (head, col, body) in enumerate([
+            ("通常の PR", MUTE, "探索中に得た良い解どうしを結び，その間を探索する"),
+            ("本研究", BLUE, "誘導解を $S_p$ に**固定** → 解を $S_p$ に近づける操作になる")]):
+        yy = y0 + i * 0.42
+        _boxtext(s, ML, yy + 0.04, 1.05, 0.34, [(head, 12, WHITE, True)], fill=col, radius=0.3)
+        _text(s, ML + 1.2, yy, fw - 1.3, 0.42, body, 13, color=INK if i else MUTE,
+              anchor=MSO_ANCHOR.MIDDLE, emph=BLUE)
+    # ---- 右：ある機械の処理順序を S_p に近づける例（swap 1 回で D が減る）
+    lx = ML + fw + 0.3
+    lw_ = SW - ML - lx
+    ch = 4.15
+    _rrect(s, lx, top, lw_, ch, RGBColor(0xF7, 0xFA, 0xFC), line=CARDLINE, radius=0.04)
+    _text(s, lx + 0.25, top + 0.08, lw_ - 0.5, 0.36, "例：ある機械の処理順序を $S_p$ に近づける", 14,
+          color=BLUE, bold=True, anchor=MSO_ANCHOR.MIDDLE)
     jc = {"J1": RGBColor(0x3E, 0x61, 0x8C), "J2": RGBColor(0xD9, 0x8E, 0x45),
           "J3": RGBColor(0x6F, 0x9E, 0x7C), "J4": RGBColor(0x8A, 0x86, 0xA8)}
     SP = ["J1", "J2", "J3", "J4"]
-    bw, bh, bg = 0.72, 0.5, 0.09
-    bx0 = lx + 1.55
+    bw, bh, bg = 0.68, 0.46, 0.08
+    bx0 = lx + 1.5
 
     def seq_row(yy, lab, seq, dlab, lab_color=INK):
-        _text(s, lx + 0.25, yy, 1.3, bh, lab, 13.5, color=lab_color, bold=True,
+        _text(s, lx + 0.25, yy, 1.25, bh, lab, 13, color=lab_color, bold=True,
               anchor=MSO_ANCHOR.MIDDLE)
         for c, j in enumerate(seq):
             bx = bx0 + c * (bw + bg)
             diff = j != SP[c]
-            sp = _boxtext(s, bx, yy, bw, bh, [(j, 13.5, WHITE, True)], fill=jc[j], radius=0.1,
+            sp = _boxtext(s, bx, yy, bw, bh, [(j, 13, WHITE, True)], fill=jc[j], radius=0.1,
                           line=RED if diff else None)
             if diff:
-                sp.line.width = Pt(2.6)
-        _text(s, bx0 + 4 * (bw + bg) + 0.08, yy, 0.9, bh, dlab, 13.5, color=INK,
+                sp.line.width = Pt(2.4)
+        _text(s, bx0 + 4 * (bw + bg) + 0.06, yy, 0.9, bh, dlab, 13, color=INK,
               anchor=MSO_ANCHOR.MIDDLE)
 
     # 目標（誘導解 S_p）を最初に示し，現在解と並べて差異を見せる
-    _rrect(s, lx + 0.15, top + 0.6, lw_ - 0.3, 0.7, RGBColor(0xCF, 0xDC, 0xEA), radius=0.1)
-    seq_row(top + 0.7, "$S_p$（誘導解）", SP, "$D$ = 0", lab_color=BLUE)
+    _rrect(s, lx + 0.15, top + 0.5, lw_ - 0.3, 0.6, RGBColor(0xCF, 0xDC, 0xEA), radius=0.1)
+    seq_row(top + 0.57, "$S_p$（誘導解）", SP, "$D$ = 0", lab_color=BLUE)
     path = [("現在解", ["J1", "J4", "J2", "J3"], "$D$ = 4", None),
             ("1 回目", ["J1", "J3", "J2", "J4"], "$D$ = 2", "swap：J4 と J3 を入れ替え"),
             ("2 回目", ["J1", "J2", "J3", "J4"], "$D$ = 0", "swap：J3 と J2 を入れ替え（$S_p$ に到達）")]
-    y0, gy = top + 1.57, 0.46
+    y0r, gy = top + 1.3, 0.38
     for r, (lab, seq, dlab, note) in enumerate(path):
-        yy = y0 + r * (bh + gy)
+        yy = y0r + r * (bh + gy)
         if note:
-            _text(s, bx0 - 0.05, yy - gy, lw_ - 1.65, gy, "↓ " + note, 11.5, color=RED,
+            _text(s, bx0 - 0.05, yy - gy, lw_ - 1.6, gy, "↓ " + note, 11, color=RED,
                   anchor=MSO_ANCHOR.MIDDLE)
         seq_row(yy, lab, seq, dlab)
-    _text(s, lx + 0.25, bot - 0.78, lw_ - 0.5, 0.7,
+    _text(s, lx + 0.25, top + ch - 0.7, lw_ - 0.5, 0.62,
           "赤枠：$S_p$ と順位が異なる作業（その数が $d$）\n"
-          "1 回の swap で 1 作業を $S_p$ の順位に合わせ，$D$ が小さくなる", 12, color=MUTE, ls=1.1,
+          "1 回の swap で 1 作業を $S_p$ の順位に合わせ，$D$ が小さくなる", 11.5, color=MUTE, ls=1.1,
           anchor=MSO_ANCHOR.MIDDLE)
-    # ---- 左：提案の位置づけ（通常の PR と何が違うか）→ 2 つの演算子 → 組み込み方。
-    # 「PR」という既知の名前が先に立つと既存手法の適用に見えるので，違い（誘導解＝S_p）を表で先に出す
-    rx = ML
-    rw = lx - 0.3 - ML
-    gap = 0.18
-    # 表は密度が上がりすぎるので，札＋1 文の 4 行にする：通常の PR／本研究（違い）／PR／PR-k
-    h1 = 3.25
-    _rrect(s, rx, top, rw, h1, WHITE, line=CARDLINE, radius=0.05)
-    _boxtext(s, rx + rw - 1.15, top - 0.19, 0.95, 0.38, [("提案", 12.5, WHITE, True)],
-             fill=BLUESOFT, radius=0.4)
-    rows = [("通常の PR", MUTE, "探索中に得た良い解どうしを結び，その間を探索する", 13.5, MUTE, 0.62),
-            ("本研究", BLUE, "誘導解を初期スケジュール $S_p$ に**固定**し，解を $S_p$ に近づける操作にする",
-             14.5, INK, 0.82),
-            ("PR", BROWN, "$S_p$ に到達するまで swap をたどり，経路上で $F$ が最小の解を返す", 13.5, INK, 0.62),
-            ("PR-$k$", BROWN, "$k$ 回の swap で打ち切り，到達解を返す（$k$ は 1〜$d$ で変える）", 13.5, INK, 0.62)]
-    oy = top + 0.3
-    for i, (head, col, body, fs, tc, oh) in enumerate(rows):
-        if i == 2:
-            _hline(s, rx + 0.22, oy + 0.02, rw - 0.44, color=HAIR, weight=1.0)
-            oy += 0.14
-        _boxtext(s, rx + 0.22, oy + (oh - 0.38) / 2, 1.05, 0.38, [(head, 12.5, WHITE, True)],
-                 fill=col, radius=0.3)
-        _text(s, rx + 1.42, oy, rw - 1.65, oh, body, fs, color=tc, ls=1.08,
-              anchor=MSO_ANCHOR.MIDDLE, emph=BLUE)
-        oy += oh
-    cy = top + h1 + gap
-    # 組み込み方：残りの高さに中身を上下中央で置く
-    bh2 = bot - cy
-    _rrect(s, rx, cy, rw, bh2, FILL, line=CARDLINE, radius=0.05)
-    tb, tf = add_textbox(s, rx + 0.25, cy + 0.06, rw - 0.5, bh2 - 0.12, anchor=MSO_ANCHOR.MIDDLE)
+    # ---- 右下：組み込み方
+    by_ = top + ch + 0.15
+    _rrect(s, lx, by_, lw_, bot - by_, FILL, line=CARDLINE, radius=0.05)
+    tb, tf = add_textbox(s, lx + 0.25, by_ + 0.04, lw_ - 0.5, bot - by_ - 0.08,
+                         anchor=MSO_ANCHOR.MIDDLE)
     p = tf.paragraphs[0]
-    _run(p, "組み込み方", 15, color=BLUE, bold=True)
-    for who, col, how in [("ILS", ORANGE, "停滞したときに，摂動として発動"),
-                          ("Memetic", GREEN, "各個体に確率的に，改善操作として発動")]:
+    _run(p, "組み込み方", 13, color=BLUE, bold=True)
+    for who, col, how in [("ILS", ORANGE, "停滞したときに摂動として発動"),
+                          ("Memetic", GREEN, "各個体に確率的に改善操作として発動")]:
         q = tf.add_paragraph()
-        q.space_before = Pt(8)
-        _run(q, who + "：", 15, color=col, bold=True)
-        _add_runs(q, how, 15, color=INK)
+        q.space_before = Pt(2)
+        _run(q, who + "：", 12.5, color=col, bold=True)
+        _run(q, how, 12.5, color=INK)
 
 
 # ---------------------------------------------------------------- 10. 実験計画
@@ -1270,15 +1257,7 @@ def s_design():
     frame(1, 3, 1, 1, H0, dash=True, lw=1.6)   # 仮説の外：ILS と ILS＋演算子
     frame(1, 3, 2, 2, H2)                       # 仮説 2：Memetic と Memetic＋演算子
     frame(1, 1, 1, 2, H1)                       # 仮説 1：ILS と Memetic
-    lx0 = cx[4] + 0.15
-    _boxtext(s, lx0, ry[1] + (trh - 0.3) / 2, 1.0, 0.3, [("仮説の外", 11, WHITE, True)],
-             fill=H0, radius=0.3)
-    _boxtext(s, lx0, ry[2] + (trh - 0.3) / 2, 1.0, 0.3, [("仮説 2", 11, WHITE, True)],
-             fill=H2, radius=0.3)
-    _boxtext(s, (cx[1] + cx[2]) / 2 - 0.5, ry[3] + 0.05, 1.0, 0.3, [("仮説 1", 11, WHITE, True)],
-             fill=H1, radius=0.3)
-    _text(s, cx[2] + 0.1, ry[3] + 0.06, cx[4] - cx[2] - 0.1, 0.3,
-          "参考：GA（局所探索なし）を加えて計 7 手法", 11.5, color=MUTE, anchor=MSO_ANCHOR.MIDDLE)
+    # 枠の色は下の札と同じにし，表の中には文字を足さない（GA は実験設定のスライドで触れる）
     # 仮説ごとに，比較する手法と支持とみなす条件を書き下す（札の色は表の枠と同じ）
     hyps = [("仮説 1", H1, "単点探索のほうが，多点探索より高安定 HV が大きい",
              "ILS が Memetic を全シナリオで有意に上回れば支持"),
@@ -1336,6 +1315,7 @@ def s_setup():
                     "3. 数値実験")
     rows = [
         ["項目", "設定"],
+        ["比較手法", "ILS・Memetic と，それぞれに PR-$k$／PR を組み込んだ 6 手法＋参考の GA（局所探索なし）"],
         ["問題・外乱", "mt10・la21・la36・la40・ta21 に単一作業の完了遅延（$Δ$ = 60〜148，対象作業の処理時間の約 0.9〜1.5 倍）"],
         ["シナリオ", "8 つ：la36S・la36M・la36L，ta21S・ta21L，mt10，la21，la40\n"
                     "la36 と ta21 は同一問題・同一 $S_p$ のまま外乱の規模だけを段階的に変え，小さい順に S・M・L"],
@@ -1348,8 +1328,8 @@ def s_setup():
                           "ILS 系：無改善 400 反復で初回，以降 10 反復ごとに発動．PR は経路上の最良 1 解を返す"],
         ["高安定領域の境界", "$θ$ = 50（$P_{50}$：全手法・全試行の非劣解の $D$ の中央値）"],
         ["試行", "各条件 10 試行（全乱数シード固定）"],
-        ["環境", "AMD Ryzen 5 7530U，Python 3.12（NumPy・DEAP・SciPy）"],
     ]
+    # 計算環境は予備（手法のパラメータ）にあるので，ここでは比較手法の行を入れる代わりに外す
     render_table(s, rows, ML, 1.78, CW, col_w=[2.3, 9.79], size=12.5, align=['l', 'l'], row_h=0.3)
     # 妥当性の確認（1 行ずつ）
     vy = 5.62
@@ -1364,7 +1344,7 @@ def s_setup():
 # ---------------------------------------------------------------- 11〜14. 結果
 
 def s_front():
-    s = slide_frame("結果 1　高安定領域の非劣解（代表 2 シナリオ）",
+    s = slide_frame("高安定 HV の比較：代表 2 シナリオの非劣解",
                     "ta21S では，演算子なしの Memetic は高安定領域に非劣解を持たない",
                     "3. 数値実験")
     w = 12.0
@@ -1377,7 +1357,7 @@ def s_front():
 
 
 def s_highstab():
-    s = slide_frame("結果 2　高安定 HV（全 8 シナリオ）",
+    s = slide_frame("高安定 HV の比較：全 8 シナリオ（仮説の判定）",
                     "仮説 1・仮説 2 とも，全 8 シナリオで支持された",
                     "3. 数値実験")
     w = 12.0
@@ -1390,7 +1370,7 @@ def s_highstab():
 
 
 def s_band():
-    s = slide_frame("安定性誘導演算子の効果が現れる条件",
+    s = slide_frame("高安定 HV の比較：演算子の効果が現れる条件",
                     "効果の非対称は，組み込む前に「到達上限の帯」に入っているかで説明できる",
                     "3. 数値実験")
     w = 12.0
@@ -1406,7 +1386,7 @@ def s_band():
 
 
 def s_anytime():
-    s = slide_frame("結果 3　全域 HV と AUC（代表 2 シナリオ）",
+    s = slide_frame("全域 HV と AUC：代表 2 シナリオの推移",
                     "立ち上がりは ILS が速く，到達した全域 HV は演算子を組み込んだ Memetic が同等以上",
                     "3. 数値実験")
     w = 12.0
@@ -1418,7 +1398,7 @@ def s_anytime():
 
 
 def s_union_auc():
-    s = slide_frame("結果 4　全域 HV と AUC（全 8 シナリオ）",
+    s = slide_frame("全域 HV と AUC：全 8 シナリオ",
                     "最良の手法は評価指標によって異なる：全域 HV は Memetic＋演算子，AUC は ILS",
                     "3. 数値実験")
     tw = 5.75
