@@ -1104,38 +1104,45 @@ def s_structures():
     s = slide_frame("比較する探索構造：単点探索と多点探索",
                     "局所探索などの条件を揃え，解の作り方（少しずつ変更するか，交叉で組み替えるか）を比較する",
                     "2. 問題設定と実験計画")
-    # 左：仮説 1 の図。右：2 つの探索構造を横に並べ，それぞれ手順を縦の流れ図で描く
-    fw = 4.9
-    _w, fh = pic(s, "concept_h1.png", ML - 0.05, 1.92, w=fw)
+    # 左：仮説 1 の図（仮説のスライドにも出るので小さめ）。右：2 つの探索構造を枠で囲んで横に並べ，
+    # それぞれ手順を縦の流れ図で描く。色付きの箱＝解を作る操作（ここが 2 構造の差），薄い青＝揃えた局所探索
+    fw = 4.4
+    _w, fh = pic(s, "concept_h1.png", ML - 0.05, 1.95, w=fw)
+    ly = 1.95 + fh + 0.2
+    for i, (sw, txt) in enumerate([((ORANGE, GREEN), "解を作る操作（ここが 2 構造の差）"),
+                                   ((FILL, FILL), "両者で揃えた局所探索")]):
+        yy = ly + i * 0.34
+        for j, c in enumerate(sw):
+            _rrect(s, ML + 0.1 + j * 0.15, yy + 0.05, 0.14, 0.22, c,
+                   line=(CARDLINE if c == FILL else None), radius=0.04)
+        _text(s, ML + 0.5, yy, fw - 0.6, 0.32, txt, 11, color=MUTE, anchor=MSO_ANCHOR.MIDDLE)
     rx0 = ML + fw + 0.3
     gap = 0.3
     cw = (SW - ML - rx0 - gap) / 2
-    top = 1.9
+    top, fh_ = 1.9, 4.25
     cols = [
-        (ORANGE, "単点探索（ILS）", "",
+        (ORANGE, "単点探索（ILS）",
          [("初期解：$S_p$", None), ("局所探索：N5 近傍", "shared"),
           ("摂動：数手の insert 移動", ORANGE),
           ("局所探索：N5 近傍", "shared"), ("受理判定：$F$ が改善すれば更新", None)],
          2, 4, "反復",
          "選定理由：局所探索と摂動が別の段にあり，演算子を摂動に組み込める"),
-        (GREEN, "多点探索（Memetic）", "",
+        (GREEN, "多点探索（Memetic）",
          [("初期集団：$S_p$＋無作為な個体", None), ("選択・交叉：2 親を組み替え", GREEN),
           ("突然変異", None), ("局所探索：N5 近傍（各個体）", "shared")],
          1, 3, "世代交代",
          "選定理由：先行研究で標準的な，GA に局所探索を組み込んだ構成"),
     ]
-    for k, (col, head, sub, steps, lf, lt, loop, why) in enumerate(cols):
+    for k, (col, head, steps, lf, lt, loop, why) in enumerate(cols):
         x = rx0 + k * (cw + gap)
+        _rrect(s, x, top, cw, fh_, WHITE, line=CARDLINE, radius=0.05)
         _rect(s, x, top, cw, 0.42, col)
         tb, tf = add_textbox(s, x + 0.15, top, cw - 0.3, 0.42, anchor=MSO_ANCHOR.MIDDLE)
-        p = tf.paragraphs[0]
-        _run(p, head, 13.5, color=WHITE, bold=True)
-        if sub:   # 列が狭いので副題は省く（初期解／初期集団の箱で区別が付く）
-            _run(p, "　" + sub, 10.5, color=WHITE)
-        _flow(s, x + 0.1, top + 0.6, cw - 0.72, steps, bh=0.42, gap=0.2,
-              loop_from=lt, loop_to=lf, loop_label=loop, fs=11, label_w=0.7)
-        _text(s, x, top + 3.65, cw, 0.5, why, 10.5, color=MUTE, ls=1.1)
-    _boxtext(s, ML, 6.2, CW, 0.58,
+        _run(tf.paragraphs[0], head, 13.5, color=WHITE, bold=True)
+        _flow(s, x + 0.15, top + 0.6, 2.35, steps, bh=0.42, gap=0.2,
+              loop_from=lt, loop_to=lf, loop_label=loop, fs=10.5, label_w=0.75)
+        _text(s, x + 0.2, top + 3.62, cw - 0.4, 0.55, why, 10.5, color=MUTE, ls=1.1)
+    _boxtext(s, ML, 6.3, CW, 0.55,
              [("探索構造の差だけを比較するため，局所探索（N5 近傍）・目的関数 $F$・初期解 $S_p$ を両者で揃える",
                14, WHITE, True)],
              fill=COVER, radius=0.12)
