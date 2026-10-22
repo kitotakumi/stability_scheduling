@@ -1465,22 +1465,16 @@ def s_band():
     s = slide_frame("高安定 HV の比較：演算子の効果が現れる条件",
                     "効果の非対称は，組み込む前に「到達上限の帯」に入っているかで説明できる",
                     "3. 数値実験")
-    # 8 パネルの再掲をやめ，シナリオを行にした「演算子なし → PR」の図で帯の内外と向上の有無を見せる
-    # （4 パネルの拡大図 highstab_zoom4.png も make_talk_figures.py に残してある）
     w = 12.0
-    _w, fh = pic(s, "highstab_dumbbell.png", ML + (CW - w) / 2, 1.68, w=w)
-    cy = 1.68 + fh
-    _text(s, ML, cy + 0.02, CW, 0.28,
-          "値は各シナリオの最良値を 1 とした中央値．矢印は演算子なしからの有意な変化（$p$ < 0.05）だけに引く",
-          12.5, color=MUTE)
-    _bul(s, ML, cy + 0.34, CW, [
+    pic(s, "highstab_band.png", ML + (CW - w) / 2, 1.68, w=w)
+    _bul(s, ML, 5.6, CW, [
         "どのシナリオでも 3〜5 手法が最良値の 2% 以内に集まる → この帯を到達上限とみなす",
         "**Memetic**：演算子なしでは全シナリオで帯の外 → 組み込むと 7 つで帯の中",
         "**ILS**：演算子なしで 6 つが帯の中 → 有意に向上したのは帯の外の 2 つ（la36L・ta21L）だけ",
-    ], size=15, gap=2)
+    ], size=17, gap=3)
     _text(s, ML, 6.6, CW, 0.36,
           "→ 演算子の効果は，探索構造の違いそのものではなく，**組み込む前に上限までの差が残っているかで決まる**",
-          16.5, color=INK, emph=BLUE, anchor=MSO_ANCHOR.MIDDLE)
+          17, color=INK, emph=BLUE, anchor=MSO_ANCHOR.MIDDLE)
 
 
 def s_anytime():

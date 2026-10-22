@@ -12,13 +12,13 @@
   front_ta21.png     ta21S / ta21L の実 Pareto フロント（全域 HV が中央値の試行）
   highstab_all8.png  全 8 シナリオの高安定 HV（探索構造 × 演算子）
   highstab_band.png  同じ図に「最良値の 2% 以内」の帯を重ねたもの
-  highstab_zoom4.png la36S/L・ta21S/L の高安定 HV を最良値の付近で拡大した帯の図
-                     （データは公開 CSV per_trial_metrics.csv．pkl がなくても作れる）
   anytime.png        ta21S / la36L の全域 HV の anytime 曲線
 
 データと集計ヘルパーは APIEMS v2 の make_figures_v2.py（main_v1 の _summary_data.pkl・raw JSON）を
 そのまま使う。符号化も v2 と揃える（ILS: 橙・○、Memetic: 緑・□、演算子の経路: 茶・◇）。
 usage: python make_talk_figures.py [--no-data]   # --no-data は模式図だけ作る
+pkl がない環境では fig_highstab(None, load_csv(), band=...) で高安定 HV の図だけ
+公開 CSV（per_trial_metrics.csv）から同じ統計で作れる。
 """
 import os
 import sys
@@ -460,141 +460,17 @@ CSV_METHOD = {'ILS-baseline': 'ils_baseline', 'ILS+repair': 'ils_repair', 'ILS+P
 
 
 def load_csv():
-    """公開データ（trial 別の 3 指標）を {シナリオ略号: {手法: 高安定 HV の配列}} に読む。
-    pkl がない環境でも帯の図（fig_highstab_zoom）を作れるようにするため。"""
+    """公開データ（trial 別の 3 指標）を fig_highstab が読む形 {prob: {'highstab_hv_pt': {手法: 値}}}
+    に読む。pkl がない環境（Linux での確認用ビルド）で帯の図を同じ統計で再生成するための代替。"""
     import csv
-    out = {}
+    S = {}
     with open(CSV, encoding='utf-8') as f:
         for row in csv.DictReader(f):
-            out.setdefault(row['scenario'], {}).setdefault(
+            S.setdefault(row['instance'], {}).setdefault('highstab_hv_pt', {}).setdefault(
                 CSV_METHOD[row['method']], []).append(float(row['highstab_hv']))
     style()
     plt.rcParams.update(DATA_RC)
-    return {sc: {m: np.asarray(v) for m, v in d.items()} for sc, d in out.items()}
-
-
-ZOOM_LO, ZOOM_HI = 0.84, 1.04   # 帯の図の縦軸（最良値＝1 の付近だけを見せる）
-
-
-def fig_highstab_zoom(data, tags=('la36S', 'la36L', 'ta21S', 'ta21L')):
-    """帯の図。同じインスタンスで外乱の規模だけが異なる 2 組を，縦軸を最良値の付近に拡大して描く。
-    2% の帯は全範囲では線にしか見えないので，拡大して帯の内外を読めるようにする。範囲外の点
-    （演算子なしの Memetic）は下端の矢印と値で示し，ILS の演算子なしの点に帯の中／外を注記する。"""
-    x = np.arange(3)
-    fig, axes = plt.subplots(1, len(tags), figsize=(12.0, 3.6), sharey=True)
-    for ax, tag in zip(axes, tags):
-        per = data[tag]
-        best = max(np.median(per[m]) for m in ALL7 if m in per)
-        ax.axhspan(0.98, 1.0, color=BAND2, lw=0, zorder=0)
-        ax.axhline(0.98, color='#5B7AA3', lw=1.0, ls=':', zorder=1)
-        for host, keys, color, mk, above in HOSTS:
-            vals = [per[m] / best for m in keys]
-            med = np.array([np.median(v) for v in vals])
-            lo = np.array([np.percentile(v, 25) for v in vals])
-            hi = np.array([np.percentile(v, 75) for v in vals])
-            ax.errorbar(x, med, yerr=[med - lo, hi - med], marker=mk, ms=9, color=color,
-                        mec='white', mew=0.8, lw=2.4, capsize=3, elinewidth=1.0, label=host,
-                        zorder=3)
-            for j in range(3):
-                if med[j] < ZOOM_LO:          # 範囲外：下端に矢印と値
-                    ax.annotate('', xy=(x[j], ZOOM_LO + 0.003), xytext=(x[j], ZOOM_LO + 0.04),
-                                arrowprops=dict(arrowstyle='-|>', color=color, lw=1.8,
-                                                mutation_scale=16), zorder=4)
-                    ax.text(x[j] + 0.1, ZOOM_LO + 0.022, f'{med[j]:.2f}', color=color,
-                            fontsize=15, ha='left', va='center')
-            for j in (1, 2):
-                p = mannwhitneyu(vals[j], vals[0], alternative='two-sided').pvalue
-                if np.isfinite(p) and p < 0.05:
-                    ax.annotate(_p_stars(p), (x[j], med[j]), xytext=(0, 3 if above else -6),
-                                textcoords='offset points', ha='center',
-                                va='bottom' if above else 'top', fontsize=16, color=color)
-            if above:   # ILS：演算子なしの点が帯の中か外か
-                ax.text(x[0] + 0.1, med[0] - 0.012, '帯の中' if med[0] >= 0.98 else '帯の外',
-                        color=color, fontsize=15, ha='left', va='top', fontweight='bold')
-        ax.set_title(tag, fontsize=18, pad=3)
-        ax.set_xticks(x)
-        ax.set_xticklabels(['なし', 'PR-$k$', 'PR'], fontsize=16)
-        ax.set_xlim(-0.4, 2.4)
-        ax.set_ylim(ZOOM_LO, ZOOM_HI)
-        ax.set_yticks([0.85, 0.90, 0.95, 1.0])
-        ax.set_yticklabels(['0.85', '0.9', '0.95', '1'])
-        ax.grid(axis='y', alpha=0.25)
-        despine(ax)
-    h, l = axes[0].get_legend_handles_labels()
-    h.append(plt.matplotlib.patches.Patch(color=BAND2))
-    l.append('最良値の 2% 以内')
-    fig.legend(h, l, loc='upper left', ncol=len(l), frameon=False, fontsize=16,
-               bbox_to_anchor=(0.04, 1.0), columnspacing=1.6)
-    # 「縦軸は拡大」「↓ は範囲外」の断りは凡例と当たるので図には入れず，スライドのキャプションに書く
-    fig.text(0.005, 0.44, '高安定 HV（最良値＝1）', rotation=90, ha='left', va='center',
-             fontsize=16, color=INK)
-    tight(fig, pad=0.4, w_pad=0.9, rect=(0.035, 0, 1, 0.875))
-    save(fig, 'highstab_zoom4.png')
-
-
-ORDER_TAGS = ['la36S', 'ta21S', 'la40', 'la21', 'la36M', 'mt10', 'la36L', 'ta21L']
-
-
-def fig_highstab_dumbbell(data):
-    """帯の図（主張の形に沿った版）。シナリオを行にし，演算子なし（白抜き）→ PR を組み込む（塗り）の
-    高安定 HV を最良値比で結ぶ。矢印は有意な変化（p < 0.05）だけに引く。ILS が帯の中の 6 シナリオと
-    外の 2 シナリオを分けて並べるので，「組み込む前に帯の外にあるときだけ向上する」が行の並びで読める。"""
-    rows, tags_in, tags_out = {}, [], []
-    for sc in ORDER_TAGS:
-        per = data[sc]
-        best = max(np.median(per[m]) for m in ALL7 if m in per)
-        r = {}
-        for k0, k1, name in [('ils_baseline', 'ils_pr', 'ils'), ('memetic_ls', 'memetic_pr', 'mem')]:
-            a, b = per[k0] / best, per[k1] / best
-            r[name] = (float(np.median(a)), float(np.median(b)),
-                       float(mannwhitneyu(b, a, alternative='two-sided').pvalue))
-        rows[sc] = r
-        (tags_in if r['ils'][0] >= 0.98 else tags_out).append(sc)
-    order = tags_in + tags_out
-    n = len(order)
-    fig, ax = plt.subplots(figsize=(12.0, 3.6))
-    ax.axvspan(0.98, 1.0, color=BAND2, lw=0, zorder=0)
-    for i, sc in enumerate(order):
-        yc = n - i
-        for name, color, mk, dy in [('ils', C_ILS, M_ILS, 0.22), ('mem', C_MEM, M_MEM, -0.22)]:
-            a, b, p = rows[sc][name]
-            y = yc + dy
-            if p < 0.05:
-                ax.annotate('', xy=(b, y), xytext=(a, y),
-                            arrowprops=dict(arrowstyle='-|>', color=color, lw=2.0,
-                                            mutation_scale=14, shrinkA=6, shrinkB=6), zorder=3)
-            ax.scatter([a], [y], s=62, marker=mk, facecolor='white', edgecolor=color, lw=1.8,
-                       zorder=4)
-            ax.scatter([b], [y], s=62, marker=mk, color=color, edgecolor='white', lw=0.8,
-                       zorder=5)
-    ysep = n - len(tags_in) + 0.5
-    ax.axhline(ysep, color='#8A949E', lw=1.0, ls='--', zorder=1)
-    ax.text(1.035, (n + 0.5 + ysep) / 2, f'ILS が帯の中（{len(tags_in)}）\n→ 組み込んでも変化なし',
-            color=C_ILS, fontsize=15, ha='left', va='center', fontweight='bold', linespacing=1.25)
-    ax.text(1.035, (ysep + 0.5) / 2, f'ILS が帯の外（{len(tags_out)}）\n→ 組み込むと向上',
-            color=C_ILS, fontsize=15, ha='left', va='center', fontweight='bold', linespacing=1.25)
-    ax.set_yticks([n - i for i in range(n)])
-    ax.set_yticklabels(order)
-    ax.set_ylim(0.4, n + 0.6)
-    ax.set_xlim(-0.03, 1.36)
-    ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
-    ax.set_xticklabels(['0', '0.25', '0.5', '0.75', '1'])
-    ax.spines['bottom'].set_bounds(-0.03, 1.02)
-    ax.set_xlabel('高安定 HV（各シナリオの最良値＝1）')
-    ax.grid(axis='x', alpha=0.25)
-    despine(ax)
-    from matplotlib.lines import Line2D
-    hs = [Line2D([], [], color=C_ILS, marker=M_ILS, ms=9, lw=2.0),
-          Line2D([], [], color=C_MEM, marker=M_MEM, ms=9, lw=2.0),
-          Line2D([], [], ls='', marker='o', ms=9, mfc='white', mec='#55606B', mew=1.8),
-          Line2D([], [], ls='', marker='o', ms=9, color='#55606B'),
-          plt.matplotlib.patches.Patch(color=BAND2)]
-    fig.legend(hs, ['単点探索（ILS）', '多点探索（Memetic）', '演算子なし', 'PR を組み込む',
-                    '最良値の 2% 以内'],
-               loc='upper left', ncol=5, frameon=False, fontsize=15.5,
-               bbox_to_anchor=(0.03, 1.0), columnspacing=1.5, handletextpad=0.5)
-    tight(fig, pad=0.4, rect=(0, 0, 1, 0.905))
-    save(fig, 'highstab_dumbbell.png')
+    return S
 
 
 def fig_anytime(M, S):
@@ -637,10 +513,6 @@ if __name__ == '__main__':
     fig_concept_h(2)
     fig_concept_op()
     fig_metrics()
-    if os.path.exists(CSV):
-        csv_data = load_csv()
-        fig_highstab_zoom(csv_data)
-        fig_highstab_dumbbell(csv_data)
     if '--no-data' not in sys.argv:
         M, S = load()
         fig_front(M, S)
