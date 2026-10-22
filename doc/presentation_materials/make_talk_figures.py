@@ -235,13 +235,25 @@ def fig_concept_op():
     BLUE = '#16385C'
     for (px, py), r in [((pr_x[-1], pr_y[-1]), 190), ((pr_x[2], pr_y[2]), 170)]:
         ax.scatter([px], [py], s=r, facecolor='none', edgecolor=BLUE, lw=1.6, zorder=6)
-    ann = dict(fontsize=10.5, color=BLUE, fontweight='bold', va='center', linespacing=1.2,
-               arrowprops=dict(arrowstyle='-|>', color='#55606B', lw=1.0, mutation_scale=10,
-                               shrinkA=3, shrinkB=9))
-    ax.annotate('PR が返す解\n（経路上で $F$ 最小）', xy=(pr_x[-1], pr_y[-1]),
-                xytext=(0.03, 0.50), **ann)
-    ax.annotate('PR-$k$ が返す解\n（$k$ 回の swap で打ち切り）', xy=(pr_x[2], pr_y[2]),
-                xytext=(0.03, 0.32), **ann)
+    # 演算子の名前はこの図が唯一の説明箇所なので，白抜きの札にして目立たせる
+    from matplotlib.offsetbox import TextArea, HPacker, VPacker, AnnotationBbox
+
+    def tagged(tag, rest, sub, xy, xytext):
+        t_tag = TextArea(tag, textprops=dict(fontsize=10.5, color='white', fontweight='bold',
+                                             bbox=dict(boxstyle='round,pad=0.28,rounding_size=0.7',
+                                                       fc=BLUE, ec='none')))
+        t_rest = TextArea(rest, textprops=dict(fontsize=10.5, color=BLUE, fontweight='bold'))
+        line1 = HPacker(children=[t_tag, t_rest], align='center', pad=0, sep=7)
+        t_sub = TextArea(sub, textprops=dict(fontsize=10, color=BLUE))
+        box = VPacker(children=[line1, t_sub], align='left', pad=0, sep=6)
+        ab = AnnotationBbox(box, xy, xybox=xytext, xycoords='data', boxcoords='data',
+                            box_alignment=(0, 0.5), frameon=False, pad=0, zorder=7,
+                            arrowprops=dict(arrowstyle='-|>', color='#55606B', lw=1.0,
+                                            mutation_scale=10, shrinkA=3, shrinkB=9))
+        ax.add_artist(ab)
+
+    tagged('PR', 'が返す解', '（経路上で $F$ 最小）', (pr_x[-1], pr_y[-1]), (0.03, 0.50))
+    tagged('PR-$k$', 'が返す解', '（$k$ 回の swap で打ち切り）', (pr_x[2], pr_y[2]), (0.03, 0.32))
     ax.text(0.45, 0.995, '誘導解＝$S_p$（★）へ swap でたどる', fontsize=12, color=C_MPR,
             ha='left', va='bottom', fontweight='bold')
     fig.tight_layout(pad=0.35)

@@ -580,6 +580,7 @@ def _oval(slide, cx, cy, d, fill, line=None):
 ORANGE = RGBColor(0xE0, 0x6C, 0x00)   # 単点探索（ILS）＝図の橙
 GREEN  = RGBColor(0x0F, 0x5C, 0x28)   # 多点探索（Memetic）＝図の緑
 BROWN  = RGBColor(0x2E, 0x1A, 0x0E)   # 安定性誘導演算子＝図の茶
+VIOLET = RGBColor(0x6A, 0x4C, 0x93)   # 仮説 2 の札と枠（青の仮説 1 と見分けるための色）
 RED    = RGBColor(0xB0, 0x3A, 0x2E)
 SAND   = RGBColor(0xF5, 0xEB, 0xD0)   # 高安定領域の帯
 SANDLN = RGBColor(0x7A, 0x5C, 0x12)
@@ -788,11 +789,6 @@ def s_intro():
     q.line_spacing = 1.1
     _add_runs(q, "外乱が起きたら，外乱前のスケジュール（**初期スケジュール $S_p$**）を修正する",
               14, color=WHITE, emph=WHITE)
-    q2 = tf.add_paragraph()
-    q2.space_before = Pt(8)
-    q2.line_spacing = 1.1
-    _add_runs(q2, "→ $S_p$ が存在するので，**$S_p$ からの変更量**を定義できる",
-              14, color=WHITE, emph=RGBColor(0xFF, 0xD9, 0x8A))
     # 矢印．採る側は青・太，採らない側は灰・細．動的 → 完全リアクティブは列間を下りる肘線
     e = 0.03
     _connector(s, x0 + w0 + e, c1, x1 - e, c1, color=BLUE, wt=2.4, kind=1)
@@ -1183,7 +1179,7 @@ def s_structures():
 # ---------------------------------------------------------------- 9. 安定性誘導演算子
 
 def s_operators():
-    s = slide_frame("提案：安定性誘導演算子（PR と PR-$k$）",
+    s = slide_frame("提案手法：安定性誘導演算子（PR と PR-$k$）",
                     "PR の誘導解を初期スケジュール $S_p$ に固定し，現在解から $S_p$ へ swap でたどる経路上の解を返す操作にする",
                     "2. 問題設定と実験計画")
     top, bot = 1.85, 6.85
@@ -1263,9 +1259,9 @@ def s_design():
                     "仮説 1 は ILS と Memetic，仮説 2 は Memetic と演算子を組み込んだ Memetic の高安定 HV を比較して判定する",
                     "2. 問題設定と実験計画")
     # 比較する手法：探索構造 × 安定性誘導演算子。どの比較がどの仮説かを，表の上の枠と
-    # 下の札の色で対応させる（仮説 1＝青・演算子なしの列，仮説 2＝茶・Memetic の行，
-    # 仮説の外＝灰の破線・ILS の行）。「主眼は性能競争でない」の一文は仮説のスライドへ移した
-    H1, H2, H0 = BLUE, BROWN, MUTE
+    # 下の札の色で対応させる（仮説 1＝青・演算子なしの列，仮説 2＝紫・Memetic の行，
+    # 仮説を置かない ILS の行＝灰の破線）。「主眼は性能競争でない」の一文は仮説のスライドへ移した
+    H1, H2, H0 = BLUE, VIOLET, MUTE
     ty, trh, tw = 1.95, 0.42, 8.7
     colw = [2.5, 2.3, 2.0, 1.9]
     render_table(s, [["探索構造", "安定性誘導演算子なし", "PR-$k$ を組み込む", "PR を組み込む"],
@@ -1314,9 +1310,8 @@ def s_design():
         _add_runs(p, rule, 15, color=INK)
         y += 1.0
         _rect(s, ML, y - 0.1, CW, 0.012, HAIR)
-    # 仮説を置かない比較。ILS＋演算子の 2 手法が表にある理由と，非対称の見方をここで宣言する
-    _boxtext(s, ML, y + 0.03, 1.2, 0.4, [("仮説の外", 13, WHITE, True)], fill=H0, radius=0.3)
-    _text(s, tx, y, txw, 0.46,
+    # 仮説を置かない比較（表の灰の破線）。札は付けず，一文だけ置く
+    _text(s, ML, y, CW, 0.46,
           "ILS＋PR-$k$ と ILS＋PR も同じ形で ILS と比較し，演算子の効果が探索構造で異なるかを見る", 15,
           color=INK, anchor=MSO_ANCHOR.MIDDLE)
     # 検定
@@ -1394,17 +1389,76 @@ def s_front():
     ], size=18, gap=7)
 
 
+def _highstab_guide_px(path):
+    """highstab_all8.png の最初のパネルから，「なし」と「PR-k」の x，値 1 と値 0 の y を画素で拾う。
+    読み方のガイドを図の再生成後も合わせるための自己較正。見つからなければ None。"""
+    try:
+        import numpy as np
+        im = np.asarray(Image.open(path).convert("RGB")).astype(int)
+        H, W, _ = im.shape
+
+        def near(c, tol=40):
+            return np.abs(im - np.array(c)).sum(axis=2) < tol
+
+        x_hi, y_lo, y_hi = int(0.27 * W), int(0.12 * H), int(0.50 * H)
+
+        def clusters(mask):
+            ys, xs = np.nonzero(mask[y_lo:y_hi, :x_hi])
+            if len(xs) == 0:
+                return []
+            cols = np.bincount(xs, minlength=x_hi)
+            dense = np.nonzero(cols > 0.6 * cols.max())[0]
+            out = []
+            for g in np.split(dense, np.nonzero(np.diff(dense) > 5)[0] + 1):
+                m = (xs >= g[0]) & (xs <= g[-1])
+                out.append((float(xs[m].mean()), float(ys[m].mean()) + y_lo))
+            return out
+
+        org = clusters(near((0xE0, 0x6C, 0x00)))      # ILS の橙の丸
+        grn = clusters(near((0x0F, 0x5C, 0x28)))      # Memetic の緑の四角
+        xn, y1 = org[0]
+        xk = [c for c in grn if c[0] > xn + 0.02 * W][0][0]
+        gray = near((0x80, 0x80, 0x80), 60) | near((0x55, 0x60, 0x6B), 60)
+        rows = np.nonzero(gray[:int(0.52 * H), :x_hi].sum(axis=1) > 0.15 * W)[0]
+        y0 = float(rows.mean())
+        return xn, xk, y1, y0, W
+    except Exception:
+        return None
+
+
 def s_highstab():
     s = slide_frame("高安定 HV の比較：全 8 シナリオ（仮説の判定）",
                     "仮説 1・仮説 2 とも，全 8 シナリオで支持された",
                     "3. 数値実験")
     w = 12.0
-    pic(s, "highstab_all8.png", ML + (CW - w) / 2, 1.68, w=w)
+    px0, py0 = ML + (CW - w) / 2, 1.68
+    pic(s, "highstab_all8.png", px0, py0, w=w)
+    # 読み方のガイドを最初のパネル（la36S）に重ねる。位置は図の画素から自己較正する
+    # （現在の図では 3000 px 幅で，なし x=331，PR-k x=557，値 1 → y=258，値 0 → y=443）。
+    # 仮説 1＝演算子なしでの両構造の差（青の縦の両矢印），仮説 2＝Memetic の上昇（紫の矢印）
+    g = _highstab_guide_px(asset("highstab_all8.png")) or (331, 557, 258, 443, 3000)
+    k = w / g[4]
+    xn, xk = px0 + g[0] * k, px0 + g[1] * k
+    y1, y0 = py0 + g[2] * k, py0 + g[3] * k
+
+    def tag(x, y, label, col):
+        _boxtext(s, x - 0.29, y - 0.1, 0.58, 0.2, [(label, 8.5, col, True)], fill=WHITE,
+                 line=col, radius=0.06)
+
+    bx = xn - 0.13
+    ln = _connector(s, bx, y1 + 0.08, bx, y0 - 0.08, color=BLUE, wt=1.5, kind=1)
+    l_ = ln.line._get_or_add_ln()
+    l_.append(l_.makeelement(qn('a:headEnd'), {'type': 'triangle', 'w': 'med', 'len': 'med'}))
+    tag(bx + 0.08, (y1 + y0) / 2, "仮説 1", BLUE)
+    _connector(s, xn + 0.21, y0 - 0.03, xk - 0.12, y1 + 0.27, color=VIOLET, wt=1.6, kind=1)
+    tag(xk + 0.09, y0 - 0.13, "仮説 2", VIOLET)
     _bul(s, ML, 5.62, CW, [
         "**仮説 1**：演算子なしで ILS > Memetic（全シナリオで $p$ < 0.001，$|δ|$ = 1.0）",
+    ], size=18, gap=7, emph=BLUE)
+    _bul(s, ML, 6.04, CW, [
         "**仮説 2**：演算子を組み込んだ Memetic > Memetic（全シナリオで $p$ < 0.001，$|δ|$ = 1.0）",
         (1, "Memetic は演算子を組み込むと ILS と同程度まで向上する一方，ILS ではほとんど向上しない"),
-    ], size=18, gap=7)
+    ], size=18, gap=7, emph=VIOLET)
 
 
 def s_band():
