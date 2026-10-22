@@ -532,6 +532,71 @@ def fig_highstab_zoom(data, tags=('la36S', 'la36L', 'ta21S', 'ta21L')):
     save(fig, 'highstab_zoom4.png')
 
 
+ORDER_TAGS = ['la36S', 'ta21S', 'la40', 'la21', 'la36M', 'mt10', 'la36L', 'ta21L']
+
+
+def fig_highstab_dumbbell(data):
+    """帯の図（主張の形に沿った版）。シナリオを行にし，演算子なし（白抜き）→ PR を組み込む（塗り）の
+    高安定 HV を最良値比で結ぶ。矢印は有意な変化（p < 0.05）だけに引く。ILS が帯の中の 6 シナリオと
+    外の 2 シナリオを分けて並べるので，「組み込む前に帯の外にあるときだけ向上する」が行の並びで読める。"""
+    rows, tags_in, tags_out = {}, [], []
+    for sc in ORDER_TAGS:
+        per = data[sc]
+        best = max(np.median(per[m]) for m in ALL7 if m in per)
+        r = {}
+        for k0, k1, name in [('ils_baseline', 'ils_pr', 'ils'), ('memetic_ls', 'memetic_pr', 'mem')]:
+            a, b = per[k0] / best, per[k1] / best
+            r[name] = (float(np.median(a)), float(np.median(b)),
+                       float(mannwhitneyu(b, a, alternative='two-sided').pvalue))
+        rows[sc] = r
+        (tags_in if r['ils'][0] >= 0.98 else tags_out).append(sc)
+    order = tags_in + tags_out
+    n = len(order)
+    fig, ax = plt.subplots(figsize=(12.0, 3.6))
+    ax.axvspan(0.98, 1.0, color=BAND2, lw=0, zorder=0)
+    for i, sc in enumerate(order):
+        yc = n - i
+        for name, color, mk, dy in [('ils', C_ILS, M_ILS, 0.22), ('mem', C_MEM, M_MEM, -0.22)]:
+            a, b, p = rows[sc][name]
+            y = yc + dy
+            if p < 0.05:
+                ax.annotate('', xy=(b, y), xytext=(a, y),
+                            arrowprops=dict(arrowstyle='-|>', color=color, lw=2.0,
+                                            mutation_scale=14, shrinkA=6, shrinkB=6), zorder=3)
+            ax.scatter([a], [y], s=62, marker=mk, facecolor='white', edgecolor=color, lw=1.8,
+                       zorder=4)
+            ax.scatter([b], [y], s=62, marker=mk, color=color, edgecolor='white', lw=0.8,
+                       zorder=5)
+    ysep = n - len(tags_in) + 0.5
+    ax.axhline(ysep, color='#8A949E', lw=1.0, ls='--', zorder=1)
+    ax.text(1.035, (n + 0.5 + ysep) / 2, f'ILS が帯の中（{len(tags_in)}）\n→ 組み込んでも変化なし',
+            color=C_ILS, fontsize=15, ha='left', va='center', fontweight='bold', linespacing=1.25)
+    ax.text(1.035, (ysep + 0.5) / 2, f'ILS が帯の外（{len(tags_out)}）\n→ 組み込むと向上',
+            color=C_ILS, fontsize=15, ha='left', va='center', fontweight='bold', linespacing=1.25)
+    ax.set_yticks([n - i for i in range(n)])
+    ax.set_yticklabels(order)
+    ax.set_ylim(0.4, n + 0.6)
+    ax.set_xlim(-0.03, 1.36)
+    ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
+    ax.set_xticklabels(['0', '0.25', '0.5', '0.75', '1'])
+    ax.spines['bottom'].set_bounds(-0.03, 1.02)
+    ax.set_xlabel('高安定 HV（各シナリオの最良値＝1）')
+    ax.grid(axis='x', alpha=0.25)
+    despine(ax)
+    from matplotlib.lines import Line2D
+    hs = [Line2D([], [], color=C_ILS, marker=M_ILS, ms=9, lw=2.0),
+          Line2D([], [], color=C_MEM, marker=M_MEM, ms=9, lw=2.0),
+          Line2D([], [], ls='', marker='o', ms=9, mfc='white', mec='#55606B', mew=1.8),
+          Line2D([], [], ls='', marker='o', ms=9, color='#55606B'),
+          plt.matplotlib.patches.Patch(color=BAND2)]
+    fig.legend(hs, ['単点探索（ILS）', '多点探索（Memetic）', '演算子なし', 'PR を組み込む',
+                    '最良値の 2% 以内'],
+               loc='upper left', ncol=5, frameon=False, fontsize=15.5,
+               bbox_to_anchor=(0.03, 1.0), columnspacing=1.5, handletextpad=0.5)
+    tight(fig, pad=0.4, rect=(0, 0, 1, 0.905))
+    save(fig, 'highstab_dumbbell.png')
+
+
 def fig_anytime(M, S):
     style_ = [('ils_baseline', 'ILS', C_ILS, '-'), ('ils_repair', 'ILS+PR-$k$', C_ILS, (0, (5, 2))),
               ('ils_pr', 'ILS+PR', C_ILS, (0, (0.6, 2.2))),
@@ -573,7 +638,9 @@ if __name__ == '__main__':
     fig_concept_op()
     fig_metrics()
     if os.path.exists(CSV):
-        fig_highstab_zoom(load_csv())
+        csv_data = load_csv()
+        fig_highstab_zoom(csv_data)
+        fig_highstab_dumbbell(csv_data)
     if '--no-data' not in sys.argv:
         M, S = load()
         fig_front(M, S)
