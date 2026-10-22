@@ -1465,16 +1465,22 @@ def s_band():
     s = slide_frame("高安定 HV の比較：演算子の効果が現れる条件",
                     "効果の非対称は，組み込む前に「到達上限の帯」に入っているかで説明できる",
                     "3. 数値実験")
+    # 8 パネルの再掲をやめ，S/L の 2 組を最良値の付近に拡大した図で帯の内外を見せる
     w = 12.0
-    pic(s, "highstab_band.png", ML + (CW - w) / 2, 1.68, w=w)
-    _bul(s, ML, 5.6, CW, [
+    _w, fh = pic(s, "highstab_zoom4.png", ML + (CW - w) / 2, 1.68, w=w)
+    cy = 1.68 + fh
+    _text(s, ML, cy + 0.02, CW, 0.28,
+          "縦軸は最良値の付近を拡大（↓：範囲外，値を併記）．S／L は同じインスタンスで外乱の規模が小／大．"
+          "全 8 シナリオは前のスライド",
+          12.5, color=MUTE)
+    _bul(s, ML, cy + 0.34, CW, [
         "どのシナリオでも 3〜5 手法が最良値の 2% 以内に集まる → この帯を到達上限とみなす",
         "**Memetic**：演算子なしでは全シナリオで帯の外 → 組み込むと 7 つで帯の中",
-        "**ILS**：演算子なしで 6 つが帯の中 → 有意に向上したのは帯の外の 2 つだけ",
-    ], size=17, gap=3)
+        "**ILS**：演算子なしで 6 つが帯の中 → 有意に向上したのは帯の外の 2 つ（la36L・ta21L）だけ",
+    ], size=16, gap=3)
     _text(s, ML, 6.6, CW, 0.36,
           "→ 演算子の効果は，探索構造の違いそのものではなく，**組み込む前に上限までの差が残っているかで決まる**",
-          17, color=INK, emph=BLUE, anchor=MSO_ANCHOR.MIDDLE)
+          16.5, color=INK, emph=BLUE, anchor=MSO_ANCHOR.MIDDLE)
 
 
 def s_anytime():
@@ -1485,8 +1491,8 @@ def s_anytime():
     pic(s, "anytime.png", ML + (CW - w) / 2, 1.72, w=w)
     _bul(s, ML, 5.74, CW, [
         "(a) ta21S：演算子を組み込んだ Memetic も ILS と同じ全域 HV に達するが，立ち上がりが遅い",
-        "(b) la36L：Memetic 系は途中で ILS 系を追い越し，より大きい全域 HV に達する",
-    ], size=18, gap=7)
+        "(b) la36L：Memetic 系は途中で ILS 系を追い越す．到達値は演算子を組み込んだ Memetic が最大",
+    ], size=17, gap=7)
 
 
 def s_union_auc():
