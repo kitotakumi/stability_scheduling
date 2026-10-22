@@ -485,7 +485,7 @@ def fig_highstab_zoom(S, tags=('la36S', 'ta21S', 'la36L', 'ta21L')):
     by_tag = {TAG[prob]: {m: np.asarray(v, float) for m, v in S[prob]['highstab_hv_pt'].items()}
               for prob in S if prob in TAG}
     x = np.arange(3)
-    fig, axes = plt.subplots(1, len(tags), figsize=(12.0, 3.6), sharey=True)
+    fig, axes = plt.subplots(1, len(tags), figsize=(12.0, 3.7), sharey=True)
     for ax, tag in zip(axes, tags):
         per = by_tag[tag]
         best = max(np.median(per[m]) for m in ALL7 if m in per)
@@ -532,13 +532,17 @@ def fig_highstab_zoom(S, tags=('la36S', 'ta21S', 'la36L', 'ta21L')):
     # 「縦軸は拡大」「↓ は範囲外」の断りは凡例と当たるので図には入れず，スライドのキャプションに書く
     fig.text(0.005, 0.44, '高安定 HV（最良値＝1）', rotation=90, ha='left', va='center',
              fontsize=16, color=INK)
-    tight(fig, pad=0.4, w_pad=0.9, rect=(0.035, 0, 1, 0.875))
-    # 左右の 2 組の境に薄い縦線を引く（左：ILS が帯の中，右：帯の外）
+    tight(fig, pad=0.4, w_pad=0.9, rect=(0.035, 0, 1, 0.80))
+    # 読み方のガイド：左右の 2 組の上に見出しを置き，境に薄い縦線を引く
     from matplotlib.lines import Line2D
-    xl = (axes[1].get_position().x1 + axes[2].get_position().x0) / 2
-    y0 = axes[0].get_position().y0
-    y1 = axes[0].get_position().y1 + 0.06
-    fig.add_artist(Line2D([xl, xl], [y0, y1], color='#8A949E', lw=1.0, ls='--'))
+    pos = [ax.get_position() for ax in axes]
+    yh = pos[0].y1 + 0.135
+    for (a, b), head in [((0, 1), 'ILS が帯の中 → 組み込んでも変化なし'),
+                         ((2, 3), 'ILS が帯の外 → 組み込むと向上')]:
+        fig.text((pos[a].x0 + pos[b].x1) / 2, yh, head, ha='center', va='center',
+                 fontsize=15, color=C_ILS, fontweight='bold')
+    xl = (pos[1].x1 + pos[2].x0) / 2
+    fig.add_artist(Line2D([xl, xl], [pos[0].y0, yh + 0.04], color='#8A949E', lw=1.0, ls='--'))
     save(fig, 'highstab_zoom4.png')
 
 
