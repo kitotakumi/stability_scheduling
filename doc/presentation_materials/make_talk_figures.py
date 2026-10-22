@@ -6,6 +6,7 @@
 図中の文字は指定した pt のままスライドに載る。
 
   concept_0.png      (D, MS) 平面：S_p・高安定領域・Pareto フロントだけ（手法なし）
+  concept_sp.png     同じ平面で ★（S_p）を主役にした特殊性の図
   concept_h1.png     同じ平面に単点探索（ILS）の軌道と多点探索（Memetic）の解集合（仮説1）
   concept_h2.png     多点探索の個体を S_p へ引き戻す安定性誘導演算子（仮説2）
   metrics.png        評価指標：全域 HV・高安定 HV（左）と AUC（右）の説明図
@@ -177,6 +178,34 @@ def fig_concept_0():
     fig.tight_layout(pad=0.4)
     mark_schematic(fig)
     save(fig, 'concept_0.png')
+
+
+def fig_concept_sp():
+    """特殊性のスライド用。同じ平面で ★（初期解 S_p）を主役にする：探索せずに得られる解であることを
+    ★の注記で言い，帯の中の非劣解へ向かう矢印で「そこから少しの変更で MS を下げる」を示す。
+    「選ばれる解」の注記（求められる解のスライドの図）は付けない。"""
+    fig, ax = plt.subplots(figsize=(6.4, 4.95))
+    _plane(ax, fs=15, star_label='初期解 $S_p$', band_label='高安定領域')
+    ax.xaxis.label.set_size(15)
+    ax.yaxis.label.set_size(15)
+    fx = np.array([0.045, 0.10, 0.16, 0.23, 0.33, 0.44, 0.57, 0.72, 0.90])
+    fy = _front_curve(fx)
+    inb = fx < BAND_HI
+    ax.scatter(fx[~inb], fy[~inb], s=62, facecolor='white', edgecolor='#55606B', lw=1.4,
+               zorder=5)
+    ax.scatter(fx[inb], fy[inb], s=78, color=INK, zorder=6)
+    ax.annotate('探索せずに得られる\n（変更量 0，$MS$ は外乱前に最適化済み）', xy=(0.012, 0.955),
+                xytext=(0.36, 0.93), fontsize=15, color=INK, va='center', linespacing=1.3,
+                arrowprops=dict(arrowstyle='-|>', color='#55606B', lw=1.1, mutation_scale=12,
+                                shrinkA=4, shrinkB=9))
+    ax.annotate('', xy=(fx[3] + 0.03, fy[3] + 0.03), xytext=(0.035, 0.935),
+                arrowprops=dict(arrowstyle='-|>', color=BAND_EDGE, lw=2.0, mutation_scale=14,
+                                connectionstyle='arc3,rad=-0.22', shrinkA=2, shrinkB=2), zorder=4)
+    ax.text(0.34, 0.74, '$S_p$ から少しの変更で\n$MS$ をどこまで下げられるか', fontsize=15,
+            color=BAND_EDGE, va='center', linespacing=1.3)
+    fig.tight_layout(pad=0.4)
+    mark_schematic(fig)
+    save(fig, 'concept_sp.png')
 
 
 def fig_concept_h(stage):
@@ -582,6 +611,7 @@ def fig_anytime(M, S):
 if __name__ == '__main__':
     style()
     fig_concept_0()
+    fig_concept_sp()
     fig_concept_h(1)
     fig_concept_h(2)
     fig_concept_op()
