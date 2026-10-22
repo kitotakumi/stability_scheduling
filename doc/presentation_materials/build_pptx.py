@@ -1310,8 +1310,8 @@ def s_design():
         _add_runs(p, rule, 15, color=INK)
         y += 1.0
         _rect(s, ML, y - 0.1, CW, 0.012, HAIR)
-    # 仮説を置かない比較（表の灰の破線）。札は付けず，一文だけ置く
-    _text(s, ML, y, CW, 0.46,
+    # 仮説を置かない比較（表の灰の破線）。札は付けないが，文の開始位置は上の 2 行と揃える
+    _text(s, tx, y, txw, 0.46,
           "ILS＋PR-$k$ と ILS＋PR も同じ形で ILS と比較し，演算子の効果が探索構造で異なるかを見る", 15,
           color=INK, anchor=MSO_ANCHOR.MIDDLE)
     # 検定
