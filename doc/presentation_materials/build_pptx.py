@@ -690,16 +690,16 @@ def _vline(slide, x, y0, y1, color=INK, weight=1.5, dash=True):
     ln.line.width = Pt(weight)
     if dash:
         from pptx.enum.dml import MSO_LINE
-        ln.line.dash_style = MSO_LINE.DASH
+        ln.line.dash_style = MSO_LINE.ROUND_DOT if dash == "dot" else MSO_LINE.DASH
     ln.shadow.inherit = False
     return ln
 
 
 def _gantt(slide, x, y, w, ops, T=GANTT_T, rh=0.36, rg=0.12, fs=10.5, delay=None, moved=(),
-           label_w=0.42, tr=None):
+           label_w=0.42, tr=None, marks=()):
     """機械ごとの作業バー。delay=(機械, ジョブ, 元の長さ) なら遅延分を赤で塗る。
     moved は順序が変わった (機械, ジョブ) で赤枠で囲む。tr を与えると，その時刻に破線を引き，
-    それより前（開始済み＝凍結）を白く薄める。"""
+    それより前（開始済み＝凍結）を白く薄める。marks=[(時刻, ラベル)] は灰の点線で時刻を示す。"""
     gx, gw = x + label_w, w - label_w
     for r, (m, lst) in enumerate(ops.items()):
         yy = y + r * (rh + rg)
@@ -725,6 +725,12 @@ def _gantt(slide, x, y, w, ops, T=GANTT_T, rh=0.36, rg=0.12, fs=10.5, delay=None
         veil = _rect(slide, gx - 0.02, y - 0.04, xt - gx + 0.02, bottom - y + 0.08, WHITE)
         _alpha(veil, 0.55)
         _vline(slide, xt, y - 0.12, bottom + 0.08, color=INK, weight=1.6)
+    for t, lab in marks:
+        xm = gx + gw * t / T
+        _vline(slide, xm, y - 0.12, bottom + 0.08, color=MUTE, weight=1.4, dash="dot")
+        if lab:
+            _text(slide, xm - 0.3, y - 0.34, 0.6, 0.26, lab, 10, color=MUTE,
+                  align=PP_ALIGN.CENTER)
     return bottom + 0.05 - y
 
 
@@ -732,59 +738,67 @@ def s_intro():
     s = slide_frame("外乱と再スケジューリング",
                     "外乱が起きたら，事前に作成した初期スケジュール $S_p$ を修正する（予測リアクティブ再スケジューリング）",
                     "1. 研究背景と仮説")
-    # 外乱
-    by_, bh_ = 1.92, 0.72
-    _rrect(s, ML, by_, CW, bh_, FILL, line=CARDLINE, radius=0.12)
-    _text(s, ML + 0.3, by_, CW - 0.6, bh_,
-          "製造現場では，機械故障や作業遅延などの**外乱**により，スケジュール通りに作業を実行できないことがある",
-          16, color=INK, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, emph=BLUE)
-    # 静的／動的。動的を広く取り，その下に完全リアクティブ／予測リアクティブの 2 分岐を置く
-    cy, ch = 3.0, 1.2
-    sw, gap = 3.3, 0.4
-    dx, dw = ML + sw + gap, CW - sw - gap
-    cards = [(ML, sw, "静的アプローチ", "事前に余裕を持たせ，外乱に備える", False),
-             (dx, dw, "動的アプローチ", "外乱の発生後に，スケジュールを修正する", True)]
-    for x, w, head, body, ours in cards:
-        _connector(s, ML + CW / 2, by_ + bh_ + 0.02, x + w / 2, cy - 0.04,
-                   color=BLUE if ours else MUTE, wt=2.2 if ours else 1.6, kind=1)
-        _rrect(s, x, cy, w, ch, FILL if ours else WHITE, line=BLUE if ours else CARDLINE,
-               radius=0.06, lw=1.8 if ours else 1.1)
-        _text(s, x + 0.3, cy + 0.14, w - 0.6, 0.42, head, 18, color=BLUE if ours else MUTE,
-              bold=True)
-        _text(s, x + 0.3, cy + 0.62, w - 0.6, 0.52, body, 14.5, color=INK if ours else MUTE,
-              ls=1.05)
-    # 動的の 2 分岐。本研究に効く区別は「事前のスケジュール S_p があるか」だけなので，
-    # 周期的／イベント駆動（ローリングホライズン）の区別は出さない
-    ry, rh = 4.85, 1.95
-    cw1 = 3.55
-    px, pw = dx + cw1 + gap, dw - cw1 - gap
-    _connector(s, dx + dw / 2, cy + ch + 0.02, dx + cw1 / 2, ry - 0.04, color=MUTE, wt=1.6,
-               kind=1)
-    _rrect(s, dx, ry, cw1, rh, WHITE, line=CARDLINE, radius=0.06, lw=1.1)
-    _text(s, dx + 0.25, ry + 0.16, cw1 - 0.5, 0.42, "完全リアクティブ", 15.5, color=MUTE,
-          bold=True)
-    _text(s, dx + 0.25, ry + 0.66, cw1 - 0.5, rh - 0.8,
-          "事前のスケジュールを持たず，ディスパッチングルールなどで作業をその場で決める",
-          13, color=MUTE, ls=1.1)
-    # 予測リアクティブ（本研究）。S_p の存在が以後のすべての前提
-    _connector(s, dx + dw / 2, cy + ch + 0.02, px + pw / 2, ry - 0.04, color=BLUE, wt=2.6,
-               kind=1)
-    _rrect(s, px, ry, pw, rh, COVER, radius=0.06)
-    _boxtext(s, px + pw - 1.3, ry - 0.19, 1.1, 0.38, [("本研究", 12.5, WHITE, True)],
+    # 横フロー．主経路（外乱 → 動的 → 予測リアクティブ＝本研究）を上段に一直線に置き，
+    # 各分岐で採らない側（静的／完全リアクティブ）は下段に落とす．根（外乱）は両段にまたがる
+    h1, h2, rg = 2.05, 1.8, 0.45            # 上段・下段の高さ，段間
+    avail = CONTENT_BOTTOM - (CONTENT_TOP_KEY + 0.05)
+    y1 = CONTENT_TOP_KEY + 0.05 + (avail - (h1 + rg + h2)) / 2
+    y2 = y1 + h1 + rg
+    c1, c2 = y1 + h1 / 2, y2 + h2 / 2        # 各段の中心
+    w0, gap, w1 = 2.5, 0.55, 3.8
+    x0 = ML
+    x1 = x0 + w0 + gap
+    x2 = x1 + w1 + gap
+    w2 = ML + CW - x2
+
+    def node(x, y, w, h, head, body, kind):
+        """kind: root（前提）／main（採る側）／alt（採らない側）"""
+        if kind == "alt":
+            _rrect(s, x, y, w, h, WHITE, line=CARDLINE, radius=0.06, lw=1.1)
+            hc, bc, bs = MUTE, MUTE, 13.5
+        else:
+            _rrect(s, x, y, w, h, FILL, line=BLUE if kind == "main" else CARDLINE,
+                   radius=0.06, lw=1.8 if kind == "main" else 1.1)
+            hc, bc, bs = BLUE, INK, 14
+        tb, tf = add_textbox(s, x + 0.28, y, w - 0.56, h, anchor=MSO_ANCHOR.MIDDLE)
+        p = tf.paragraphs[0]
+        _run(p, head, 17.5, color=hc, bold=True)
+        q = tf.add_paragraph()
+        q.space_before = Pt(6)
+        q.line_spacing = 1.1
+        _add_runs(q, body, bs, color=bc, emph=bc)
+
+    node(x0, y1, w0, h1 + rg + h2, "外乱",
+         "製造現場では，機械故障や作業遅延などにより，スケジュール通りに作業を実行できないことがある",
+         "root")
+    node(x1, y1, w1, h1, "動的アプローチ", "外乱の発生後に，スケジュールを修正する", "main")
+    node(x1, y2, w1, h2, "静的アプローチ",
+         "外乱に対してロバストなスケジュールを事前に作成する", "alt")
+    node(x2, y2, w2, h2, "完全リアクティブ",
+         "事前のスケジュールを持たず，ディスパッチングルールなどで作業をその場で決める", "alt")
+    # 予測リアクティブ（本研究）．S_p の存在が以後のすべての前提
+    _rrect(s, x2, y1, w2, h1, COVER, radius=0.06)
+    _boxtext(s, x2 + w2 - 1.3, y1 - 0.19, 1.1, 0.38, [("本研究", 12.5, WHITE, True)],
              fill=BLUESOFT, radius=0.4)
-    tb, tf = add_textbox(s, px + 0.28, ry + 0.3, pw - 0.56, rh - 0.4)
+    tb, tf = add_textbox(s, x2 + 0.28, y1, w2 - 0.56, h1, anchor=MSO_ANCHOR.MIDDLE)
     p = tf.paragraphs[0]
-    _run(p, "予測リアクティブ再スケジューリング", 15.5, color=WHITE, bold=True)
+    _run(p, "予測リアクティブ再スケジューリング", 16, color=WHITE, bold=True)
     q = tf.add_paragraph()
     q.space_before = Pt(6)
     q.line_spacing = 1.1
     _add_runs(q, "外乱が起きたら，外乱前のスケジュール（**初期スケジュール $S_p$**）を修正する",
-              13.5, color=WHITE, emph=WHITE)
+              14, color=WHITE, emph=WHITE)
     q2 = tf.add_paragraph()
     q2.space_before = Pt(8)
     q2.line_spacing = 1.1
     _add_runs(q2, "→ $S_p$ が存在するので，**$S_p$ からの変更量**を定義できる",
-              13.5, color=WHITE, emph=RGBColor(0xFF, 0xD9, 0x8A))
+              14, color=WHITE, emph=RGBColor(0xFF, 0xD9, 0x8A))
+    # 矢印．採る側は青・太，採らない側は灰・細．動的 → 完全リアクティブは列間を下りる肘線
+    e = 0.03
+    _connector(s, x0 + w0 + e, c1, x1 - e, c1, color=BLUE, wt=2.4, kind=1)
+    _connector(s, x0 + w0 + e, c2, x1 - e, c2, color=MUTE, wt=1.6, kind=1)
+    _connector(s, x1 + w1 + e, c1, x2 - e, c2, color=MUTE, wt=1.6, kind=2)
+    _connector(s, x1 + w1 + e, c1, x2 - e, c1, color=BLUE, wt=2.6, kind=1)
 
 
 def s_background():
@@ -816,7 +830,7 @@ def s_background():
                      [(txt, 11, WHITE if hot else INK, hot)], fill=fill, radius=0.3)
         g_x, g_w, g_y = lx + 0.2, lw_ - 0.4, cy + 0.82
         _gantt(s, g_x, g_y, g_w, ops, rh=0.34, rg=0.1, fs=10.5, delay=("M2", "J1", 3),
-               moved=moved, label_w=0.42, tr=GANTT_TR)
+               moved=moved, label_w=0.42, tr=GANTT_TR, marks=[(19, "19")])
         xt = g_x + 0.42 + (g_w - 0.42) * GANTT_TR / T
         _text(s, xt - 0.25, g_y - 0.34, 0.5, 0.26, "$t_r$", 11.5, color=INK, bold=True,
               align=PP_ALIGN.CENTER)
@@ -828,21 +842,30 @@ def s_background():
     # 右：変更のコスト → 二目的最適化
     rx = lx + lw_ + 0.45
     rw = SW - ML - rx
+    # 右の列は左のカード列と上下を揃える．コストのカードは詰めて，二目的の箱と同じ高さに
+    top_r, bot_r = 2.15, 2.15 + 2 * ch + cg
+    kh = 2.25
     # 左の「順序を変更」から右のコストへつなぐ
-    _connector(s, lx + lw_ + 0.05, 2.15 + ch + cg + 0.29, rx - 0.05, 3.0, color=RED, wt=2.0,
-               kind=1)
-    _rrect(s, rx, 1.8, rw, 2.75, RGBColor(0xFB, 0xEE, 0xEC), line=RED, radius=0.05, lw=1.4)
-    _text(s, rx + 0.22, 1.9, rw - 0.44, 0.5, "処理順序の変更は，現場にコストを生む", 15.5,
-          color=RED, bold=True, anchor=MSO_ANCHOR.MIDDLE)
-    costs = ["段取り替え", "資材・治具の再手配", "作業者の再配置", "下流工程・外注先\nへの予定変更の波及"]
+    _connector(s, lx + lw_ + 0.05, 2.15 + ch + cg + 0.29, rx - 0.05, top_r + kh / 2 + 0.15,
+               color=RED, wt=2.0, kind=1)
+    _rrect(s, rx, top_r, rw, kh, RGBColor(0xFB, 0xEE, 0xEC), line=RED, radius=0.05, lw=1.4)
+    tb, tf = add_textbox(s, rx + 0.22, top_r + 0.1, rw - 0.44, 0.72, anchor=MSO_ANCHOR.MIDDLE)
+    p = tf.paragraphs[0]
+    p.line_spacing = 1.05
+    _run(p, "処理順序の変更は，現場にコストを生む", 15.5, color=RED, bold=True)
+    q = tf.add_paragraph()
+    q.line_spacing = 1.05
+    _run(q, "（スケジュール変更コスト）", 13, color=RED, bold=True)
+    costs = ["段取り替え", "資材・治具の再手配", "作業者の再配置", "下流工程・外注先への\n予定変更の波及"]
     cw2 = (rw - 0.44 - 0.15) / 2
     for i, c in enumerate(costs):
         cx = rx + 0.22 + (i % 2) * (cw2 + 0.15)
-        cy = 2.55 + (i // 2) * 0.95
-        _boxtext(s, cx, cy, cw2, 0.8, [(c, 13.5, INK, True)], fill=WHITE, line=CARDLINE,
-                 radius=0.12)
-    _connector(s, rx + rw / 2, 4.6, rx + rw / 2, 5.0, color=BLUE, wt=3.0, kind=1)
-    by, bh = 5.06, 6.92 - 5.06
+        cy = top_r + 0.92 + (i // 2) * 0.64
+        _boxtext(s, cx, cy, cw2, 0.56, [(c, 12.5, INK, True)], fill=WHITE, line=CARDLINE,
+                 radius=0.1)
+    by, bh = bot_r - 1.9, 1.9
+    _connector(s, rx + rw / 2, top_r + kh + 0.05, rx + rw / 2, by - 0.05, color=BLUE, wt=3.0,
+               kind=1)
     _rrect(s, rx, by, rw, bh, WHITE, line=BLUE, radius=0.05, lw=1.6)
     _text(s, rx, by + 0.06, rw, 0.44, "二目的最適化", 16, color=BLUE, bold=True,
           align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
