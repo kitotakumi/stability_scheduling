@@ -11,14 +11,15 @@
   metrics.png        評価指標：全域 HV・高安定 HV（左）と AUC（右）の説明図
   front_ta21.png     ta21S / ta21L の実 Pareto フロント（全域 HV が中央値の試行）
   highstab_all8.png  全 8 シナリオの高安定 HV（探索構造 × 演算子）
-  highstab_band.png  同じ図に「最良値の 2% 以内」の帯を重ねたもの
+  highstab_band.png  同じ図に「最良値の 2% 以内」の帯を重ねたもの（現在は未使用）
+  highstab_zoom4.png la36S・ta21S・la36L・ta21L の高安定 HV を最良値の付近で拡大した帯の図
   anytime.png        ta21S / la36L の全域 HV の anytime 曲線
 
 データと集計ヘルパーは APIEMS v2 の make_figures_v2.py（main_v1 の _summary_data.pkl・raw JSON）を
 そのまま使う。符号化も v2 と揃える（ILS: 橙・○、Memetic: 緑・□、演算子の経路: 茶・◇）。
 usage: python make_talk_figures.py [--no-data]   # --no-data は模式図だけ作る
-pkl がない環境では fig_highstab(None, load_csv(), band=...) で高安定 HV の図だけ
-公開 CSV（per_trial_metrics.csv）から同じ統計で作れる。
+--no-data でも highstab_zoom4.png は公開 CSV（per_trial_metrics.csv）から同じ統計で作る。
+fig_highstab(None, load_csv(), band=...) で 8 パネルの図も同様に作れる。
 """
 import os
 import sys
@@ -473,6 +474,74 @@ def load_csv():
     return S
 
 
+ZOOM_LO, ZOOM_HI = 0.84, 1.04   # 帯の図の縦軸（最良値＝1 の付近だけを見せる）
+
+
+def fig_highstab_zoom(S, tags=('la36S', 'ta21S', 'la36L', 'ta21L')):
+    """帯の図（4 パネル）。縦軸を最良値の付近に拡大して描く。2% の帯は全範囲では線にしか見えないので，
+    拡大して帯の内外を読めるようにする。並びは左 2 つが ILS が演算子なしで帯の中（変化なし），
+    右 2 つが帯の外（組み込むと向上）。範囲外の点（演算子なしの Memetic）は下端の矢印と値で示し，
+    ILS の演算子なしの点に帯の中／外を注記する。S は pkl でも load_csv() でもよい。"""
+    by_tag = {TAG[prob]: {m: np.asarray(v, float) for m, v in S[prob]['highstab_hv_pt'].items()}
+              for prob in S if prob in TAG}
+    x = np.arange(3)
+    fig, axes = plt.subplots(1, len(tags), figsize=(12.0, 3.6), sharey=True)
+    for ax, tag in zip(axes, tags):
+        per = by_tag[tag]
+        best = max(np.median(per[m]) for m in ALL7 if m in per)
+        ax.axhspan(0.98, 1.0, color=BAND2, lw=0, zorder=0)
+        ax.axhline(0.98, color='#5B7AA3', lw=1.0, ls=':', zorder=1)
+        for host, keys, color, mk, above in HOSTS:
+            vals = [per[m] / best for m in keys]
+            med = np.array([np.median(v) for v in vals])
+            lo = np.array([np.percentile(v, 25) for v in vals])
+            hi = np.array([np.percentile(v, 75) for v in vals])
+            ax.errorbar(x, med, yerr=[med - lo, hi - med], marker=mk, ms=9, color=color,
+                        mec='white', mew=0.8, lw=2.4, capsize=3, elinewidth=1.0, label=host,
+                        zorder=3)
+            for j in range(3):
+                if med[j] < ZOOM_LO:          # 範囲外：下端に矢印と値
+                    ax.annotate('', xy=(x[j], ZOOM_LO + 0.003), xytext=(x[j], ZOOM_LO + 0.04),
+                                arrowprops=dict(arrowstyle='-|>', color=color, lw=1.8,
+                                                mutation_scale=16), zorder=4)
+                    ax.text(x[j] + 0.1, ZOOM_LO + 0.022, f'{med[j]:.2f}', color=color,
+                            fontsize=15, ha='left', va='center')
+            for j in (1, 2):
+                p = mannwhitneyu(vals[j], vals[0], alternative='two-sided').pvalue
+                if np.isfinite(p) and p < 0.05:
+                    ax.annotate(_p_stars(p), (x[j], med[j]), xytext=(0, 3 if above else -6),
+                                textcoords='offset points', ha='center',
+                                va='bottom' if above else 'top', fontsize=16, color=color)
+            if above:   # ILS：演算子なしの点が帯の中か外か
+                ax.text(x[0] + 0.1, med[0] - 0.012, '帯の中' if med[0] >= 0.98 else '帯の外',
+                        color=color, fontsize=15, ha='left', va='top', fontweight='bold')
+        ax.set_title(tag, fontsize=18, pad=3)
+        ax.set_xticks(x)
+        ax.set_xticklabels(['なし', 'PR-$k$', 'PR'], fontsize=16)
+        ax.set_xlim(-0.4, 2.4)
+        ax.set_ylim(ZOOM_LO, ZOOM_HI)
+        ax.set_yticks([0.85, 0.90, 0.95, 1.0])
+        ax.set_yticklabels(['0.85', '0.9', '0.95', '1'])
+        ax.grid(axis='y', alpha=0.25)
+        despine(ax)
+    h, l = axes[0].get_legend_handles_labels()
+    h.append(plt.matplotlib.patches.Patch(color=BAND2))
+    l.append('最良値の 2% 以内')
+    fig.legend(h, l, loc='upper left', ncol=len(l), frameon=False, fontsize=16,
+               bbox_to_anchor=(0.04, 1.0), columnspacing=1.6)
+    # 「縦軸は拡大」「↓ は範囲外」の断りは凡例と当たるので図には入れず，スライドのキャプションに書く
+    fig.text(0.005, 0.44, '高安定 HV（最良値＝1）', rotation=90, ha='left', va='center',
+             fontsize=16, color=INK)
+    tight(fig, pad=0.4, w_pad=0.9, rect=(0.035, 0, 1, 0.875))
+    # 左右の 2 組の境に薄い縦線を引く（左：ILS が帯の中，右：帯の外）
+    from matplotlib.lines import Line2D
+    xl = (axes[1].get_position().x1 + axes[2].get_position().x0) / 2
+    y0 = axes[0].get_position().y0
+    y1 = axes[0].get_position().y1 + 0.06
+    fig.add_artist(Line2D([xl, xl], [y0, y1], color='#8A949E', lw=1.0, ls='--'))
+    save(fig, 'highstab_zoom4.png')
+
+
 def fig_anytime(M, S):
     style_ = [('ils_baseline', 'ILS', C_ILS, '-'), ('ils_repair', 'ILS+PR-$k$', C_ILS, (0, (5, 2))),
               ('ils_pr', 'ILS+PR', C_ILS, (0, (0.6, 2.2))),
@@ -518,5 +587,8 @@ if __name__ == '__main__':
         fig_front(M, S)
         fig_highstab(M, S, band=False)
         fig_highstab(M, S, band=True)
+        fig_highstab_zoom(S)
         fig_anytime(M, S)
+    elif os.path.exists(CSV):
+        fig_highstab_zoom(load_csv())   # 4 パネルの帯の図は公開 CSV から同じ統計で作れる
     print('done.')
