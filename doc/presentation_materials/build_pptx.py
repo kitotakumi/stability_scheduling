@@ -88,6 +88,9 @@ def _run(paragraph, text, size, color=INK, bold=False, italic=False,
          baseline=None, font=JP):
     r = paragraph.add_run(); r.text = text
     _set_font(r, size, color=color, bold=bold, italic=italic, font=font)
+    # 言語を日本語にする。既定の en-US のままだと PowerPoint が禁則処理と句読点のぶら下げを
+    # 掛けず，「，」が行頭に来る
+    r._r.get_or_add_rPr().set('lang', 'ja-JP')
     if baseline is not None:
         r._r.get_or_add_rPr().set('baseline', str(int(baseline)))
     return r
@@ -529,7 +532,7 @@ def divider_slide(no, title, subtitle=None):
     return slide
 
 
-CHAPTERS = [("1", "研究背景と仮説", "外乱と再スケジューリング・高安定領域と特殊性・先行研究と課題・仮説"),
+CHAPTERS = [("1", "研究背景と仮説", "外乱と再スケジューリング・高安定領域・特殊性・先行研究・課題・仮説"),
             ("2", "問題設定と実験計画", "問題設定・探索構造・安定性誘導演算子・仮説の判定・評価指標"),
             ("3", "数値実験", "実験設定・高安定 HV・全域 HV と AUC"),
             ("4", "結論", "まとめ・限界と今後の課題")]
@@ -884,20 +887,21 @@ def s_background():
 
 def s_demand():
     """現場の要請。高安定領域が問われる理由は変更コストであって S_p の品質ではないので，
-    特殊性（S_p が探索前にある）とは別のスライドにする。指標は「本研究では」の選択として書く。"""
-    s = slide_frame("求められる解：高安定領域",
-                    "変更コストが無視できない場面では $S_p$ の近傍の解が選ばれる．本研究は，この領域の品質を高安定 HV で測る",
+    特殊性（S_p が探索前にある）とは別のスライドにする。着地は「本研究は高安定領域の品質に着目する」という
+    本研究の選択として書き（手法一般への要請の形にはしない），続けて指標（HV・高安定 HV）を書く。"""
+    s = slide_frame("本研究の着目点：高安定領域",
+                    "スケジュール変更コストが無視できない場面では $S_p$ の近傍の解が求められるため，"
+                    "本研究は高安定領域の品質に着目する",
                     "1. 研究背景と仮説")
     w, h = pic(s, "concept_0.png", ML - 0.05, 1.85, w=6.1)
     tx = ML + 6.25
     tw = SW - ML - tx
     tb, tf = add_textbox(s, tx, 1.85, tw, h, anchor=MSO_ANCHOR.MIDDLE)
     paras = [
-        ("● 二目的の **Pareto フロント**上の解はどれも非劣だが，変更コストが無視できない場面で"
-         "選ばれるのは，$S_p$ の近傍（**高安定領域**）の解", 15, 0),
-        ("→ この場合，手法に問われるのは，Pareto フロント全体の品質だけではなく，"
-         "**高安定領域の品質**", 15.5, 12),
-        ("本研究では，Pareto フロントの品質を hypervolume（HV）で測り，高安定領域に限った HV を"
+        ("● スケジュール変更コストが無視できない場面で求められるのは，**Pareto フロント**上の"
+         "**高安定領域**（$S_p$ の近傍）の解", 15, 0),
+        ("→ 本研究では，この**高安定領域の品質**に着目する", 15.5, 12),
+        ("Pareto フロントの品質は hypervolume（HV）で測り，高安定領域に限った HV を"
          "**高安定 HV** と呼ぶ", 13.5, 18),
     ]
     for i, (t, sz, sb) in enumerate(paras):
@@ -908,29 +912,50 @@ def s_demand():
 
 
 def s_special():
-    """問題の特殊性（文字だけ）。S_p が探索前にある高品質解だという事実と，それを活かせば効果的な探索が
-    できるはずだという見通しだけを言う。先生に出す版なので図は付けない（concept_sp.png は残してある）。"""
-    s = slide_frame("再スケジューリングの特殊性",
-                    "静的なスケジューリングにない特殊性：安定性が最良の解 $S_p$ が，探索を始める前から得られている",
+    """研究の出発点。着目点（高安定領域）のスライドの直後・先行研究の前に置き，S_p が探索前に得られるという特殊性が
+    探索構造の優劣を左右するのではないか，という問いを立てる。どちらの構造が良いかは仮説 1 の役目なので
+    ここでは言わない。問いに使う「探索構造」（単点探索・多点探索）の定義もここに置く。
+    図は着目点のスライドと同じ平面・同じ配置にし，★（初期解 S_p）はこの図で初めて描く。"""
+    s = slide_frame("本研究の出発点：再スケジューリングの特殊性",
+                    "$S_p$ が探索前に得られているこの問題では，"
+                    "この特性が探索構造の優劣を左右するのではないか",
                     "1. 研究背景と仮説")
-    by, bh = 2.6, 3.6
-    _rrect(s, ML, by, CW, bh, FILL, line=CARDLINE, radius=0.08)
-    tb, tf = add_textbox(s, ML + 0.6, by, CW - 1.2, bh, anchor=MSO_ANCHOR.MIDDLE)
+    w, h = pic(s, "concept_sp.png", ML - 0.05, 1.85, w=6.1)
+    tx = ML + 6.25
+    tw = SW - ML - tx
+    tb, tf = add_textbox(s, tx, 1.85, tw, h, anchor=MSO_ANCHOR.MIDDLE)
+    # 段落ごとに行のリストを持ち，行の間は段落内の改行にする（★ は見出しの後で改行）
     paras = [
-        ("★ 初期解 $S_p$（処理順序を保って遅延を吸収した解）は，**探索せずに得られる**．"
-         "変更量 0 で安定性は最良，$MS$ も外乱前に最適化済み", 19, 0),
-        ("→ 再スケジューリングでは，**この特殊性を活かすことで効果的な探索ができるはずである**", 19, 24),
+        (["★ 再スケジューリングの特殊性：",
+          "初期解 $S_p$（処理順序を保って遅延を吸収した解）は，**探索せずに得られる**．"
+          "変更量 0 で安定性は最良，$MS$ も外乱前に最適化済み"], 15, 0),
+        (["→ この $S_p$ の存在が，**探索構造の優劣に大きな影響を与えるのではないか**"], 15.5, 12),
     ]
-    for i, (t, sz, sb) in enumerate(paras):
+    for i, (lines, sz, sb) in enumerate(paras):
         p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-        p.line_spacing = 1.15
+        p.line_spacing = 1.08
         p.space_before = Pt(sb)
-        _add_runs(p, t, sz, color=INK, emph=BLUE)
+        for j, t in enumerate(lines):
+            if j:
+                p.add_line_break()
+            _add_runs(p, t, sz, color=INK, emph=BLUE)
+    # 探索構造の 2 系統の定義（問いに使う語なのでここで出す）。色は図の単点＝橙・多点＝緑
+    for k, (name, col, body) in enumerate([
+            ("単点探索", ORANGE, "：1 つの解を少しずつ変更しながら進む"),
+            ("多点探索", GREEN, "：複数の解を保持し，互いに組み替えながら進む")]):
+        p = tf.add_paragraph()
+        p.line_spacing = 1.08
+        p.space_before = Pt(18 if k == 0 else 2)
+        _run(p, name, 13.5, color=col, bold=True)
+        _run(p, body, 13.5, color=INK)
+    p = tf.add_paragraph()
+    _run(p, "（Blum & Roli, 2003）", 11, color=MUTE)
 
 
 def s_related():
     s = slide_frame("先行研究：安定性を確保する 2 つのアプローチ",
-                    "安定性は「目的関数に組み込む」か「再スケジュールの範囲を限定する」かで確保されてきた",
+                    "安定性の確保は 2 つのアプローチに分かれるが，"
+                    "どちらもメタヒューリスティクスによる解法は多点探索に集中している",
                     "1. 研究背景と仮説")
     cards = [
         ("安定性を目的関数に組み込むアプローチ",
@@ -949,7 +974,8 @@ def s_related():
     ]
     gap = 0.4
     cw = (CW - gap) / 2
-    y, h = 1.8, 4.05
+    # 単点探索・多点探索の定義は前の出発点のスライドにあるので，ここは下端の 1 文だけにしてカードを高くする
+    y, h = 1.8, 4.35
     for k, (head, refs, common) in enumerate(cards):
         x = ML + k * (cw + gap)
         _rrect(s, x, y, cw, h, WHITE, line=CARDLINE, radius=0.04)
@@ -967,35 +993,27 @@ def s_related():
             _run(p2, "　" + what, 12.5, color=INK)
         _boxtext(s, x + 0.25, y + h - 0.6, cw - 0.5, 0.46, [(common, 13.5, BLUE, True)],
                  fill=FILL, radius=0.2)
-    _text(s, ML, y + h + 0.12, CW, 0.5,
+    _text(s, ML, y + h + 0.15, CW, 0.5,
           "どちらのアプローチでも，メタヒューリスティクスによる解法は GA を基軸とする**多点探索に集中**",
           19, color=INK, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, emph=BLUE)
-    # 探索構造の 2 系統の説明（文脈を切らないよう控えめに）
-    tb, tf = add_textbox(s, ML, y + h + 0.62, CW, 0.38, anchor=MSO_ANCHOR.MIDDLE)
-    p = tf.paragraphs[0]
-    p.alignment = PP_ALIGN.CENTER
-    _run(p, "単点探索", 14, color=ORANGE, bold=True)
-    _run(p, "：1 つの解を少しずつ変更しながら進む　／　", 14, color=INK)
-    _run(p, "多点探索", 14, color=GREEN, bold=True)
-    _run(p, "：複数の解を保持し，互いに組み替えながら進む", 14, color=INK)
-    _run(p, "（Blum & Roli, 2003）", 11, color=MUTE)
 
 
 # ---------------------------------------------------------------- 5. 3 つの課題
 
 def s_gaps():
-    s = slide_frame("残された 3 つの課題",
+    s = slide_frame("先行研究に残された 3 つの課題",
                     "先行研究には，探索構造の比較・高安定領域での評価・解を $S_p$ に近づける操作が欠けている",
                     "1. 研究背景と仮説")
     # 課題 3 は機構の欠如として述べる：既存は安定性を「評価」か「探索空間の制限」で扱い，
     # 探索の移動としては扱わない。範囲限定型は高安定の解を「生む」のではなく閉じ込めるだけなので，
-    # 「フロント全体を保って」のような修飾は要らない。課題 1 や仮説 1 にも寄りかからない
+    # 「フロント全体を保って」のような修飾は要らない。課題 1 や仮説 1 にも寄りかからない。
+    # 課題 1 は，出発点のスライドの問い（S_p の存在が探索構造の優劣を左右するか）が
+    # 確かめられていないことを言う。多点探索への集中は直前の先行研究のスライドにあるので言い直さない
     rows = [
         ("探索構造の差が\n検証されていない",
-         "解法は多点探索に集中している．$S_p$ を初期解として解を少しずつ変更する単点探索との間に"
-         "どんな差が生まれるかは，分析されていない", 1.3),
+         "$S_p$ の存在が単点探索と多点探索の優劣に与える影響は，分析されていない", 1.3),
         ("その差を読み取れる\n評価の形式がない",
-         "比較は少数の重みでのスカラー値や，Pareto フロント全体の HV で行われ，"
+         "比較は少数の重みでのスカラー値や，Pareto フロント全体の HV で行われ，\n"
          "高安定領域で手法がどう異なるかは分析されていない", 1.3),
         ("解を $S_p$ に近づける\n探索操作がない",
          "**目的関数に組み込む**：安定性は解の評価にだけ入る．"
@@ -1750,9 +1768,9 @@ def build():
     chapter("1")
     s_intro()
     s_background()
-    s_demand()    # 現場の要請：高安定領域の解が選ばれる → 本研究は高安定 HV で測る
-    s_special()   # 問題の特殊性（S_p が探索前にある）
-    s_related()
+    s_demand()    # 現場の要請：高安定領域の解が求められる → 本研究はその品質に着目し，高安定 HV で測る
+    s_special()   # 研究の出発点：S_p が探索前にある → この特性が探索構造の優劣を左右するのではないか
+    s_related()   # 先行研究：どちらのアプローチも解法は多点探索に集中
     s_gaps()
     s_hypotheses()
     chapter("2")

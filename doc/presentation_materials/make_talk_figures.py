@@ -113,9 +113,9 @@ IY = _front_curve(IX) + np.array([0.030, 0.080, 0.035, 0.090, 0.040, 0.075, 0.03
 
 def _plane(ax, fs=12.5, star_label='初期解 $S_p$', band_label='高安定領域\n（$S_p$ の近傍）',
            front_label=True):
-    """★は初期解 S_p（処理順序を保ったまま遅延を吸収した解，D = 0）。正確な言い方は最初の
-    図（concept_0）だけに書き，以後の図では「初期解 S_p」で通す。帯と Pareto フロントの
-    ラベルも最初の図で定義し，以後は帯の短い名前だけ（演算子の図では付けない）。"""
+    """★は初期解 S_p（処理順序を保ったまま遅延を吸収した解，D = 0）。★は研究の出発点の図
+    （concept_sp）で初めて描き，求められる解の図（concept_0）では描かない（star_label=None）。
+    帯と Pareto フロントのラベルは最初の図で定義し，以後は帯の短い名前だけ（演算子の図では付けない）。"""
     ax.axvspan(0, BAND_HI, facecolor=BAND_FACE, lw=0, zorder=0)
     ax.axvline(BAND_HI, color=BAND_EDGE, lw=1.0, ls=':', zorder=1)
     if band_label:
@@ -125,8 +125,9 @@ def _plane(ax, fs=12.5, star_label='初期解 $S_p$', band_label='高安定領�
     if front_label:   # 曲線上の点と重ならないよう，曲線から少し下げて置く
         ax.text(0.55, _front_curve(0.55) - 0.07, 'Pareto フロント', fontsize=fs - 1.5,
                 color='gray', rotation=-17, rotation_mode='anchor', ha='left', va='top')
-    ax.plot([0], [0.95], marker='*', ms=17, color='black', zorder=6, clip_on=False)
-    ax.text(0.035, 0.985, star_label, fontsize=fs, va='bottom')
+    if star_label is not None:
+        ax.plot([0], [0.95], marker='*', ms=17, color='black', zorder=6, clip_on=False)
+        ax.text(0.035, 0.985, star_label, fontsize=fs, va='bottom')
     ax.set_xlim(-0.02, 1.02)
     ax.set_ylim(0.05, 1.10)
     # 目盛は置かず，原点の「0」は軸の左下の角に文字で添える。こうすると横軸ラベルも
@@ -159,19 +160,19 @@ def _mem(ax, alpha=0.9):
 
 def fig_concept_0():
     fig, ax = plt.subplots(figsize=(6.4, 4.95))
-    _plane(ax, fs=15, star_label='初期解 $S_p$（処理順序を保ったまま遅延を吸収）')
+    # 初期解 S_p（★）にはここでは触れない。★は次の研究の出発点の図で初めて出す
+    _plane(ax, fs=15, star_label=None)
     ax.xaxis.label.set_size(15)
     ax.yaxis.label.set_size(15)
     # Pareto フロント上の非劣解を点で示す（仮説の図と同じ読み方になるように）。
-    # 帯の中の解＝変更コストが無視できない場面で選ばれる解を濃く，外の解を白抜きで描く。
-    # D = 0 の解（★）だけは探索せずに得られる
+    # 帯の中の解＝スケジュール変更コストが無視できない場面で求められる解を濃く，外の解を白抜きで描く
     fx = np.array([0.045, 0.10, 0.16, 0.23, 0.33, 0.44, 0.57, 0.72, 0.90])
     fy = _front_curve(fx)
     inb = fx < BAND_HI
     ax.scatter(fx[~inb], fy[~inb], s=62, facecolor='white', edgecolor='#55606B', lw=1.4,
                zorder=5)
     ax.scatter(fx[inb], fy[inb], s=78, color=INK, zorder=6)
-    ax.annotate('変更コストが無視できない場面で\n選ばれる解', xy=(fx[2] + 0.012, fy[2] + 0.012),
+    ax.annotate('スケジュール変更コストが\n無視できない場面で求められる解', xy=(fx[2] + 0.012, fy[2] + 0.012),
                 xytext=(0.36, 0.80), fontsize=15, color=INK, va='center', linespacing=1.3,
                 arrowprops=dict(arrowstyle='-|>', color='#55606B', lw=1.1, mutation_scale=12,
                                 shrinkA=4, shrinkB=6))
@@ -181,28 +182,19 @@ def fig_concept_0():
 
 
 def fig_concept_sp():
-    """特殊性のスライド用。同じ平面で ★（初期解 S_p）を主役にする：探索せずに得られる解であることを
-    ★の注記で言い，帯の中の非劣解へ向かう矢印で「そこから少しの変更で MS を下げる」を示す。
-    「選ばれる解」の注記（求められる解のスライドの図）は付けない。"""
+    """研究の出発点のスライド用。同じ平面に ★（初期解 S_p）だけを描き，探索せずに得られる解であることを
+    ★の注記で言う。★はこの図で初めて出す。非劣解の点・★からの矢印は描かない
+    （どの探索構造が良いかはこのスライドでは言わない）。"""
     fig, ax = plt.subplots(figsize=(6.4, 4.95))
     _plane(ax, fs=15, star_label='初期解 $S_p$', band_label='高安定領域')
     ax.xaxis.label.set_size(15)
     ax.yaxis.label.set_size(15)
-    fx = np.array([0.045, 0.10, 0.16, 0.23, 0.33, 0.44, 0.57, 0.72, 0.90])
-    fy = _front_curve(fx)
-    inb = fx < BAND_HI
-    ax.scatter(fx[~inb], fy[~inb], s=62, facecolor='white', edgecolor='#55606B', lw=1.4,
-               zorder=5)
-    ax.scatter(fx[inb], fy[inb], s=78, color=INK, zorder=6)
-    ax.annotate('探索せずに得られる\n（変更量 0，$MS$ は外乱前に最適化済み）', xy=(0.012, 0.955),
+    # ★の注記は 1 行のラベルにする。長くすると tight_layout が軸を縮め，求められる解の図と平面の大きさが揃わない
+    # （変更量 0・MS は最適化済み，は右の本文にある）
+    ax.annotate('探索せずに得られる', xy=(0.012, 0.955),
                 xytext=(0.36, 0.93), fontsize=15, color=INK, va='center', linespacing=1.3,
                 arrowprops=dict(arrowstyle='-|>', color='#55606B', lw=1.1, mutation_scale=12,
                                 shrinkA=4, shrinkB=9))
-    ax.annotate('', xy=(fx[3] + 0.03, fy[3] + 0.03), xytext=(0.035, 0.935),
-                arrowprops=dict(arrowstyle='-|>', color=BAND_EDGE, lw=2.0, mutation_scale=14,
-                                connectionstyle='arc3,rad=-0.22', shrinkA=2, shrinkB=2), zorder=4)
-    ax.text(0.34, 0.74, '$S_p$ から少しの変更で\n$MS$ をどこまで下げられるか', fontsize=15,
-            color=BAND_EDGE, va='center', linespacing=1.3)
     fig.tight_layout(pad=0.4)
     mark_schematic(fig)
     save(fig, 'concept_sp.png')
