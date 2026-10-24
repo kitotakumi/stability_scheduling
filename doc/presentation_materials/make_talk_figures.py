@@ -11,6 +11,8 @@
   concept_h1.png     同じ平面に単点探索（ILS）の軌道と多点探索（Memetic）の解集合（仮説1）
   concept_h2.png     多点探索の個体を S_p へ引き戻す安定性誘導演算子（仮説2）
   concept_op.png     演算子の経路に PR・PR-k が返す解を注記した図
+  struct_ils.png     探索構造のスライドの小さな模式図：単点探索（S_p から 1 つの解を少しずつ動かす）
+  struct_mem.png     同：多点探索（複数の解を保持する）
   metric_auc.png     追加の評価：AUC（anytime 性能）の説明図
   front_ta21.png     ta21S / ta21L の実 Pareto フロント（全域 HV が中央値の試行）
   highstab_all8.png  全 8 シナリオの高安定 HV（探索構造 × 演算子）
@@ -73,7 +75,7 @@ def style():
 
 def mark_schematic(fig):
     """実データの図と区別するため，模式図の右上に「模式図」と入れる。"""
-    fig.text(0.995, 0.995, '模式図', ha='right', va='top', fontsize=10.5, color='#8A949E')
+    fig.text(0.995, 0.995, '模式図', ha='right', va='top', fontsize=12, color='#8A949E')
 
 
 def tight(fig, **kw):
@@ -184,12 +186,17 @@ def _pr(ax):
     return pr_x, pr_y
 
 
+# 1 章の 3 枚（concept_0・concept_hv・concept_sp）の文字の大きさ。3 枚で平面の大きさが揃うよう，
+# 軸ラベルと帯の名前は同じ大きさにする（スライドには 6.1 in 幅で置くので，配置後はおよそ 0.95 倍）
+FS_PLANE = 17
+
+
 def fig_concept_0():
-    fig, ax = plt.subplots(figsize=(6.4, 4.95))
+    fig, ax = plt.subplots(figsize=(6.4, 6.05))
     # 初期解 S_p（★）にはここでは触れない。★は次の研究の出発点の図で初めて出す
-    _plane(ax, fs=15, star_label=None)
-    ax.xaxis.label.set_size(15)
-    ax.yaxis.label.set_size(15)
+    _plane(ax, fs=FS_PLANE, star_label=None)
+    ax.xaxis.label.set_size(FS_PLANE)
+    ax.yaxis.label.set_size(FS_PLANE)
     # Pareto フロント上の非劣解を点で示す（仮説の図と同じ読み方になるように）。
     # 帯の中の解＝スケジュール変更コストが無視できない場面で求められる解を濃く，外の解を白抜きで描く
     fx = FX0
@@ -198,10 +205,12 @@ def fig_concept_0():
     ax.scatter(fx[~inb], fy[~inb], s=62, facecolor='white', edgecolor='#55606B', lw=1.4,
                zorder=5)
     ax.scatter(fx[inb], fy[inb], s=78, color=INK, zorder=6)
-    ax.annotate('スケジュール変更コストが\n無視できない場面で求められる解', xy=(fx[2] + 0.012, fy[2] + 0.012),
-                xytext=(0.36, 0.80), fontsize=15, color=INK, va='center', linespacing=1.3,
-                arrowprops=dict(arrowstyle='-|>', color='#55606B', lw=1.1, mutation_scale=12,
-                                shrinkA=4, shrinkB=6))
+    ann = ax.annotate('スケジュール変更コストが\n無視できない場面で求められる解', xy=(fx[2] + 0.012, fy[2] + 0.012),
+                      xytext=(0.36, 0.80), fontsize=FS_PLANE, color=INK, va='center', linespacing=1.3,
+                      arrowprops=dict(arrowstyle='-|>', color='#55606B', lw=1.1, mutation_scale=12,
+                                      shrinkA=4, shrinkB=6))
+    # 注記が軸の右端を少し越えても tight_layout が軸を縮めないようにする（3 枚の平面の大きさを揃える）
+    ann.set_in_layout(False)
     fig.tight_layout(pad=0.4)
     mark_schematic(fig)
     save(fig, 'concept_0.png')
@@ -220,10 +229,11 @@ def fig_concept_hv():
     """高安定 HV のスライド用（1 章）。着目点の図と同じ平面・同じ非劣解に，参照点までの支配領域を塗る。
     全体が全域 HV，帯の中の部分（橙）が高安定 HV。P_θ や D = 0 の除外などの算出の細部は実験設定で扱うので，
     軸と帯の名前は 1 章の言葉のままにする。"""
-    fig, ax = plt.subplots(figsize=(6.4, 4.95))
-    _plane(ax, fs=15, star_label=None, band_label='高安定領域', front_label=False)
-    ax.xaxis.label.set_size(15)
-    ax.yaxis.label.set_size(15)
+    fig, ax = plt.subplots(figsize=(6.4, 6.05))
+    # 帯の名前（S_p の近傍）と Pareto フロントのラベルは，1 章で平面を初めて見せるこの図で付ける
+    _plane(ax, fs=FS_PLANE, star_label=None)
+    ax.xaxis.label.set_size(FS_PLANE)
+    ax.yaxis.label.set_size(FS_PLANE)
     fy = _front_curve(FX0)
     ref = (1.0, 1.0)
     sx, sy = _stair(FX0, fy, ref[0])
@@ -234,14 +244,15 @@ def fig_concept_hv():
     ax.step(np.r_[FX0, ref[0]], np.r_[fy, fy[-1]], where='post', color=INK, lw=1.3, zorder=3)
     ax.scatter(FX0, fy, s=62, color=INK, zorder=6)
     ax.plot(*ref, marker='x', ms=10, mew=2.2, color='#55606B', zorder=6)
-    ax.text(ref[0] - 0.02, ref[1] + 0.02, '参照点', ha='right', va='bottom', fontsize=13,
+    ax.text(ref[0] - 0.02, ref[1] + 0.02, '参照点', ha='right', va='bottom', fontsize=FS_PLANE - 2,
             color='#55606B')
     # 橙の部分が全幅に広がる高さ（最初の非劣解より上）に置き，階段の線と重ねない
-    ax.text(0.18, 0.935, '高安定 HV', ha='center', va='center', fontsize=14, color='#8A4A14',
+    ax.text(0.17, 0.935, '高安定 HV', ha='center', va='center', fontsize=FS_PLANE - 1,
+            color='#8A4A14', fontweight='bold')
+    ax.text(0.66, 0.75, '全域 HV', ha='center', va='center', fontsize=FS_PLANE, color=INK,
             fontweight='bold')
-    ax.text(0.66, 0.75, '全域 HV', ha='center', va='center', fontsize=15, color=INK,
-            fontweight='bold')
-    ax.text(0.66, 0.67, '（高安定 HV を含む）', ha='center', va='center', fontsize=13, color=INK)
+    ax.text(0.66, 0.665, '（高安定 HV を含む）', ha='center', va='center', fontsize=FS_PLANE - 2,
+            color=INK)
     fig.tight_layout(pad=0.4)
     mark_schematic(fig)
     save(fig, 'concept_hv.png')
@@ -251,14 +262,14 @@ def fig_concept_sp():
     """研究の出発点のスライド用。同じ平面に ★（初期解 S_p）だけを描き，探索せずに得られる解であることを
     ★の注記で言う。★はこの図で初めて出す。非劣解の点・★からの矢印は描かない
     （どの探索構造が良いかはこのスライドでは言わない）。"""
-    fig, ax = plt.subplots(figsize=(6.4, 4.95))
-    _plane(ax, fs=15, star_label='初期解 $S_p$', band_label='高安定領域')
-    ax.xaxis.label.set_size(15)
-    ax.yaxis.label.set_size(15)
+    fig, ax = plt.subplots(figsize=(6.4, 6.05))
+    _plane(ax, fs=FS_PLANE, star_label='初期解 $S_p$', band_label='高安定領域')
+    ax.xaxis.label.set_size(FS_PLANE)
+    ax.yaxis.label.set_size(FS_PLANE)
     # ★の注記は 1 行のラベルにする。長くすると tight_layout が軸を縮め，求められる解の図と平面の大きさが揃わない
     # （変更量 0・MS は最適化済み，は右の本文にある）
     ax.annotate('探索せずに得られる', xy=(0.012, 0.955),
-                xytext=(0.36, 0.93), fontsize=15, color=INK, va='center', linespacing=1.3,
+                xytext=(0.36, 0.93), fontsize=FS_PLANE, color=INK, va='center', linespacing=1.3,
                 arrowprops=dict(arrowstyle='-|>', color='#55606B', lw=1.1, mutation_scale=12,
                                 shrinkA=4, shrinkB=9))
     fig.tight_layout(pad=0.4)
@@ -266,28 +277,64 @@ def fig_concept_sp():
     save(fig, 'concept_sp.png')
 
 
+# 仮説と演算子の図の文字の大きさ。仮説のスライドでは 4.7 in 幅ほどに縮めて置くので（およそ 0.8 倍），
+# 平面の図より大きめにする
+FS_SMALL_PLANE = 14.5
+
+
 def fig_concept_h(stage):
     fig, ax = plt.subplots(figsize=(6.0, 3.95))
-    _plane(ax, fs=11.5, band_label='高安定領域', front_label=False)
-    ax.xaxis.label.set_size(12)
-    ax.yaxis.label.set_size(12)
+    _plane(ax, fs=FS_SMALL_PLANE, band_label='高安定領域', front_label=False)
+    ax.xaxis.label.set_size(FS_SMALL_PLANE)
+    ax.yaxis.label.set_size(FS_SMALL_PLANE)
     if stage == 1:
         _mem(ax, 0.9)
         _ils(ax, 1.0)
-        ax.text(0.02, 0.43, '単点探索（ILS）', fontsize=12.5, color=C_ILS, ha='left', va='top',
-                fontweight='bold')
-        ax.text(0.55, 0.995, '多点探索（Memetic）', fontsize=12.5, color=C_MEM, ha='left',
+        ax.text(0.02, 0.43, '単点探索（ILS）', fontsize=FS_SMALL_PLANE + 1.5, color=C_ILS, ha='left',
+                va='top', fontweight='bold')
+        ax.text(0.5, 0.995, '多点探索（Memetic）', fontsize=FS_SMALL_PLANE + 1.5, color=C_MEM, ha='left',
                 va='bottom', fontweight='bold')
         out = 'concept_h1.png'
     else:
         _mem(ax, 0.26)
         _ils(ax, 0.30)
         _pr(ax)
-        ax.text(0.45, 0.995, '安定性誘導演算子：$S_p$ へ近づける', fontsize=12, color=C_MPR,
-                ha='left', va='bottom', fontweight='bold')
+        ax.text(0.32, 0.995, '安定性誘導演算子：$S_p$ へ近づける', fontsize=FS_SMALL_PLANE + 0.5,
+                color=C_MPR, ha='left', va='bottom', fontweight='bold')
         out = 'concept_h2.png'
     fig.tight_layout(pad=0.35)
     mark_schematic(fig)
+    save(fig, out)
+
+
+def fig_struct(kind):
+    """探索構造のスライドで，各構造の枠の右上に添える小さな模式図。平面・帯・Pareto フロント・★は
+    1 章の図と同じで，単点探索は★から 1 つの解を少しずつ動かす軌道，多点探索は解の集合だけを描く。
+    スライドには 1.7 in 幅ほどで置くので，文字は軸の名前だけにする。"""
+    fig, ax = plt.subplots(figsize=(2.0, 1.65))
+    ax.axvspan(0, BAND_HI, facecolor=BAND_FACE, lw=0, zorder=0)
+    ax.plot(XS, _front_curve(XS), ls='--', color='gray', lw=1.0, zorder=1)
+    ax.plot([0], [0.95], marker='*', ms=11, color='black', zorder=6, clip_on=False)
+    if kind == 'ils':
+        xs, ys = np.r_[0.0, IX], np.r_[0.95, IY]
+        ax.scatter(IX, IY, s=22, marker=M_ILS, color=C_ILS, zorder=4)
+        for i in range(len(xs) - 1):
+            ax.annotate('', xy=(xs[i + 1], ys[i + 1]), xytext=(xs[i], ys[i]),
+                        arrowprops=dict(arrowstyle='-|>', color=C_ILS, lw=0.9, mutation_scale=8,
+                                        shrinkA=3, shrinkB=4), zorder=5)
+        out = 'struct_ils.png'
+    else:
+        ax.scatter(np.r_[MX, MEM_FX], np.r_[MY, MEM_FY], s=18, marker=M_MEM, color=C_MEM,
+                   alpha=0.9, zorder=3)
+        out = 'struct_mem.png'
+    ax.set_xlim(-0.02, 1.02)
+    ax.set_ylim(0.05, 1.10)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_xlabel('順序偏差 $D$', fontsize=13, labelpad=2)
+    ax.set_ylabel('$MS$', fontsize=13, labelpad=2)
+    despine(ax)
+    fig.tight_layout(pad=0.2)
     save(fig, out)
 
 
@@ -295,16 +342,18 @@ def fig_concept_op():
     """演算子のスライド用：多点探索の個体 1 つを S_p へ引き戻す経路に，PR と PR-k が返す解を
     注記する。背景の単点・多点の解集合は仮説 2 の図（concept_h2）と同じ配置を薄く残す。"""
     fig, ax = plt.subplots(figsize=(6.0, 3.95))
-    _plane(ax, fs=11.5, band_label=None, front_label=False)
-    ax.xaxis.label.set_size(12)
-    ax.yaxis.label.set_size(12)
+    _plane(ax, fs=FS_SMALL_PLANE, band_label=None, front_label=False)
+    # 2 章以降の図は，問題設定で定義した順序偏差 D を横軸の名前にする
+    ax.set_xlabel('min　順序偏差 $D$（安定性）')
+    ax.xaxis.label.set_size(FS_SMALL_PLANE)
+    ax.yaxis.label.set_size(FS_SMALL_PLANE)
     _mem(ax, 0.22)          # 単点探索の軌跡は演算子の説明には要らないので描かない
     pr_x, pr_y = _pr(ax)
     # 経路の終点は S_p（★）。最後の 1 手は薄い破線の矢印で示す
     ax.annotate('', xy=(0.0, 0.95), xytext=(pr_x[-1], pr_y[-1]),
                 arrowprops=dict(arrowstyle='-|>', color=C_MPR, lw=1.1, ls='--', alpha=0.55,
                                 mutation_scale=15, shrinkA=6, shrinkB=10), zorder=4)
-    ax.text(pr_x[0] + 0.03, pr_y[0] + 0.05, '現在解', fontsize=11.5, color=C_MEM,
+    ax.text(pr_x[0] + 0.03, pr_y[0] + 0.05, '現在解', fontsize=FS_SMALL_PLANE, color=C_MEM,
             fontweight='bold')
     # 返す解（PR：経路上で F が最小の解，PR-k：k 回の swap で打ち切った解．例は k = 2）に輪を付け，
     # 注記は経路の下側，帯の左下の空きに置く。色は経路の茶と被らないよう本文の青にする
@@ -315,12 +364,12 @@ def fig_concept_op():
     from matplotlib.offsetbox import TextArea, HPacker, VPacker, AnnotationBbox
 
     def tagged(tag, rest, sub, xy, xytext):
-        t_tag = TextArea(tag, textprops=dict(fontsize=10.5, color='white', fontweight='bold',
+        t_tag = TextArea(tag, textprops=dict(fontsize=13.5, color='white', fontweight='bold',
                                              bbox=dict(boxstyle='round,pad=0.28,rounding_size=0.7',
                                                        fc=BLUE, ec='none')))
-        t_rest = TextArea(rest, textprops=dict(fontsize=10.5, color=BLUE, fontweight='bold'))
+        t_rest = TextArea(rest, textprops=dict(fontsize=13.5, color=BLUE, fontweight='bold'))
         line1 = HPacker(children=[t_tag, t_rest], align='center', pad=0, sep=7)
-        t_sub = TextArea(sub, textprops=dict(fontsize=10, color=BLUE))
+        t_sub = TextArea(sub, textprops=dict(fontsize=13, color=BLUE))
         box = VPacker(children=[line1, t_sub], align='left', pad=0, sep=6)
         ab = AnnotationBbox(box, xy, xybox=xytext, xycoords='data', boxcoords='data',
                             box_alignment=(0, 0.5), frameon=False, pad=0, zorder=7,
@@ -328,10 +377,11 @@ def fig_concept_op():
                                             mutation_scale=10, shrinkA=3, shrinkB=9))
         ax.add_artist(ab)
 
-    tagged('PR', 'が返す解', '（経路上で $F$ 最小）', (pr_x[-1], pr_y[-1]), (0.03, 0.50))
-    tagged('PR-$k$', 'が返す解', '（$k$ 回の swap で打ち切り）', (pr_x[2], pr_y[2]), (0.03, 0.32))
-    ax.text(0.45, 0.995, '誘導解＝$S_p$（★）へ swap でたどる', fontsize=12, color=C_MPR,
-            ha='left', va='bottom', fontweight='bold')
+    # PR-k の矢印が PR の注記の 2 行目を横切らないよう，2 つの注記の間を空ける
+    tagged('PR', 'が返す解', '（経路上で $F$ 最小）', (pr_x[-1], pr_y[-1]), (0.03, 0.555))
+    tagged('PR-$k$', 'が返す解', '（$k$ 回の swap で打ち切り）', (pr_x[2], pr_y[2]), (0.03, 0.27))
+    ax.text(0.3, 0.995, '誘導解＝$S_p$ へ swap でたどる', fontsize=FS_SMALL_PLANE + 0.5,
+            color=C_MPR, ha='left', va='bottom', fontweight='bold')
     fig.tight_layout(pad=0.35)
     mark_schematic(fig)
     save(fig, 'concept_op.png')
@@ -342,7 +392,7 @@ def fig_metric_auc():
     面積（対数時間）で，立ち上がりが速いほど大きい。縦軸・横軸・面積の意味はスライドの右の文で言う。
     重みごとに求めて全重みで平均するという算出の単位は，予備スライド（評価指標の詳細）で扱う。
     塗りは，全域 HV の面積の図と同じ淡い灰にする。"""
-    fig, ax = plt.subplots(figsize=(6.6, 4.95))
+    fig, ax = plt.subplots(figsize=(6.6, 5.75))
     t = np.logspace(-1.3, 1.8, 300)
     fa = 0.78 / (1 + np.exp(-2.4 * (np.log10(t) + 0.45)))
     fb = 0.92 / (1 + np.exp(-2.6 * (np.log10(t) - 0.55)))
@@ -352,8 +402,8 @@ def fig_metric_auc():
     ax.plot(t, fb, color='#8A949E', lw=2.6, ls='--', label='探索B：最終値は高いが遅い')
     ax.set_xscale('log')
     ax.set_ylim(0, 1.0)
-    ax.set_xlabel('計算時間（対数）', fontsize=16)
-    ax.set_ylabel('全域 HV', fontsize=16)
+    ax.set_xlabel('計算時間（対数）', fontsize=17)
+    ax.set_ylabel('全域 HV', fontsize=17)
     ax.set_xticks([])
     ax.set_xticks([], minor=True)
     ax.set_yticks([])
@@ -362,7 +412,7 @@ def fig_metric_auc():
     h, l = ax.get_legend_handles_labels()
     h.append(plt.matplotlib.patches.Patch(facecolor=face, edgecolor='#A9B2BC', lw=0.8))
     l.append('探索A の AUC（曲線の下の面積）')
-    ax.legend(h, l, loc='upper left', frameon=False, fontsize=14)
+    ax.legend(h, l, loc='upper left', frameon=False, fontsize=16)
     despine(ax)
     fig.tight_layout(pad=0.4)
     mark_schematic(fig)
@@ -394,7 +444,7 @@ def fig_front(M, S):
                ('ils_pr', 'ILS+PR', C_ILS, None, 3.0, M._pr_dash(3.0, 0.0)),
                ('memetic_ls', 'Memetic', C_MEM, M_MEM, 4.0, '-'),
                ('memetic_pr', 'Memetic+PR', C_MEM, None, 2.0, M._pr_dash(2.0, 0.5))]
-    fig, axes = plt.subplots(1, 2, figsize=(12.0, 3.4))
+    fig, axes = plt.subplots(1, 2, figsize=(12.0, 4.2))
     for k, (ax, prob) in enumerate(zip(axes, ['ta21_ta21_delay97', 'ta21_ta21_high'])):
         p50 = S[prob]['thresholds']['P50']
         init_ms = float(S[prob]['init_ms'])
@@ -527,7 +577,7 @@ def fig_highstab4(S, tags=('la36S', 'ta21S', 'la36L', 'ta21L'), mark=('la36L', '
     ILS の演算子なしの点を青い丸で囲む（スライドの箇条書きの「○」と対応）。パネルを全 8 シナリオの図より
     高くして，ILS の 94% → 100% の変化も読めるようにする。S は pkl でも load_csv() でもよい。"""
     probs = {TAG[p]: p for p in S if p in TAG}
-    fig, axes = plt.subplots(1, len(tags), figsize=(12.0, 3.0), sharey=True)
+    fig, axes = plt.subplots(1, len(tags), figsize=(12.0, 2.65), sharey=True)
     for ax, tag in zip(axes, tags):
         meds = _highstab_panel(ax, S[probs[tag]]['highstab_hv_pt'], tag)
         if tag in mark:
@@ -551,7 +601,7 @@ def fig_anytime(M, S):
               ('memetic_repair', 'Memetic+PR-$k$', C_MEM, (0, (5, 2))),
               ('memetic_pr', 'Memetic+PR', C_MEM, (0, (0.6, 2.2)))]
     methods = [s[0] for s in style_]
-    fig, axes = plt.subplots(1, 2, figsize=(12.0, 3.8))
+    fig, axes = plt.subplots(1, 2, figsize=(12.0, 4.6))
     for k, (ax, prob) in enumerate(zip(axes, ['ta21_ta21_delay97', 'la36_la36_large'])):
         t, cur = M._anytime_curves(prob, methods + ['ga'])
         for key, label, color, ls in style_:
@@ -585,6 +635,8 @@ if __name__ == '__main__':
     fig_concept_h(1)
     fig_concept_h(2)
     fig_concept_op()
+    fig_struct('ils')
+    fig_struct('mem')
     fig_metric_auc()
     if '--no-data' not in sys.argv:
         M, S = load()
