@@ -6,21 +6,23 @@
 図中の文字は指定した pt のままスライドに載る。
 
   concept_0.png      (D, MS) 平面：S_p・高安定領域・Pareto フロントだけ（手法なし）
+  concept_hv.png     同じ平面・同じ非劣解で，全域 HV と高安定 HV の面積を塗った図
   concept_sp.png     同じ平面で ★（S_p）を主役にした特殊性の図
   concept_h1.png     同じ平面に単点探索（ILS）の軌道と多点探索（Memetic）の解集合（仮説1）
   concept_h2.png     多点探索の個体を S_p へ引き戻す安定性誘導演算子（仮説2）
-  metrics.png        評価指標：全域 HV・高安定 HV（左）と AUC（右）の説明図
+  concept_op.png     演算子の経路に PR・PR-k が返す解を注記した図
+  metric_auc.png     追加の評価：AUC（anytime 性能）の説明図
   front_ta21.png     ta21S / ta21L の実 Pareto フロント（全域 HV が中央値の試行）
   highstab_all8.png  全 8 シナリオの高安定 HV（探索構造 × 演算子）
   highstab_band.png  同じ図に「最良値の 2% 以内」の帯を重ねたもの（現在は未使用）
-  highstab_zoom4.png la36S・ta21S・la36L・ta21L の高安定 HV を最良値の付近で拡大した帯の図
+  highstab_4.png     同じパネルを la36S・ta21S・la36L・ta21L の 4 つだけ並べた，演算子の効果の図
   anytime.png        ta21S / la36L の全域 HV の anytime 曲線
 
 データと集計ヘルパーは APIEMS v2 の make_figures_v2.py（main_v1 の _summary_data.pkl・raw JSON）を
 そのまま使う。符号化も v2 と揃える（ILS: 橙・○、Memetic: 緑・□、演算子の経路: 茶・◇）。
 usage: python make_talk_figures.py [--no-data]   # --no-data は模式図だけ作る
---no-data でも highstab_zoom4.png は公開 CSV（per_trial_metrics.csv）から同じ統計で作る。
-fig_highstab(None, load_csv(), band=...) で 8 パネルの図も同様に作れる。
+--no-data でも highstab_all8.png と highstab_4.png は公開 CSV（per_trial_metrics.csv）から同じ統計で作る。
+fig_highstab(None, load_csv(), band=True) で帯を重ねた図も同様に作れる。
 """
 import os
 import sys
@@ -102,6 +104,8 @@ def _front_curve(x):
 
 BAND_HI = 0.30
 XS = np.linspace(0, 1, 200)
+FX0 = np.array([0.045, 0.10, 0.16, 0.23, 0.33, 0.44, 0.57, 0.72, 0.90])   # 着目点と HV の図の非劣解
+HV_FACE, HS_FACE = '#E3E7EC', '#F2C58A'   # 全域 HV（淡い灰）と高安定 HV（橙）。色は主役の高安定 HV にだけ付ける
 _rng = np.random.default_rng(7)
 MEM_FX = np.array([0.27, 0.36, 0.47, 0.60, 0.75, 0.92])
 MEM_FY = np.array([0.810, 0.680, 0.535, 0.380, 0.240, 0.165])
@@ -109,6 +113,10 @@ MX = _rng.uniform(0.29, 1.0, 15)
 MY = np.interp(MX, MEM_FX, MEM_FY) + _rng.uniform(0.045, 0.185, 15)
 IX = np.linspace(0.09, 0.47, 7)
 IY = _front_curve(IX) + np.array([0.030, 0.080, 0.035, 0.090, 0.040, 0.075, 0.030])
+# 安定性誘導演算子の経路（仮説 2 の図と演算子の図で共通）。多点探索の個体 1 つから S_p へ向かう。
+# 始点は _pr_path で (PR_X[0], PR_Y[0]) に最も近い多点探索の個体に置き換える
+PR_X = np.array([0.62, 0.50, 0.39, 0.29, 0.20, 0.115])
+PR_Y = _front_curve(PR_X) + np.array([0.210, 0.115, 0.150, 0.130, 0.165, 0.032])
 
 
 def _plane(ax, fs=12.5, star_label='初期解 $S_p$', band_label='高安定領域\n（$S_p$ の近傍）',
@@ -141,7 +149,8 @@ def _plane(ax, fs=12.5, star_label='初期解 $S_p$', band_label='高安定領�
     despine(ax)
 
 
-def _arrow_chain(ax, xs, ys, color, alpha=1.0, lw=1.1, ms=9):
+def _arrow_chain(ax, xs, ys, color, alpha=1.0, lw=1.1, ms=15):
+    # 矢じりは小さいとスライド上で向きが読み取れないので，線の太さに比べて大きめにする
     for i in range(len(xs) - 1):
         ax.annotate('', xy=(xs[i + 1], ys[i + 1]), xytext=(xs[i], ys[i]),
                     arrowprops=dict(arrowstyle='-|>', color=color, lw=lw, mutation_scale=ms,
@@ -158,6 +167,23 @@ def _mem(ax, alpha=0.9):
                alpha=alpha, zorder=3)
 
 
+def _pr_path():
+    pr_x, pr_y = PR_X.copy(), PR_Y.copy()
+    i0 = int(np.argmin(np.hypot(MX - pr_x[0], MY - pr_y[0])))
+    pr_x[0], pr_y[0] = MX[i0], MY[i0]
+    return pr_x, pr_y
+
+
+def _pr(ax):
+    """演算子の経路：始点の個体（黒縁の□）と経路上の解（◇）を矢印でつなぐ。"""
+    pr_x, pr_y = _pr_path()
+    ax.scatter(pr_x[1:], pr_y[1:], s=52, marker=M_MPR, color=C_MPR, zorder=5)
+    ax.scatter([pr_x[0]], [pr_y[0]], s=60, marker=M_MEM, color=C_MEM, edgecolor='black',
+               lw=1.0, zorder=5)
+    _arrow_chain(ax, pr_x, pr_y, C_MPR, lw=1.3)
+    return pr_x, pr_y
+
+
 def fig_concept_0():
     fig, ax = plt.subplots(figsize=(6.4, 4.95))
     # 初期解 S_p（★）にはここでは触れない。★は次の研究の出発点の図で初めて出す
@@ -166,7 +192,7 @@ def fig_concept_0():
     ax.yaxis.label.set_size(15)
     # Pareto フロント上の非劣解を点で示す（仮説の図と同じ読み方になるように）。
     # 帯の中の解＝スケジュール変更コストが無視できない場面で求められる解を濃く，外の解を白抜きで描く
-    fx = np.array([0.045, 0.10, 0.16, 0.23, 0.33, 0.44, 0.57, 0.72, 0.90])
+    fx = FX0
     fy = _front_curve(fx)
     inb = fx < BAND_HI
     ax.scatter(fx[~inb], fy[~inb], s=62, facecolor='white', edgecolor='#55606B', lw=1.4,
@@ -179,6 +205,46 @@ def fig_concept_0():
     fig.tight_layout(pad=0.4)
     mark_schematic(fig)
     save(fig, 'concept_0.png')
+
+
+def _stair(xs, ys, xmax):
+    """D の昇順に並べた非劣解が支配する領域の下端（階段）。最後の段は xmax まで延ばす。"""
+    sx, sy = [], []
+    for k in range(len(xs)):
+        sx += [xs[k], xs[k + 1] if k + 1 < len(xs) else xmax]
+        sy += [ys[k], ys[k]]
+    return np.array(sx), np.array(sy)
+
+
+def fig_concept_hv():
+    """高安定 HV のスライド用（1 章）。着目点の図と同じ平面・同じ非劣解に，参照点までの支配領域を塗る。
+    全体が全域 HV，帯の中の部分（橙）が高安定 HV。P_θ や D = 0 の除外などの算出の細部は実験設定で扱うので，
+    軸と帯の名前は 1 章の言葉のままにする。"""
+    fig, ax = plt.subplots(figsize=(6.4, 4.95))
+    _plane(ax, fs=15, star_label=None, band_label='高安定領域', front_label=False)
+    ax.xaxis.label.set_size(15)
+    ax.yaxis.label.set_size(15)
+    fy = _front_curve(FX0)
+    ref = (1.0, 1.0)
+    sx, sy = _stair(FX0, fy, ref[0])
+    ax.fill_between(sx, sy, ref[1], color=HV_FACE, lw=0, zorder=0.5)
+    inb = FX0 < BAND_HI
+    hx, hy = _stair(FX0[inb], fy[inb], BAND_HI)
+    ax.fill_between(hx, hy, ref[1], color=HS_FACE, lw=0, zorder=0.6)
+    ax.step(np.r_[FX0, ref[0]], np.r_[fy, fy[-1]], where='post', color=INK, lw=1.3, zorder=3)
+    ax.scatter(FX0, fy, s=62, color=INK, zorder=6)
+    ax.plot(*ref, marker='x', ms=10, mew=2.2, color='#55606B', zorder=6)
+    ax.text(ref[0] - 0.02, ref[1] + 0.02, '参照点', ha='right', va='bottom', fontsize=13,
+            color='#55606B')
+    # 橙の部分が全幅に広がる高さ（最初の非劣解より上）に置き，階段の線と重ねない
+    ax.text(0.18, 0.935, '高安定 HV', ha='center', va='center', fontsize=14, color='#8A4A14',
+            fontweight='bold')
+    ax.text(0.66, 0.75, '全域 HV', ha='center', va='center', fontsize=15, color=INK,
+            fontweight='bold')
+    ax.text(0.66, 0.67, '（高安定 HV を含む）', ha='center', va='center', fontsize=13, color=INK)
+    fig.tight_layout(pad=0.4)
+    mark_schematic(fig)
+    save(fig, 'concept_hv.png')
 
 
 def fig_concept_sp():
@@ -216,14 +282,7 @@ def fig_concept_h(stage):
     else:
         _mem(ax, 0.26)
         _ils(ax, 0.30)
-        pr_x = np.array([0.62, 0.50, 0.39, 0.29, 0.20, 0.115])
-        pr_y = _front_curve(pr_x) + np.array([0.210, 0.115, 0.150, 0.130, 0.165, 0.032])
-        i0 = int(np.argmin(np.hypot(MX - pr_x[0], MY - pr_y[0])))
-        pr_x[0], pr_y[0] = MX[i0], MY[i0]
-        ax.scatter(pr_x[1:], pr_y[1:], s=52, marker=M_MPR, color=C_MPR, zorder=5)
-        ax.scatter([pr_x[0]], [pr_y[0]], s=60, marker=M_MEM, color=C_MEM, edgecolor='black',
-                   lw=1.0, zorder=5)
-        _arrow_chain(ax, pr_x, pr_y, C_MPR, lw=1.3)
+        _pr(ax)
         ax.text(0.45, 0.995, '安定性誘導演算子：$S_p$ へ近づける', fontsize=12, color=C_MPR,
                 ha='left', va='bottom', fontweight='bold')
         out = 'concept_h2.png'
@@ -240,18 +299,11 @@ def fig_concept_op():
     ax.xaxis.label.set_size(12)
     ax.yaxis.label.set_size(12)
     _mem(ax, 0.22)          # 単点探索の軌跡は演算子の説明には要らないので描かない
-    pr_x = np.array([0.62, 0.50, 0.39, 0.29, 0.20, 0.115])
-    pr_y = _front_curve(pr_x) + np.array([0.210, 0.115, 0.150, 0.130, 0.165, 0.032])
-    i0 = int(np.argmin(np.hypot(MX - pr_x[0], MY - pr_y[0])))
-    pr_x[0], pr_y[0] = MX[i0], MY[i0]
-    ax.scatter(pr_x[1:], pr_y[1:], s=52, marker=M_MPR, color=C_MPR, zorder=5)
-    ax.scatter([pr_x[0]], [pr_y[0]], s=60, marker=M_MEM, color=C_MEM, edgecolor='black',
-               lw=1.0, zorder=5)
-    _arrow_chain(ax, pr_x, pr_y, C_MPR, lw=1.3)
+    pr_x, pr_y = _pr(ax)
     # 経路の終点は S_p（★）。最後の 1 手は薄い破線の矢印で示す
     ax.annotate('', xy=(0.0, 0.95), xytext=(pr_x[-1], pr_y[-1]),
                 arrowprops=dict(arrowstyle='-|>', color=C_MPR, lw=1.1, ls='--', alpha=0.55,
-                                mutation_scale=9, shrinkA=6, shrinkB=10), zorder=4)
+                                mutation_scale=15, shrinkA=6, shrinkB=10), zorder=4)
     ax.text(pr_x[0] + 0.03, pr_y[0] + 0.05, '現在解', fontsize=11.5, color=C_MEM,
             fontweight='bold')
     # 返す解（PR：経路上で F が最小の解，PR-k：k 回の swap で打ち切った解．例は k = 2）に輪を付け，
@@ -285,73 +337,36 @@ def fig_concept_op():
     save(fig, 'concept_op.png')
 
 
-def fig_metrics():
-    fig, (a1, a2) = plt.subplots(1, 2, figsize=(12.0, 4.25),
-                                 gridspec_kw=dict(width_ratios=[1.12, 1.0]))
-    # ---- 左：全域 HV と高安定 HV（D 横・MS 縦。参照点は右上）
-    pts = np.array([(0.04, 0.84), (0.12, 0.68), (0.22, 0.56), (0.34, 0.46),
-                    (0.48, 0.39), (0.64, 0.34), (0.82, 0.31)])   # 左下は凡例のために空ける
-    ref = (1.0, 0.95)
-    p50 = 0.28
-
-    def stair(points, xmax):
-        xs, ys = [], []
-        for k, (x, y) in enumerate(points):
-            nx = points[k + 1][0] if k + 1 < len(points) else xmax
-            xs += [x, nx]
-            ys += [y, y]
-        return np.array(xs), np.array(ys)
-
-    hv_face, hs_face = '#DCE8F5', '#F2C58A'
-    sx, sy = stair(pts, ref[0])
-    a1.fill_between(sx, sy, ref[1], color=hv_face, lw=0, zorder=0)
-    inb = pts[pts[:, 0] < p50]
-    hx, hy = stair(inb, p50)
-    a1.fill_between(hx, hy, ref[1], color=hs_face, lw=0, zorder=1)
-    a1.axvline(p50, color=BAND_EDGE, ls=':', lw=1.2)
-    a1.text(p50 + 0.015, 1.0, '高安定領域の境界 $P_{\\theta}$', color=BAND_EDGE, fontsize=12, va='bottom')
-    a1.step(np.r_[pts[:, 0], ref[0]], np.r_[pts[:, 1], pts[-1, 1]], where='post',
-            color='#1F4E85', lw=1.6, zorder=3)
-    a1.scatter(pts[:, 0], pts[:, 1], s=46, color='#1F4E85', zorder=4)
-    a1.plot(*ref, marker='x', ms=10, mew=2.2, color='#55606B')
-    a1.text(ref[0] - 0.02, ref[1] + 0.02, '参照点', ha='right', va='bottom', fontsize=12,
-            color='#55606B')
-    a1.set_xlim(-0.02, 1.08)
-    a1.set_ylim(0.0, 1.10)
-    a1.set_xticks([])
-    a1.set_yticks([])
-    a1.set_xlabel('min　順序偏差 $D$（安定性）')
-    a1.set_ylabel('min　総所要時間 $MS$（生産効率）')
-    a1.set_title('全域 HV と高安定 HV', loc='left', fontweight='bold')
-    from matplotlib.patches import Patch
-    from matplotlib.lines import Line2D
-    # 全域 HV は橙の部分も含む領域全体（凡例で明示し，枠は描かない）
-    a1.legend([Patch(facecolor=hv_face), Patch(facecolor=hs_face),
-               Line2D([], [], ls='', marker='o', ms=7, color='#1F4E85')],
-              ['全域 HV（高安定 HV を含む）', '高安定 HV', '非劣解'],
-              loc='lower left', frameon=True, framealpha=1.0, edgecolor='#C9D6E5', fontsize=12)
-    despine(a1)
-    # ---- 右：AUC（HV–対数時間曲線の時間平均）
+def fig_metric_auc():
+    """追加の評価のスライド用：全域 HV の推移と AUC（anytime 性能）の模式図。AUC は全域 HV の推移の下の
+    面積（対数時間）で，立ち上がりが速いほど大きい。縦軸・横軸・面積の意味はスライドの右の文で言う。
+    重みごとに求めて全重みで平均するという算出の単位は，予備スライド（評価指標の詳細）で扱う。
+    塗りは，全域 HV の面積の図と同じ淡い灰にする。"""
+    fig, ax = plt.subplots(figsize=(6.6, 4.95))
     t = np.logspace(-1.3, 1.8, 300)
     fa = 0.78 / (1 + np.exp(-2.4 * (np.log10(t) + 0.45)))
     fb = 0.92 / (1 + np.exp(-2.6 * (np.log10(t) - 0.55)))
-    a2.fill_between(t, 0, fa, color='#F2C58A', alpha=0.55, lw=0)
-    a2.plot(t, fa, color='#B8621B', lw=2.4, label='探索A：立ち上がりが速い → AUC 大')
-    a2.plot(t, fb, color='#5E6B78', lw=2.4, ls='--', label='探索B：最終値は高いが遅い')
-    a2.text(0.06, 0.55, 'AUC＝曲線の下の\n面積（対数時間）', fontsize=12.5, color='#8A4A14')
-    a2.set_xscale('log')
-    a2.set_ylim(0, 1.0)
-    a2.set_xlabel('計算時間（対数）')
-    a2.set_ylabel('全域 HV')
-    a2.set_xticks([])
-    a2.set_xticks([], minor=True)
-    a2.set_yticks([])
-    a2.set_title('AUC（anytime 性能）', loc='left', fontweight='bold')
-    a2.legend(loc='upper left', frameon=False, fontsize=11.5)
-    despine(a2)
-    fig.tight_layout(pad=0.4, w_pad=2.5)
+    face = HV_FACE
+    ax.fill_between(t, 0, fa, color=face, lw=0)
+    ax.plot(t, fa, color=INK, lw=2.6, label='探索A：立ち上がりが速い → AUC 大')
+    ax.plot(t, fb, color='#8A949E', lw=2.6, ls='--', label='探索B：最終値は高いが遅い')
+    ax.set_xscale('log')
+    ax.set_ylim(0, 1.0)
+    ax.set_xlabel('計算時間（対数）', fontsize=16)
+    ax.set_ylabel('全域 HV', fontsize=16)
+    ax.set_xticks([])
+    ax.set_xticks([], minor=True)
+    ax.set_yticks([])
+    # 面積の名前は，凡例に塗りの見本を付けて示す（図中に文字で置くと，線の名前と読まれやすい）。
+    # 見本は塗りが淡いので，縁を付けて白地の凡例でも見えるようにする
+    h, l = ax.get_legend_handles_labels()
+    h.append(plt.matplotlib.patches.Patch(facecolor=face, edgecolor='#A9B2BC', lw=0.8))
+    l.append('探索A の AUC（曲線の下の面積）')
+    ax.legend(h, l, loc='upper left', frameon=False, fontsize=14)
+    despine(ax)
+    fig.tight_layout(pad=0.4)
     mark_schematic(fig)
-    save(fig, 'metrics.png')
+    save(fig, 'metric_auc.png')
 
 
 # ====================================================================== 実データの図
@@ -426,38 +441,46 @@ def _p_stars(p):
     return '*' if p >= 0.01 else ('**' if p >= 0.001 else '***')
 
 
+def _highstab_panel(ax, per, title, band=False):
+    """高安定 HV の 1 パネル（演算子なし・PR-k・PR × 探索構造）。全手法の中央値の最大（最良値）を 1 に
+    正規化し，演算子なしとの差の有意水準を * で付ける。HOSTS の順に，最良値で割った中央値を返す。"""
+    x = np.arange(3)
+    best = max(np.median(np.asarray(per[m], float)) for m in ALL7 if len(per.get(m, [])))
+    if band:
+        ax.axhspan(0.98, 1.0, color=BAND2, lw=0, zorder=0)
+    meds = []
+    for host, keys, color, mk, above in HOSTS:
+        vals = [np.asarray(per[m], float) / best for m in keys]
+        med = np.array([np.median(v) for v in vals])
+        lo = np.array([np.percentile(v, 25) for v in vals])
+        hi = np.array([np.percentile(v, 75) for v in vals])
+        ax.errorbar(x, med, yerr=[med - lo, hi - med], marker=mk, ms=8, color=color,
+                    mec='white', mew=0.8, lw=2.4, capsize=3, elinewidth=1.0, label=host,
+                    zorder=3)
+        for j in (1, 2):
+            p = mannwhitneyu(vals[j], vals[0], alternative='two-sided').pvalue
+            if np.isfinite(p) and p < 0.05:
+                ax.annotate(_p_stars(p), (x[j], med[j]), xytext=(0, 2 if above else -5),
+                            textcoords='offset points', ha='center',
+                            va='bottom' if above else 'top', fontsize=16, color=color)
+        meds.append(med)
+    ax.set_title(title, fontsize=18, pad=3)
+    ax.set_xticks(x)
+    ax.set_xticklabels(['なし', 'PR-$k$', 'PR'], fontsize=16)
+    ax.set_xlim(-0.4, 2.4)
+    ax.set_ylim(0, 1.32)
+    ax.set_yticks([0, 0.5, 1.0])
+    ax.set_yticklabels(['0', '0.5', '1'])
+    ax.grid(axis='y', alpha=0.25)
+    despine(ax)
+    return meds
+
+
 def fig_highstab(M, S, band=False):
     """全 8 シナリオの高安定 HV．各シナリオで全手法の中央値の最大（最良値）を 1 に正規化する。"""
-    x = np.arange(3)
     fig, axes = plt.subplots(2, 4, figsize=(12.0, 3.85), sharey=True)
-    for i, (ax, prob) in enumerate(zip(axes.flat, ORDER)):
-        per = S[prob]['highstab_hv_pt']
-        best = max(np.median(np.asarray(per[m], float)) for m in ALL7 if len(per.get(m, [])))
-        if band:
-            ax.axhspan(0.98, 1.0, color=BAND2, lw=0, zorder=0)
-        for host, keys, color, mk, above in HOSTS:
-            vals = [np.asarray(per[m], float) / best for m in keys]
-            med = np.array([np.median(v) for v in vals])
-            lo = np.array([np.percentile(v, 25) for v in vals])
-            hi = np.array([np.percentile(v, 75) for v in vals])
-            ax.errorbar(x, med, yerr=[med - lo, hi - med], marker=mk, ms=8, color=color,
-                        mec='white', mew=0.8, lw=2.4, capsize=3, elinewidth=1.0, label=host,
-                        zorder=3)
-            for j in (1, 2):
-                p = mannwhitneyu(vals[j], vals[0], alternative='two-sided').pvalue
-                if np.isfinite(p) and p < 0.05:
-                    ax.annotate(_p_stars(p), (x[j], med[j]), xytext=(0, 2 if above else -5),
-                                textcoords='offset points', ha='center',
-                                va='bottom' if above else 'top', fontsize=16, color=color)
-        ax.set_title(TAG[prob], fontsize=18, pad=3)
-        ax.set_xticks(x)
-        ax.set_xticklabels(['なし', 'PR-$k$', 'PR'], fontsize=16)
-        ax.set_xlim(-0.4, 2.4)
-        ax.set_ylim(0, 1.32)
-        ax.set_yticks([0, 0.5, 1.0])
-        ax.set_yticklabels(['0', '0.5', '1'])
-        ax.grid(axis='y', alpha=0.25)
-        despine(ax)
+    for ax, prob in zip(axes.flat, ORDER):
+        _highstab_panel(ax, S[prob]['highstab_hv_pt'], TAG[prob], band)
     h, l = axes[0, 0].get_legend_handles_labels()
     if band:
         h.append(plt.matplotlib.patches.Patch(color=BAND2))
@@ -495,76 +518,30 @@ def load_csv():
     return S
 
 
-ZOOM_LO, ZOOM_HI = 0.84, 1.04   # 帯の図の縦軸（最良値＝1 の付近だけを見せる）
+GUIDE = '#16385C'   # スライドの読み方のガイドの青（build_pptx.py の BLUE）
 
 
-def fig_highstab_zoom(S, tags=('la36S', 'ta21S', 'la36L', 'ta21L')):
-    """帯の図（4 パネル）。縦軸を最良値の付近に拡大して描く。2% の帯は全範囲では線にしか見えないので，
-    拡大して帯の内外を読めるようにする。並びは左 2 つが ILS が演算子なしで帯の中（変化なし），
-    右 2 つが帯の外（組み込むと向上）。範囲外の点（演算子なしの Memetic）は下端の矢印と値で示し，
-    ILS の演算子なしの点に帯の中／外を注記する。S は pkl でも load_csv() でもよい。"""
-    by_tag = {TAG[prob]: {m: np.asarray(v, float) for m, v in S[prob]['highstab_hv_pt'].items()}
-              for prob in S if prob in TAG}
-    x = np.arange(3)
-    fig, axes = plt.subplots(1, len(tags), figsize=(12.0, 3.7), sharey=True)
+def fig_highstab4(S, tags=('la36S', 'ta21S', 'la36L', 'ta21L'), mark=('la36L', 'ta21L')):
+    """演算子の効果のスライド用：全 8 シナリオの図と同じパネルを 4 つだけ 1 行に並べる。
+    左 2 つは ILS が演算子なしで最良値にあるシナリオ，右 2 つは届いていないシナリオ。後者（mark）では，
+    ILS の演算子なしの点を青い丸で囲む（スライドの箇条書きの「○」と対応）。パネルを全 8 シナリオの図より
+    高くして，ILS の 94% → 100% の変化も読めるようにする。S は pkl でも load_csv() でもよい。"""
+    probs = {TAG[p]: p for p in S if p in TAG}
+    fig, axes = plt.subplots(1, len(tags), figsize=(12.0, 3.0), sharey=True)
     for ax, tag in zip(axes, tags):
-        per = by_tag[tag]
-        best = max(np.median(per[m]) for m in ALL7 if m in per)
-        ax.axhspan(0.98, 1.0, color=BAND2, lw=0, zorder=0)
-        ax.axhline(0.98, color='#5B7AA3', lw=1.0, ls=':', zorder=1)
-        for host, keys, color, mk, above in HOSTS:
-            vals = [per[m] / best for m in keys]
-            med = np.array([np.median(v) for v in vals])
-            lo = np.array([np.percentile(v, 25) for v in vals])
-            hi = np.array([np.percentile(v, 75) for v in vals])
-            ax.errorbar(x, med, yerr=[med - lo, hi - med], marker=mk, ms=9, color=color,
-                        mec='white', mew=0.8, lw=2.4, capsize=3, elinewidth=1.0, label=host,
-                        zorder=3)
-            for j in range(3):
-                if med[j] < ZOOM_LO:          # 範囲外：下端に矢印と値
-                    ax.annotate('', xy=(x[j], ZOOM_LO + 0.003), xytext=(x[j], ZOOM_LO + 0.04),
-                                arrowprops=dict(arrowstyle='-|>', color=color, lw=1.8,
-                                                mutation_scale=16), zorder=4)
-                    ax.text(x[j] + 0.1, ZOOM_LO + 0.022, f'{med[j]:.2f}', color=color,
-                            fontsize=15, ha='left', va='center')
-            for j in (1, 2):
-                p = mannwhitneyu(vals[j], vals[0], alternative='two-sided').pvalue
-                if np.isfinite(p) and p < 0.05:
-                    ax.annotate(_p_stars(p), (x[j], med[j]), xytext=(0, 3 if above else -6),
-                                textcoords='offset points', ha='center',
-                                va='bottom' if above else 'top', fontsize=16, color=color)
-            if above:   # ILS：演算子なしの点が帯の中か外か
-                ax.text(x[0] + 0.1, med[0] - 0.012, '帯の中' if med[0] >= 0.98 else '帯の外',
-                        color=color, fontsize=15, ha='left', va='top', fontweight='bold')
-        ax.set_title(tag, fontsize=18, pad=3)
-        ax.set_xticks(x)
-        ax.set_xticklabels(['なし', 'PR-$k$', 'PR'], fontsize=16)
-        ax.set_xlim(-0.4, 2.4)
-        ax.set_ylim(ZOOM_LO, ZOOM_HI)
-        ax.set_yticks([0.85, 0.90, 0.95, 1.0])
-        ax.set_yticklabels(['0.85', '0.9', '0.95', '1'])
-        ax.grid(axis='y', alpha=0.25)
-        despine(ax)
+        meds = _highstab_panel(ax, S[probs[tag]]['highstab_hv_pt'], tag)
+        if tag in mark:
+            ax.plot([0], [meds[0][0]], marker='o', ms=25, mfc='none', mec=GUIDE, mew=2.2, zorder=6)
     h, l = axes[0].get_legend_handles_labels()
-    h.append(plt.matplotlib.patches.Patch(color=BAND2))
-    l.append('最良値の 2% 以内')
     fig.legend(h, l, loc='upper left', ncol=len(l), frameon=False, fontsize=16,
-               bbox_to_anchor=(0.04, 1.0), columnspacing=1.6)
-    # 「縦軸は拡大」「↓ は範囲外」の断りは凡例と当たるので図には入れず，スライドのキャプションに書く
-    fig.text(0.005, 0.44, '高安定 HV（最良値＝1）', rotation=90, ha='left', va='center',
-             fontsize=16, color=INK)
-    tight(fig, pad=0.4, w_pad=0.9, rect=(0.035, 0, 1, 0.80))
-    # 読み方のガイド：左右の 2 組の上に見出しを置き，境に薄い縦線を引く
-    from matplotlib.lines import Line2D
-    pos = [ax.get_position() for ax in axes]
-    yh = pos[0].y1 + 0.135
-    for (a, b), head in [((0, 1), 'ILS が帯の中 → 組み込んでも変化なし'),
-                         ((2, 3), 'ILS が帯の外 → 組み込むと向上')]:
-        fig.text((pos[a].x0 + pos[b].x1) / 2, yh, head, ha='center', va='center',
-                 fontsize=15, color=C_ILS, fontweight='bold')
-    xl = (pos[1].x1 + pos[2].x0) / 2
-    fig.add_artist(Line2D([xl, xl], [pos[0].y0, yh + 0.04], color='#8A949E', lw=1.0, ls='--'))
-    save(fig, 'highstab_zoom4.png')
+               bbox_to_anchor=(0.04, 1.0), columnspacing=2.0)
+    fig.text(0.995, 0.975, '*：演算子なしとの差の有意水準（補正なし）',
+             ha='right', va='top', fontsize=15, color=INK)
+    # 縦軸ラベルは全 8 シナリオの図と同じく図の左端に置く。1 行のパネルの高さには収まらないので 2 行に折る
+    fig.text(0.006, 0.45, '高安定 HV\n（最良値＝1）', rotation=90, ha='left', va='center',
+             fontsize=16, color=INK, linespacing=1.2)
+    tight(fig, pad=0.4, w_pad=0.9, rect=(0.065, 0, 1, 0.86))
+    save(fig, 'highstab_4.png')
 
 
 def fig_anytime(M, S):
@@ -603,18 +580,21 @@ def fig_anytime(M, S):
 if __name__ == '__main__':
     style()
     fig_concept_0()
+    fig_concept_hv()
     fig_concept_sp()
     fig_concept_h(1)
     fig_concept_h(2)
     fig_concept_op()
-    fig_metrics()
+    fig_metric_auc()
     if '--no-data' not in sys.argv:
         M, S = load()
         fig_front(M, S)
         fig_highstab(M, S, band=False)
         fig_highstab(M, S, band=True)
-        fig_highstab_zoom(S)
+        fig_highstab4(S)
         fig_anytime(M, S)
     elif os.path.exists(CSV):
-        fig_highstab_zoom(load_csv())   # 4 パネルの帯の図は公開 CSV から同じ統計で作れる
+        S = load_csv()   # 高安定 HV の図は公開 CSV から同じ統計で作れる
+        fig_highstab(None, S, band=False)
+        fig_highstab4(S)
     print('done.')
