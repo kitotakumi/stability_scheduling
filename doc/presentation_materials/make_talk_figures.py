@@ -104,9 +104,11 @@ def _front_curve(x):
     return 0.15 + 0.80 * (1.0 - x) ** 1.8
 
 
-BAND_HI = 0.30
+BAND_HI = 0.40   # 高安定領域の帯の端（全ての模式図で共通）
 XS = np.linspace(0, 1, 200)
-FX0 = np.array([0.045, 0.10, 0.16, 0.23, 0.33, 0.44, 0.57, 0.72, 0.90])   # 着目点と HV の図の非劣解
+# 着目点と HV の図の非劣解（10 点）。帯の端 BAND_HI は 5 番目と 6 番目の中間＝D の中央値で，半数が帯に入る。
+# 実データと同じく，D の小さい側に解を詰めて置く
+FX0 = np.array([0.05, 0.12, 0.20, 0.28, 0.36, 0.44, 0.55, 0.67, 0.80, 0.94])
 HV_FACE, HS_FACE = '#E3E7EC', '#F2C58A'   # 全域 HV（淡い灰）と高安定 HV（橙）。色は主役の高安定 HV にだけ付ける
 _rng = np.random.default_rng(7)
 MEM_FX = np.array([0.27, 0.36, 0.47, 0.60, 0.75, 0.92])
@@ -117,13 +119,13 @@ IX = np.linspace(0.09, 0.47, 7)
 IY = _front_curve(IX) + np.array([0.030, 0.080, 0.035, 0.090, 0.040, 0.075, 0.030])
 # 安定性誘導演算子の経路（仮説 2 の図と演算子の図で共通）。多点探索の個体 1 つから S_p へ向かう。
 # 始点は _pr_path で (PR_X[0], PR_Y[0]) に最も近い多点探索の個体に置き換える
-PR_X = np.array([0.62, 0.50, 0.39, 0.29, 0.20, 0.115])
+PR_X = np.array([0.62, 0.50, 0.35, 0.27, 0.19, 0.115])   # 3 番目（PR-k が返す解）は帯の端に重ねない
 PR_Y = _front_curve(PR_X) + np.array([0.210, 0.115, 0.150, 0.130, 0.165, 0.032])
 
 
-def _plane(ax, fs=12.5, star_label='初期解 $S_p$', band_label='高安定領域\n（$S_p$ の近傍）',
+def _plane(ax, fs=12.5, star_label='$S_p$', band_label='高安定領域',
            front_label=True):
-    """★は初期解 S_p（処理順序を保ったまま遅延を吸収した解，D = 0）。★は研究の出発点の図
+    """★は初期スケジュール S_p（D = 0）。★は研究の出発点の図
     （concept_sp）で初めて描き，求められる解の図（concept_0）では描かない（star_label=None）。
     帯と Pareto フロントのラベルは最初の図で定義し，以後は帯の短い名前だけ（演算子の図では付けない）。"""
     ax.axvspan(0, BAND_HI, facecolor=BAND_FACE, lw=0, zorder=0)
@@ -133,7 +135,7 @@ def _plane(ax, fs=12.5, star_label='初期解 $S_p$', band_label='高安定領�
                 fontsize=fs, color=BAND_EDGE, linespacing=1.15)
     ax.plot(XS, _front_curve(XS), ls='--', color='gray', lw=1.4, zorder=1)
     if front_label:   # 曲線上の点と重ならないよう，曲線から少し下げて置く
-        ax.text(0.55, _front_curve(0.55) - 0.07, 'Pareto フロント', fontsize=fs - 1.5,
+        ax.text(0.53, _front_curve(0.53) - 0.10, 'Pareto フロント', fontsize=fs - 1.5,
                 color='gray', rotation=-17, rotation_mode='anchor', ha='left', va='top')
     if star_label is not None:
         ax.plot([0], [0.95], marker='*', ms=17, color='black', zorder=6, clip_on=False)
@@ -193,7 +195,7 @@ FS_PLANE = 17
 
 def fig_concept_0():
     fig, ax = plt.subplots(figsize=(6.4, 6.05))
-    # 初期解 S_p（★）にはここでは触れない。★は次の研究の出発点の図で初めて出す
+    # S_p（★）にはここでは触れない。★は次の研究の出発点の図で初めて出す
     _plane(ax, fs=FS_PLANE, star_label=None)
     ax.xaxis.label.set_size(FS_PLANE)
     ax.yaxis.label.set_size(FS_PLANE)
@@ -230,8 +232,14 @@ def fig_concept_hv():
     全体が全域 HV，帯の中の部分（橙）が高安定 HV。P_θ や D = 0 の除外などの算出の細部は実験設定で扱うので，
     軸と帯の名前は 1 章の言葉のままにする。"""
     fig, ax = plt.subplots(figsize=(6.4, 6.05))
-    # 帯の名前（S_p の近傍）と Pareto フロントのラベルは，1 章で平面を初めて見せるこの図で付ける
-    _plane(ax, fs=FS_PLANE, star_label=None)
+    # Pareto フロントのラベルは，1 章で平面を初めて見せるこの図で付ける
+    _plane(ax, fs=FS_PLANE, star_label=None, band_label=None)
+    # 帯の名前の下に，帯の範囲（全手法の非劣解のうち変更量が中央値より小さい）を添える
+    ax.text(BAND_HI / 2, 0.075, '（変更量が\n中央値より小）', ha='center', va='bottom',
+            fontsize=FS_PLANE - 2, color=BAND_EDGE, linespacing=1.15)
+    ax.annotate('高安定領域', xy=(BAND_HI / 2, 0.075), xytext=(0, 2 * (FS_PLANE - 2) * 1.4 + 3),
+                textcoords='offset points', ha='center', va='bottom', fontsize=FS_PLANE,
+                color=BAND_EDGE)
     ax.xaxis.label.set_size(FS_PLANE)
     ax.yaxis.label.set_size(FS_PLANE)
     fy = _front_curve(FX0)
@@ -247,7 +255,7 @@ def fig_concept_hv():
     ax.text(ref[0] - 0.02, ref[1] + 0.02, '参照点', ha='right', va='bottom', fontsize=FS_PLANE - 2,
             color='#55606B')
     # 橙の部分が全幅に広がる高さ（最初の非劣解より上）に置き，階段の線と重ねない
-    ax.text(0.17, 0.935, '高安定 HV', ha='center', va='center', fontsize=FS_PLANE - 1,
+    ax.text(BAND_HI / 2, 0.935, '高安定 HV', ha='center', va='center', fontsize=FS_PLANE - 1,
             color='#8A4A14', fontweight='bold')
     ax.text(0.66, 0.75, '全域 HV', ha='center', va='center', fontsize=FS_PLANE, color=INK,
             fontweight='bold')
@@ -259,17 +267,17 @@ def fig_concept_hv():
 
 
 def fig_concept_sp():
-    """研究の出発点のスライド用。同じ平面に ★（初期解 S_p）だけを描き，探索せずに得られる解であることを
+    """研究の出発点のスライド用。同じ平面に ★（S_p）だけを描き，探索せずに得られる解であることを
     ★の注記で言う。★はこの図で初めて出す。非劣解の点・★からの矢印は描かない
     （どの探索構造が良いかはこのスライドでは言わない）。"""
     fig, ax = plt.subplots(figsize=(6.4, 6.05))
-    _plane(ax, fs=FS_PLANE, star_label='初期解 $S_p$', band_label='高安定領域')
+    _plane(ax, fs=FS_PLANE, star_label='$S_p$', band_label='高安定領域')
     ax.xaxis.label.set_size(FS_PLANE)
     ax.yaxis.label.set_size(FS_PLANE)
     # ★の注記は 1 行のラベルにする。長くすると tight_layout が軸を縮め，求められる解の図と平面の大きさが揃わない
     # （変更量 0・MS は最適化済み，は右の本文にある）
     ax.annotate('探索せずに得られる', xy=(0.012, 0.955),
-                xytext=(0.36, 0.93), fontsize=FS_PLANE, color=INK, va='center', linespacing=1.3,
+                xytext=(0.46, 0.93), fontsize=FS_PLANE, color=INK, va='center', linespacing=1.3,
                 arrowprops=dict(arrowstyle='-|>', color='#55606B', lw=1.1, mutation_scale=12,
                                 shrinkA=4, shrinkB=9))
     fig.tight_layout(pad=0.4)
@@ -299,7 +307,8 @@ def fig_concept_h(stage):
         _mem(ax, 0.26)
         _ils(ax, 0.30)
         _pr(ax)
-        ax.text(0.32, 0.995, '安定性誘導演算子：$S_p$ へ近づける', fontsize=FS_SMALL_PLANE + 0.5,
+        # 帯の端をまたがないよう，帯の外から書き出す
+        ax.text(BAND_HI + 0.02, 0.995, '安定性誘導演算子：$S_p$ へ近づける', fontsize=FS_SMALL_PLANE + 0.5,
                 color=C_MPR, ha='left', va='bottom', fontweight='bold')
         out = 'concept_h2.png'
     fig.tight_layout(pad=0.35)
@@ -363,24 +372,28 @@ def fig_concept_op():
     # 演算子の名前はこの図が唯一の説明箇所なので，白抜きの札にして目立たせる
     from matplotlib.offsetbox import TextArea, HPacker, VPacker, AnnotationBbox
 
-    def tagged(tag, rest, sub, xy, xytext):
-        t_tag = TextArea(tag, textprops=dict(fontsize=13.5, color='white', fontweight='bold',
+    def tagged(tag, rest, sub, xy, xytext, rad=0.0):
+        t_tag = TextArea(tag, textprops=dict(fontsize=14.5, color='white', fontweight='bold',
                                              bbox=dict(boxstyle='round,pad=0.28,rounding_size=0.7',
                                                        fc=BLUE, ec='none')))
-        t_rest = TextArea(rest, textprops=dict(fontsize=13.5, color=BLUE, fontweight='bold'))
+        t_rest = TextArea(rest, textprops=dict(fontsize=14.5, color=BLUE, fontweight='bold'))
         line1 = HPacker(children=[t_tag, t_rest], align='center', pad=0, sep=7)
-        t_sub = TextArea(sub, textprops=dict(fontsize=13, color=BLUE))
+        t_sub = TextArea(sub, textprops=dict(fontsize=14, color=BLUE))
         box = VPacker(children=[line1, t_sub], align='left', pad=0, sep=6)
         ab = AnnotationBbox(box, xy, xybox=xytext, xycoords='data', boxcoords='data',
                             box_alignment=(0, 0.5), frameon=False, pad=0, zorder=7,
                             arrowprops=dict(arrowstyle='-|>', color='#55606B', lw=1.0,
-                                            mutation_scale=10, shrinkA=3, shrinkB=9))
+                                            mutation_scale=10, shrinkA=3, shrinkB=9,
+                                            connectionstyle=f'arc3,rad={rad}'))
         ax.add_artist(ab)
 
     # PR-k の矢印が PR の注記の 2 行目を横切らないよう，2 つの注記の間を空ける
     tagged('PR', 'が返す解', '（経路上で $F$ 最小）', (pr_x[-1], pr_y[-1]), (0.03, 0.555))
-    tagged('PR-$k$', 'が返す解', '（$k$ 回の swap で打ち切り）', (pr_x[2], pr_y[2]), (0.03, 0.27))
-    ax.text(0.3, 0.995, '誘導解＝$S_p$ へ swap でたどる', fontsize=FS_SMALL_PLANE + 0.5,
+    # PR-k の矢印は右へ弧を描かせ，PR の注記の 2 行目（PR-k の点の真下まで延びる）を避ける
+    tagged('PR-$k$', 'が返す解', '（$k$ 回の swap で打ち切り）', (pr_x[2], pr_y[2]), (0.08, 0.27),
+           rad=0.35)
+    # 帯の端をまたがないよう，帯の外から書き出す
+    ax.text(BAND_HI + 0.02, 0.995, '$S_p$ へ swap でたどる', fontsize=FS_SMALL_PLANE + 0.5,
             color=C_MPR, ha='left', va='bottom', fontweight='bold')
     fig.tight_layout(pad=0.35)
     mark_schematic(fig)
@@ -441,9 +454,9 @@ def load():
 def fig_front(M, S):
     M.PR_PERIOD_PT = 9.0  # スライド寸法では点線の周期を広げる（v2 の 6.3pt は紙面用）
     methods = [('ils_baseline', 'ILS', C_ILS, M_ILS, 4.0, '-'),
-               ('ils_pr', 'ILS+PR', C_ILS, None, 3.0, M._pr_dash(3.0, 0.0)),
+               ('ils_pr', 'ILS＋PR', C_ILS, None, 3.0, M._pr_dash(3.0, 0.0)),
                ('memetic_ls', 'Memetic', C_MEM, M_MEM, 4.0, '-'),
-               ('memetic_pr', 'Memetic+PR', C_MEM, None, 2.0, M._pr_dash(2.0, 0.5))]
+               ('memetic_pr', 'Memetic＋PR', C_MEM, None, 2.0, M._pr_dash(2.0, 0.5))]
     fig, axes = plt.subplots(1, 2, figsize=(12.0, 4.2))
     for k, (ax, prob) in enumerate(zip(axes, ['ta21_ta21_delay97', 'ta21_ta21_high'])):
         p50 = S[prob]['thresholds']['P50']
@@ -574,14 +587,19 @@ GUIDE = '#16385C'   # スライドの読み方のガイドの青（build_pptx.py
 def fig_highstab4(S, tags=('la36S', 'ta21S', 'la36L', 'ta21L'), mark=('la36L', 'ta21L')):
     """演算子の効果のスライド用：全 8 シナリオの図と同じパネルを 4 つだけ 1 行に並べる。
     左 2 つは ILS が演算子なしで最良値にあるシナリオ，右 2 つは届いていないシナリオ。後者（mark）では，
-    ILS の演算子なしの点を青い丸で囲む（スライドの箇条書きの「○」と対応）。パネルを全 8 シナリオの図より
+    ILS の演算子なし → PR-k の上がりを，線の少し上に平行な青い矢印で示す。パネルを全 8 シナリオの図より
     高くして，ILS の 94% → 100% の変化も読めるようにする。S は pkl でも load_csv() でもよい。"""
     probs = {TAG[p]: p for p in S if p in TAG}
     fig, axes = plt.subplots(1, len(tags), figsize=(12.0, 2.65), sharey=True)
     for ax, tag in zip(axes, tags):
         meds = _highstab_panel(ax, S[probs[tag]]['highstab_hv_pt'], tag)
         if tag in mark:
-            ax.plot([0], [meds[0][0]], marker='o', ms=25, mfc='none', mec=GUIDE, mew=2.2, zorder=6)
+            # 全 8 シナリオの図の仮説のガイドと同じく，線に沿う矢印にする。PR-k の * に掛からない長さで止める
+            m0, m1 = meds[0][0], meds[0][1]
+            x0, x1, dy = 0.1, 0.7, 0.13
+            ax.annotate('', xy=(x1, m0 + (m1 - m0) * x1 + dy), xytext=(x0, m0 + (m1 - m0) * x0 + dy),
+                        arrowprops=dict(arrowstyle='-|>', color=GUIDE, lw=1.8, mutation_scale=14,
+                                        shrinkA=0, shrinkB=0), zorder=6)
     h, l = axes[0].get_legend_handles_labels()
     fig.legend(h, l, loc='upper left', ncol=len(l), frameon=False, fontsize=16,
                bbox_to_anchor=(0.04, 1.0), columnspacing=2.0)
@@ -595,11 +613,11 @@ def fig_highstab4(S, tags=('la36S', 'ta21S', 'la36L', 'ta21L'), mark=('la36L', '
 
 
 def fig_anytime(M, S):
-    style_ = [('ils_baseline', 'ILS', C_ILS, '-'), ('ils_repair', 'ILS+PR-$k$', C_ILS, (0, (5, 2))),
-              ('ils_pr', 'ILS+PR', C_ILS, (0, (0.6, 2.2))),
+    style_ = [('ils_baseline', 'ILS', C_ILS, '-'), ('ils_repair', 'ILS＋PR-$k$', C_ILS, (0, (5, 2))),
+              ('ils_pr', 'ILS＋PR', C_ILS, (0, (0.6, 2.2))),
               ('memetic_ls', 'Memetic', C_MEM, '-'),
-              ('memetic_repair', 'Memetic+PR-$k$', C_MEM, (0, (5, 2))),
-              ('memetic_pr', 'Memetic+PR', C_MEM, (0, (0.6, 2.2)))]
+              ('memetic_repair', 'Memetic＋PR-$k$', C_MEM, (0, (5, 2))),
+              ('memetic_pr', 'Memetic＋PR', C_MEM, (0, (0.6, 2.2)))]
     methods = [s[0] for s in style_]
     fig, axes = plt.subplots(1, 2, figsize=(12.0, 4.6))
     for k, (ax, prob) in enumerate(zip(axes, ['ta21_ta21_delay97', 'la36_la36_large'])):
@@ -620,7 +638,7 @@ def fig_anytime(M, S):
           Line2D([], [], color=gray, lw=2.4),
           Line2D([], [], color=gray, lw=2.4, ls=(0, (5, 2))),
           Line2D([], [], color=gray, lw=2.4, ls=(0, (0.6, 2.2)), dash_capstyle='round')]
-    fig.legend(hs, ['ILS', 'Memetic', '演算子なし', '+PR-$k$', '+PR'], loc='upper center',
+    fig.legend(hs, ['ILS', 'Memetic', '演算子なし', '＋PR-$k$', '＋PR'], loc='upper center',
                ncol=5, frameon=False, fontsize=16, handlelength=2.2, handletextpad=0.5,
                columnspacing=1.6, bbox_to_anchor=(0.5, 1.0))
     tight(fig, pad=0.4, w_pad=2.0, rect=(0, 0, 1, 0.885))
