@@ -1539,19 +1539,23 @@ def s_design():
         cx.append(cx[-1] + w_ * tw / sum(colw))
     ry = [ty + i * trh for i in range(4)]
 
-    def frame(c0, c1, r0, r1, color, dash=False, lw=2.2):
-        sp = _rrect(s, cx[c0] + 0.05, ry[r0] + 0.05, cx[c1 + 1] - cx[c0] - 0.1,
-                    ry[r1 + 1] - ry[r0] - 0.1, None, line=color, radius=0.08, lw=lw)
-        if dash:
-            from pptx.enum.dml import MSO_LINE
-            sp.line.dash_style = MSO_LINE.DASH
-        return sp
+    # どの比較がどの仮説かは，高安定 HV の全 8 シナリオのスライドと同じ矢印と札で示す
+    # （仮説 1＝演算子なしの列で Memetic から ILS へ上向きの青の矢印，仮説 2＝Memetic の行に沿った
+    # 右向きの紫の矢印）。札の色は下の仮説の札と同じ
+    def tag(x, y, label, col):
+        _boxtext(s, x - 0.42, y - 0.15, 0.84, 0.3, [(label, 13, col, True)], fill=WHITE,
+                 line=col, radius=0.06)
 
-    frame(1, 3, 2, 2, H2)                      # 仮説 2：Memetic と Memetic＋演算子
-    frame(1, 1, 1, 2, H1)                       # 仮説 1：ILS と Memetic
-    # 枠の色は下の札と同じにし，表の中には文字を足さない。GA は表の下に参考として添える
-    _text(s, ML, ty + 3 * trh + 0.03, CW, 0.32, "参考：局所探索を持たない GA も同じ条件で実行",
-          FS_NOTE, color=MUTE, align=PP_ALIGN.RIGHT)
+    ccx = [(cx[c] + cx[c + 1]) / 2 for c in range(4)]
+    # 矢印は仮説の向き（Memetic より ILS が大きい）に合わせ，Memetic から ILS へ上向きにする（高安定 HV の
+    # 全 8 シナリオのスライドと同じ）。Memetic の文字の右に置き，札は矢印の途中に重ねる（列の境目をまたがない）
+    ax_ = ccx[1] + 1.0
+    _connector(s, ax_, ry[3] - 0.1, ax_, ry[1] + 0.1, color=H1, wt=1.8, kind=1)
+    tag(ax_, ry[2], "仮説 1", H1)
+    # 仮説 2 は Memetic の行の下に，行と平行な右向きの矢印を引く（演算子なし → 組み込む，の向き）
+    yb = ry[3] + 0.22
+    _connector(s, ccx[1], yb, ccx[3], yb, color=H2, wt=1.8, kind=1)
+    tag((ccx[1] + ccx[2]) / 2, yb, "仮説 2", H2)
     # 仮説ごとに，比較する手法と支持とみなす条件を書き下す（札の色は表の枠と同じ）
     hyps = [("仮説 1", H1, "単点探索のほうが，多点探索より高安定 HV が大きい",
              "ILS が Memetic を全シナリオで有意に上回れば支持"),
@@ -1569,14 +1573,15 @@ def s_design():
         p = tf.paragraphs[0]
         _run(p, "判定：", FS_IN, color=BLUE, bold=True)
         _add_runs(p, rule, FS_IN, color=INK)
-        y += 1.3
+        y += 1.15
         _divider(s, ML, y - 0.15, CW)
-    # 検定（下端に揃える）
-    jy = BOT - 0.66
-    tb, tf = add_textbox(s, ML, jy, CW, 0.6)
+    # 検定と参考の GA（下端に揃える）
+    jy = BOT - 0.92
+    tb, tf = add_textbox(s, ML, jy, CW, 0.88)
     for k, (head, body) in enumerate([
             ("検定：", "両側 Mann–Whitney の $U$ 検定．全シナリオにわたる同じ比較は Holm 法で補正"),
-            ("効果量：", "Cliff's $δ$．$|δ|$ = 1.0 は，一方の全試行が他方の全試行を上回る完全分離")]):
+            ("効果量：", "Cliff's $δ$．$|δ|$ = 1.0 は，一方の全試行が他方の全試行を上回る完全分離"),
+            ("参考：", "局所探索を持たない GA も同じ条件で実行")]):
         q = tf.paragraphs[0] if k == 0 else tf.add_paragraph()
         q.space_before = Pt(0 if k == 0 else 2)
         _run(q, head, FS_NOTE, color=MUTE, bold=True)
@@ -1678,7 +1683,7 @@ def s_highstab():
     _w, fh = pic(s, "highstab_all8.png", px0, py0, w=w)
     # 読み方のガイドを最初のパネル（la36S）に重ねる。位置は図の画素から自己較正する
     # （現在の図では 3000 px 幅で，なし x=331，PR-k x=557，値 1 → y=258，値 0 → y=443）。
-    # 仮説 1＝演算子なしでの両構造の差（青の縦の両矢印），仮説 2＝Memetic の上昇（紫の矢印）
+    # 仮説 1＝演算子なしでの両構造の差（Memetic から ILS へ上向きの青の矢印），仮説 2＝Memetic の上昇（紫の矢印）
     g = _highstab_guide_px(asset("highstab_all8.png")) or (331, 557, 258, 443, 3000)
     k = w / g[4]
     xn, xk = px0 + g[0] * k, px0 + g[1] * k
@@ -1689,9 +1694,7 @@ def s_highstab():
                  line=col, radius=0.06)
 
     bx = xn - 0.13
-    ln = _connector(s, bx, y1 + 0.08, bx, y0 - 0.08, color=BLUE, wt=1.5, kind=1)
-    l_ = ln.line._get_or_add_ln()
-    l_.append(l_.makeelement(qn('a:headEnd'), {'type': 'triangle', 'w': 'med', 'len': 'med'}))
+    _connector(s, bx, y0 - 0.08, bx, y1 + 0.08, color=BLUE, wt=1.5, kind=1)   # Memetic から ILS へ上向き
     tag(bx + 0.08, (y1 + y0) / 2, "仮説 1", BLUE)
     _connector(s, xn + 0.21, y0 - 0.03, xk - 0.12, y1 + 0.27, color=VIOLET, wt=1.6, kind=1)
     tag(xk + 0.09, y0 - 0.13, "仮説 2", VIOLET)
@@ -1817,6 +1820,7 @@ def s_conclusion():
                               "多点探索より**単点探索**のほうが適する"),
              ("仮説 2 を支持", "安定性誘導演算子は，**多点探索の高安定 HV を単点探索と同程度まで向上**させる"),
              ("手法の選び方", "Pareto フロント全体の品質を重視する場合は **多点探索＋安定性誘導演算子**\n"
+                              "高安定領域の品質を重視する場合は **単点探索** か **多点探索＋安定性誘導演算子**\n"
                               "短い計算時間で解を得る場合は **単点探索**")]
     # 見出しの列を詰めて本文の幅を取る。枠の高さは行数から決める
     bx = ML + 2.65
