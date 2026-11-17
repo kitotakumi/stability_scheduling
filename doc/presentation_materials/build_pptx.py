@@ -1556,6 +1556,9 @@ def s_design():
     yb = ry[3] + 0.22
     _connector(s, ccx[1], yb, ccx[3], yb, color=H2, wt=1.8, kind=1)
     tag((ccx[1] + ccx[2]) / 2, yb, "仮説 2", H2)
+    # 参考の GA は表の注として，仮説 2 の矢印の下に右寄せで置く
+    _text(s, ML, yb + 0.2, CW, 0.34, "参考の GA（局所探索なし）も含めた 7 手法で比較", FS_NOTE, color=MUTE,
+          align=PP_ALIGN.RIGHT)
     # 仮説ごとに，比較する手法と支持とみなす条件を書き下す（札の色は表の枠と同じ）
     hyps = [("仮説 1", H1, "単点探索のほうが，多点探索より高安定 HV が大きい",
              "ILS が Memetic を全シナリオで有意に上回れば支持"),
@@ -1563,7 +1566,7 @@ def s_design():
              "Memetic＋PR-$k$ と Memetic＋PR がそれぞれ Memetic を全シナリオで有意に上回れば支持")]
     tx = ML + 1.5
     txw = SW - ML - tx
-    y = ty + 3 * trh + 0.5   # 表は見出しを含めて 3 行
+    y = ty + 3 * trh + 0.8   # 表は見出しを含めて 3 行．その下に仮説 2 の矢印と GA の注を置く
     for tag, col, claim, rule in hyps:
         _boxtext(s, ML, y + 0.04, 1.3, 0.44, [(tag, FS_HEAD, WHITE, True)], fill=col, radius=0.3)
         _text(s, tx, y, txw, 0.52, "**" + claim + "**", FS_BODY, color=INK,
@@ -1575,13 +1578,12 @@ def s_design():
         _add_runs(p, rule, FS_IN, color=INK)
         y += 1.15
         _divider(s, ML, y - 0.15, CW)
-    # 検定と参考の GA（下端に揃える）
-    jy = BOT - 0.92
-    tb, tf = add_textbox(s, ML, jy, CW, 0.88)
+    # 検定（下端に揃える）
+    jy = BOT - 0.66
+    tb, tf = add_textbox(s, ML, jy, CW, 0.6)
     for k, (head, body) in enumerate([
             ("検定：", "両側 Mann–Whitney の $U$ 検定．全シナリオにわたる同じ比較は Holm 法で補正"),
-            ("効果量：", "Cliff's $δ$．$|δ|$ = 1.0 は，一方の全試行が他方の全試行を上回る完全分離"),
-            ("参考：", "局所探索を持たない GA も同じ条件で実行")]):
+            ("効果量：", "Cliff's $δ$．$|δ|$ = 1.0 は，一方の全試行が他方の全試行を上回る完全分離")]):
         q = tf.paragraphs[0] if k == 0 else tf.add_paragraph()
         q.space_before = Pt(0 if k == 0 else 2)
         _run(q, head, FS_NOTE, color=MUTE, bold=True)
@@ -1754,7 +1756,8 @@ def s_extra():
         ("**横軸：計算時間（対数）**", FS_BODY, 22),
         ("立ち上がりの速さを重視する", FS_BODY, 4),
         ("**曲線の下の面積：AUC（anytime 性能）**[[20]]", FS_BODY, 22),
-        ("どの時点で計算を打ち切っても，\n大きい HV が得られるか", FS_BODY, 4),
+        ("重み $λ$ を 1 つ選んで探索したとき，\nどの時点で計算を打ち切っても，\n大きい HV が得られるか", FS_BODY, 4),
+        ("重みごとに求め，全ての重みで平均する", FS_NOTE, 6),
     ])
     _cite_note(s, [20])
 
