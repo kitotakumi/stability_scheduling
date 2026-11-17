@@ -124,16 +124,19 @@ PR_Y = _front_curve(PR_X) + np.array([0.210, 0.115, 0.150, 0.130, 0.165, 0.032])
 
 
 def _plane(ax, fs=12.5, star_label='$S_p$', band_label='高安定領域',
-           front_label=True):
+           front_label=True, band=True, front=True):
     """★は初期スケジュール S_p（D = 0）。★は研究の出発点の図
     （concept_sp）で初めて描き，求められる解の図（concept_0）では描かない（star_label=None）。
-    帯と Pareto フロントのラベルは最初の図で定義し，以後は帯の短い名前だけ（演算子の図では付けない）。"""
-    ax.axvspan(0, BAND_HI, facecolor=BAND_FACE, lw=0, zorder=0)
-    ax.axvline(BAND_HI, color=BAND_EDGE, lw=1.0, ls=':', zorder=1)
-    if band_label:
+    帯と Pareto フロントのラベルは最初の図で定義し，以後は帯の短い名前だけ（演算子の図では付けない）。
+    band=False・front=False は帯と Pareto フロントの曲線を描かず，軸だけを同じ作りにする。"""
+    if band:
+        ax.axvspan(0, BAND_HI, facecolor=BAND_FACE, lw=0, zorder=0)
+        ax.axvline(BAND_HI, color=BAND_EDGE, lw=1.0, ls=':', zorder=1)
+    if band and band_label:
         ax.text(BAND_HI / 2, 0.075, band_label, ha='center', va='bottom',
                 fontsize=fs, color=BAND_EDGE, linespacing=1.15)
-    ax.plot(XS, _front_curve(XS), ls='--', color='gray', lw=1.4, zorder=1)
+    if front:
+        ax.plot(XS, _front_curve(XS), ls='--', color='gray', lw=1.4, zorder=1)
     if front_label:   # 曲線上の点と重ならないよう，曲線から少し下げて置く
         ax.text(0.53, _front_curve(0.53) - 0.10, 'Pareto フロント', fontsize=fs - 1.5,
                 color='gray', rotation=-17, rotation_mode='anchor', ha='left', va='top')
@@ -227,13 +230,14 @@ def _stair(xs, ys, xmax):
     return np.array(sx), np.array(sy)
 
 
-def fig_concept_hv():
+def fig_concept_hv(front=True, name='concept_hv.png'):
     """高安定 HV のスライド用（1 章）。着目点の図と同じ平面・同じ非劣解に，参照点までの支配領域を塗る。
     全体が全域 HV，帯の中の部分（橙）が高安定 HV。P_θ や D = 0 の除外などの算出の細部は実験設定で扱うので，
-    軸と帯の名前は 1 章の言葉のままにする。"""
+    軸と帯の名前は 1 章の言葉のままにする。
+    front=False は Pareto フロントの曲線とラベルを描かない（前のスライドで示す場合）。"""
     fig, ax = plt.subplots(figsize=(6.4, 6.05))
     # Pareto フロントのラベルは，1 章で平面を初めて見せるこの図で付ける
-    _plane(ax, fs=FS_PLANE, star_label=None, band_label=None)
+    _plane(ax, fs=FS_PLANE, star_label=None, band_label=None, front=front, front_label=front)
     # 帯の名前の下に，帯の範囲（全手法の非劣解のうち変更量が中央値より小さい）を添える
     ax.text(BAND_HI / 2, 0.075, '（変更量が\n中央値より小）', ha='center', va='bottom',
             fontsize=FS_PLANE - 2, color=BAND_EDGE, linespacing=1.15)
@@ -263,26 +267,28 @@ def fig_concept_hv():
             color=INK)
     fig.tight_layout(pad=0.4)
     mark_schematic(fig)
-    save(fig, 'concept_hv.png')
+    save(fig, name)
 
 
-def fig_concept_sp():
+def fig_concept_sp(star_label='$S_p$', note=True, name='concept_sp.png'):
     """研究の出発点のスライド用。同じ平面に ★（S_p）だけを描き，探索せずに得られる解であることを
     ★の注記で言う。★はこの図で初めて出す。非劣解の点・★からの矢印は描かない
-    （どの探索構造が良いかはこのスライドでは言わない）。"""
+    （どの探索構造が良いかはこのスライドでは言わない）。
+    note=False は★の注記（矢印）を描かない（★のラベル star_label で何の解かを言う場合）。"""
     fig, ax = plt.subplots(figsize=(6.4, 6.05))
-    _plane(ax, fs=FS_PLANE, star_label='$S_p$', band_label='高安定領域')
+    _plane(ax, fs=FS_PLANE, star_label=star_label, band_label='高安定領域')
     ax.xaxis.label.set_size(FS_PLANE)
     ax.yaxis.label.set_size(FS_PLANE)
     # ★の注記は 1 行のラベルにする。長くすると tight_layout が軸を縮め，求められる解の図と平面の大きさが揃わない
     # （変更量 0・MS は最適化済み，は右の本文にある）
-    ax.annotate('探索せずに得られる', xy=(0.012, 0.955),
-                xytext=(0.46, 0.93), fontsize=FS_PLANE, color=INK, va='center', linespacing=1.3,
-                arrowprops=dict(arrowstyle='-|>', color='#55606B', lw=1.1, mutation_scale=12,
-                                shrinkA=4, shrinkB=9))
+    if note:
+        ax.annotate('探索せずに得られる', xy=(0.012, 0.955),
+                    xytext=(0.46, 0.93), fontsize=FS_PLANE, color=INK, va='center', linespacing=1.3,
+                    arrowprops=dict(arrowstyle='-|>', color='#55606B', lw=1.1, mutation_scale=12,
+                                    shrinkA=4, shrinkB=9))
     fig.tight_layout(pad=0.4)
     mark_schematic(fig)
-    save(fig, 'concept_sp.png')
+    save(fig, name)
 
 
 # 仮説と演算子の図の文字の大きさ。仮説のスライドでは 4.7 in 幅ほどに縮めて置くので（およそ 0.8 倍），
