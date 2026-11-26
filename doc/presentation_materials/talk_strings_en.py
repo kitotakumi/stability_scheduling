@@ -64,8 +64,9 @@ SLIDES = {
         "(predictive-reactive rescheduling)",
     "外乱": "Disruption",
     "製造現場では，機械故障や\n作業遅延などにより，\nスケジュール通りに作業を\n実行できないことがある":
-        "On the shop floor, machine breakdowns, operation delays, and the like can keep operations "
-        "from running as scheduled",
+        # machine breakdowns・operation delays が行をまたがないよう，区切りのよい所で改行する
+        "On the shop floor,\nmachine breakdowns,\noperation delays, and\nsimilar events can prevent\n"
+        "operations from running\nas scheduled",
     "動的アプローチ": "Dynamic approach",
     "外乱の発生後に，\nスケジュールを修正する": "Revise the schedule after a disruption occurs",
     "静的アプローチ": "Static approach",
@@ -76,7 +77,7 @@ SLIDES = {
     "本研究": "This study",
     "予測リアクティブ再スケジューリング": "Predictive-reactive rescheduling",
     ("外乱が起きたら，外乱前の", "スケジュール（**初期スケジュール $S_p$**）", "を修正する"):
-        ("When a disruption occurs, revise the", "schedule made before it", "(**initial schedule $S_p$**)"),
+        ("When a disruption occurs, revise the", "pre-disruption schedule", "(**initial schedule $S_p$**)"),
 
     # ---------------------------------------------------------------- 再スケジューリングと安定性
     "再スケジューリングと安定性": "Rescheduling and Stability",
@@ -111,10 +112,11 @@ SLIDES = {
     "両目的とも最小化であるため Pareto フロントは左下にあるほど良く，本研究はその品質を HV で測る":
         "Since both objectives are minimized, a Pareto front closer to the lower left is better; "
         "this study measures its quality by HV",
-    "● 二目的最適化では，解が 1 つに定まらない．\n一方の目的を悪化させずには他方を\n"
-    "改善できない解を**非劣解**，その集合を\n**Pareto フロント**と呼ぶ":
-        "● In bi-objective optimization, no single solution is best. Solutions that cannot improve "
-        "one objective without worsening the other are **non-dominated**; their set is the **Pareto front**",
+    "● 二目的最適化では，解が 1 つに定まらない．\n両方の目的で同時に上回る解が他にない解を\n"
+    "**非劣解**（図では，左下に他の解がない点），\nその集合を **Pareto フロント**と呼ぶ":
+        "● In bi-objective optimization, no single solution is best. A solution is **non-dominated** if no "
+        "other is better in both objectives (in the figure, none lies to its lower left); their set is the "
+        "**Pareto front**",
     "→ 両目的とも最小化であるため，\nPareto フロントは**左下にあるほど良い**":
         "→ Since both objectives are minimized, a Pareto front **closer to the lower left is better**",
     "● **hypervolume（HV）**[[5]]：非劣解が支配する\n領域（参照点まで）の面積．\n"
@@ -427,7 +429,7 @@ SLIDES = {
     "修正スケジュールを高安定領域に保つという前提が，最も素直に成り立つ外乱である":
         "**Why the disruption is a single operation delay**: an operation delay leaves the operation set "
         "unchanged and can be handled by readjusting the sequences alone, so it is the disruption under which "
-        "the premise of keeping the revised schedule in the high-stability region holds most naturally",
+        "the premise of keeping the revised schedule in the high‑stability region holds most naturally",   # ‑：ハイフンで折り返さない
     "**再スケジューリング時刻 $t_r$**：遅延の解消時刻．遅延の発生から $t_r$ までは，"
     "機械上の順序を $S_p$ から変えずに遅延を吸収して実行を続ける（right-shift）．"
     "この間に開始した作業はもう変更できないため凍結し，$t_r$ 以降の作業の機械ごとの処理順序だけを決定変数とする":
