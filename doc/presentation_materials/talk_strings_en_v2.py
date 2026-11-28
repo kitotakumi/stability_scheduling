@@ -8,7 +8,7 @@
     短い節で書く
   - 結論を先に置き，理由を後ろに付ける（「〜なので〜」の形を避ける）
   - 図が示していることを本文で言い直さない
-  - 題名・図・表・予備スライドは英語版と同じ
+  - 図・表は英語版と同じ。スライドの構成・題名と予備スライドの変更は build_pptx_en_v2.py に書く
 """
 
 REPLACE = {
@@ -30,7 +30,9 @@ REPLACE = {
         ("★ $S_p$ is available **without any search**",
          "– change 0 (the best stability)",
          "– $MS$ already optimized before the disruption"),
-    "→ Does this $S_p$ **strongly affect which search**": "→ Does having $S_p$ in advance **change which search**",
+    # 問いは「〜に大きく影響するのではないか」という問題提起なので，疑問文でなく may の文で書く
+    "→ Does this $S_p$ **strongly affect which search**": "→ **$S_p$ may strongly affect which search structure**",
+    "**structure is better, especially in high-stability HV?**": "**is better**, especially in **high-stability HV**",
     "Transforms a single\nsolution little by little": "One solution,\nchanged little by little",
     "Keeps several solutions\nand recombines them": "Several solutions,\nrecombined",
 
@@ -46,12 +48,15 @@ REPLACE = {
     "the whole Pareto front; the quality of highly stable solutions\nis not analyzed in detail":
         "Compared by scalar values at a few weights\vor by HV of the whole front\n"
         "→ highly stable solutions **not evaluated in detail**",
+    # 課題 3 は本研究の演算子が埋める隙間なので，「操作」は提案と同じ operator と書く
+    # （operation はジョブショップの作業の意味だけに使う）
+    "No operation creating\nhighly stable solutions": "No operator creating\nhighly stable solutions",
     "**Embedding in the objective**: stability enters only the evaluation\n"
     "**Limiting the scope**: stability enters only as a search-space limit\n"
     "→ Neither has an operation that creates highly stable solutions":
         "**Embedding in the objective**: stability only in the evaluation\n"
         "**Limiting the scope**: stability only via a restricted search space\n"
-        "→ **No operation creates highly stable solutions**",
+        "→ **No operator creates highly stable solutions**",
 
     # ---------------------------------------------------------------- 仮説（主張を太字で，理由は「– 」の行で添える。
     # 理由の行の字下げと文字の大きさは build_pptx_en_v2.py の _indent_reasons で付ける）
@@ -69,8 +74,10 @@ REPLACE = {
         "$n$-job, $m$-machine job-shop scheduling problem\n(JSSP); one operation delayed by $Δ$",
     "Operations started before the rescheduling time $t_r$\nare frozen; the **per-machine sequences** of "
     "the\nremaining operations $O_{opt}$ are the decision variables":
-        "Operations started before $t_r$: **frozen**\n"
-        "Decision variables: **per-machine sequences** after $t_r$",
+        # 凍結はガント（4 枚目）と予備（問題設定の根拠）で示す．t_r は本編でこの後使わないので記号を出さない
+        "Decision variables: **per-machine sequences**\n"
+        "after the rescheduling time",
+    "Stability: **change in sequences** (sequence deviation $D$)": "Stability: **sequence deviation $D$**",
     "($MS$, $D$) are combined into a weighted sum $F$; the\nweight $λ$ is swept from efficiency to "
     "stability, and all\nresulting non-dominated solutions are evaluated by HV":
         "Weighted sum $F$ of $MS$ and $D$; sweep the weight $λ$\n"
@@ -82,32 +89,32 @@ REPLACE = {
     "**Links the current solution with $S_p$** → an operation that brings solutions toward $S_p$":
         "**Link the current solution with $S_p$** → moves solutions toward $S_p$",
 
+    # ---------------------------------------------------------------- 実験設定
+    # 本編では参考の GA を挙げないので，計算予算は ILS 系と Memetic 系だけを書く（GA は予備にある）
+    "ILS variants: 3000 iterations; GA and Memetic variants: 500 generations":
+        "ILS variants: 3000 iterations; Memetic variants: 500 generations",
+
     # ---------------------------------------------------------------- 高安定 HV：ta21L の Pareto フロント
     "(a) Without operators: Memetic barely enters the high-stability region and trails ILS in $MS$ there":
-        "(a) No operator: Memetic barely enters the region; worse $MS$ than ILS there",
+        "(a) No operator: Memetic's whole front is worse than ILS's, with almost no solutions in the region",
     "(b) With PR: Memetic also spreads into the region and overlaps ILS without operators (light orange)":
-        "(b) With PR: Memetic fills the region, overlapping ILS from (a) (light orange)",
+        "(b) With PR: Memetic's front catches up with ILS's, while ILS improves only slightly",
 
     # ---------------------------------------------------------------- 高安定 HV：演算子の効果
+    # Memetic の項目には，8 シナリオ中 7 つで演算子なしの ILS と同程度以上になること（まとめの H2 の根拠）を添える
     "**Memetic**: the operators lift it sharply, from 0–48% to 90–100% of the best value":
-        "**Memetic**: with the operators, 0–48% → 90–100% of the best value",
+        "**Memetic**: with the operators, 0–48% → 90–100% of the best value,\n"
+        "reaching the level of ILS in 7 of 8 scenarios",
+    # ILS の項目の向上した 2 シナリオは図の矢印が示すので，名前でなく「6 of 8」の残りとして書く
     "**ILS**: without operators, 6 of the 8 scenarios are already at 98.5% of the best value or more.\n"
     "Only la36L and ta21L, which fell short of the best value, improve with the operators (94% → 100%).\n"
     "Of these, only ta21L remains significant after Holm correction":
         "**ILS**: already ≥ 98.5% of the best value in 6 of 8 scenarios\n"
-        "Gains only in la36L and ta21L (94% → 100%); after Holm, significant only in ta21L",
+        "Improves only in the other 2 (94% → 100%)",   # Holm 補正の結果は図の下の注（build_pptx_en_v2.py の _holm_note）
     "→ The operators take effect **where the structure alone falls short of the best value, closing the gap**":
-        "→ Operators help **only where the structure alone falls short of the best value**",
+        "→ Operators help **only where the search without them falls short of the best value**",
 
-    # ---------------------------------------------------------------- 追加の評価
-    "Whether a search with one weight $λ$\nattains a large HV whenever it is stopped":
-        "Large HV whenever the search is stopped\n(per weight $λ$)",
-
-    # ---------------------------------------------------------------- AUC と全域 HV
-    "In **ta21L**, ILS rises the fastest; Memetic lags,\nand the operators delay it further":
-        "In **ta21L**, ILS rises fastest; Memetic lags,\nslowed further by the operators",
-    "In **ta21L**, the operators raise Memetic's final\nvalue to the highest; ILS barely changes":
-        "In **ta21L**, the operators lift Memetic's final\nvalue to the top; ILS barely changes",
+    # 追加の評価（全域 HV の推移）は build_pptx_en_v2.py の s_anytime で組む
 }
 
 
